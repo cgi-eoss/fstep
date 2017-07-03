@@ -1,16 +1,25 @@
-if (!eossCI.isTriggeredByGerrit()) {
-    properties([[$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', artifactDaysToKeepStr: '', artifactNumToKeepStr: '30', daysToKeepStr: '', numToKeepStr: '']]])
-}
-
-node {
-    dir('.fetch') {
-        deleteDir()
-        eossCI.checkoutScmOrGerrit()
-        stash name: 'source', useDefaultExcludes: false
+pipeline {
+  agent any
+  options {
+  	buildDiscarder(logRotator(artifactNumToKeepStr: '1', numToKeepStr: ''))
+  }
+  stages {
+    stage('Clean') {
+      steps {
+        sh './gradlew --build-cache --parallel clean'
+      }
     }
-
-    load '.fetch/build/pipeline.groovy'
-}()
-
-// vi: syntax=groovy
+    stage('Build') {
+      steps {
+        sh './gradlew --build-cache --parallel build buildDist'
+      }
+    }
+  }
+  post {
+    always {
+      junit allowEmptyResults: true, testResults: '**/target/test-results/test/TEST-*.xml'
+      archive '.dist/**/*'
+    }
+  }
+}
 
