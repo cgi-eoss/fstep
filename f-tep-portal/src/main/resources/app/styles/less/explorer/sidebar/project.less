@@ -1,0 +1,32 @@
+@import "variable";
+#projects {
+    .panel-heading {
+        padding: 0;
+        .panel-heading-container {
+            background-color: @brand-dark;
+            color: @text-light;
+            cursor: pointer;
+            .md-button {
+                width: 100%;
+                &:hover {
+                    color: @accent-light;
+                }
+            }
+            .project-title {
+                .expand-icon {
+                    font-size: 1rem;
+                    margin: 8px;
+                    padding-top: 2px;
+                }
+                h2 {
+                    font-size: 1rem;
+                    margin: 0;
+                    padding: 8px;
+                }
+                &:hover {
+                    color: @accent-light;
+                }
+            }
+        }
+    }
+}

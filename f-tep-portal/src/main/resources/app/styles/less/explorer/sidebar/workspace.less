@@ -1,0 +1,52 @@
+@import "variable";
+#workspace-panel {
+    .workspace-header {
+        .service-header {
+            text-align: center;
+            .service-title {
+                color: @text;
+                font-size: 1.2rem;
+                margin-bottom: 0;
+                padding-top: 0.8rem;
+            }
+        }
+        .service-description {
+            .border(border-bottom, @bg);
+        }
+    }
+    .workspace-content {
+        .service-field {
+            .input-item {
+                padding: 0 0.5rem;
+            }
+            .md-subheader {
+                color: @text;
+                button {
+                    background-color: @dark-button;
+                    color: @text-light;
+                    margin-left: 0.5rem;
+                    padding: 2px 4px;
+                    i {
+                         font-size: 0.7rem;
+                    }
+                    &:hover {
+                        background-color: @dark-button-hover;
+                    }
+                }
+                .required-asterisk {
+                    color: @accent;
+                }
+            }
+            &:hover {
+                background-color: @alert;
+            }
+        }
+        input:invalid {
+            border-bottom: solid 1px @error-text;
+        }
+    }
+}
+.dropped-file-popover {
+    max-width: 1000px;
+    width: 800px;
+}

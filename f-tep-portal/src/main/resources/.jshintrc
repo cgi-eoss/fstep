@@ -1,0 +1,22 @@
+{
+    "bitwise": false,
+    "browser": true,
+    "curly": true,
+    "eqeqeq": true,
+    "esnext": true,
+    "latedef": true,
+    "loopfunc": true,
+    "noarg": true,
+    "node": true,
+    "strict": true,
+    "undef": true,
+    "unused": false,
+    "predef": [
+        "define",
+        "require"
+    ],
+    "globals": {
+        "angular": false,
+        "$": false
+    }
+}
