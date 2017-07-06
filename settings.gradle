@@ -1,4 +1,4 @@
-rootProject.name = 'f-tep'
+rootProject.name = 'fs-tep'
 
 include 'f-tep-api'
 include 'f-tep-catalogue'

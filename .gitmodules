@@ -1,0 +1,4 @@
+[submodule "third-party/puppet/cgieoss-fstep"]
+	path = third-party/puppet/cgieoss-fstep
+	url = https://github.com/cgi-eoss/puppet-fstep.git
+	branch = development
