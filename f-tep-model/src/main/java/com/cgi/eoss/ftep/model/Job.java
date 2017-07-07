@@ -20,8 +20,8 @@ import javax.persistence.Index;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.Lob;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
@@ -112,7 +112,7 @@ public class Job implements FtepEntityWithOwner<Job> {
     /**
      * <p>The FtepFiles produced as job outputs.</p>
      */
-    @OneToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "ftep_job_output_files",
             joinColumns = @JoinColumn(name = "job_id", nullable = false),

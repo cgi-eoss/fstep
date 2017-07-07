@@ -45,6 +45,7 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 @Service("cachingSymlinkIOManager")
 public class CachingSymlinkIOManager implements ServiceInputOutputManager {
 
+    @SuppressWarnings("deprecation")
     public static final HashFunction HASH_FUNCTION = Hashing.sha1();
 
     private static final String FTEP_SERVICE_CONTEXT = "ftep://serviceContext/${serviceName}";

@@ -137,7 +137,7 @@ public class FtepService implements FtepEntityWithOwner<FtepService>, Searchable
     }
 
     public enum Type {
-        PROCESSOR, BULK_PROCESSOR, APPLICATION
+        PROCESSOR, BULK_PROCESSOR, APPLICATION, PARALLEL_PROCESSOR
     }
 
     public enum Status {

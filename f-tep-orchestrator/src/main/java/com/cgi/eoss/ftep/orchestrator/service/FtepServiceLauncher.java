@@ -38,6 +38,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
+import com.google.common.collect.SetMultimap;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.log4j.Log4j2;
@@ -49,6 +50,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,12 +58,14 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -71,6 +75,7 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * <p>Primary entry point for WPS services to launch in F-TEP.</p>
@@ -102,24 +107,19 @@ public class FtepServiceLauncher extends FtepServiceLauncherGrpc.FtepServiceLaun
 
     @Override
     public void launchService(FtepServiceParams request, StreamObserver<FtepServiceResponse> responseObserver) {
-        Multimap<String, String> inputs = GrpcUtil.paramsListToMap(request.getInputsList());
-
         String zooId = request.getJobId();
         String userId = request.getUserId();
         String serviceId = request.getServiceId();
         String jobConfigLabel = request.getJobConfigLabel();
+        List<JobParam> rpcInputs = request.getInputsList();
+        Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
 
         Job job = null;
         try (CloseableThreadContext.Instance ctc = CloseableThreadContext.push("F-TEP Service Orchestrator")
                 .put("userId", userId).put("serviceId", serviceId).put("zooId", zooId)) {
             // TODO Allow re-use of existing JobConfig
             job = jobDataService.buildNew(zooId, userId, serviceId, jobConfigLabel, inputs);
-            com.cgi.eoss.ftep.rpc.Job rpcJob = com.cgi.eoss.ftep.rpc.Job.newBuilder()
-                    .setId(zooId)
-                    .setIntJobId(String.valueOf(job.getId()))
-                    .setUserId(userId)
-                    .setServiceId(serviceId)
-                    .build();
+            com.cgi.eoss.ftep.rpc.Job rpcJob = createRpcJob(job);
 
             // Post back the job metadata for async responses
             responseObserver.onNext(FtepServiceResponse.newBuilder().setJob(rpcJob).build());
@@ -129,181 +129,68 @@ public class FtepServiceLauncher extends FtepServiceLauncherGrpc.FtepServiceLaun
 
             checkCost(job.getOwner(), job.getConfig());
 
-            // Prepare inputs
-            LOG.info("Downloading input data for {}", zooId);
-            job.setStartTime(LocalDateTime.now());
-            job.setStatus(Job.Status.RUNNING);
-            job.setStage(JobStep.DATA_FETCH.getText());
-            jobDataService.save(job);
-
-            if (!checkInputs(job.getOwner(), request.getInputsList())) {
+            if (!checkInputs(job.getOwner(), rpcInputs)) {
                 try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                     LOG.error("User does not have read access to all requested inputs", userId);
                 }
                 throw new ServiceExecutionException("User does not have read access to all requested inputs");
             }
 
-            // TODO Determine WorkerEnvironment from service parameters
             FtepWorkerGrpc.FtepWorkerBlockingStub worker = workerFactory.getWorker(job.getConfig());
-            JobEnvironment jobEnvironment = worker.prepareEnvironment(JobInputs.newBuilder()
-                    .setJob(rpcJob)
-                    .addAllInputs(request.getInputsList())
-                    .build());
 
-            // Configure container
-            String dockerImageTag = service.getDockerTag();
-            JobDockerConfig.Builder dockerConfigBuilder = JobDockerConfig.newBuilder()
-                    .setJob(rpcJob)
-                    .setServiceName(serviceId)
-                    .setDockerImage(dockerImageTag)
-                    .addBinds("/data:/data:ro")
-                    .addBinds(jobEnvironment.getWorkingDir() + "/FTEP-WPS-INPUT.properties:" + "/home/worker/workDir/FTEP-WPS-INPUT.properties:ro")
-                    .addBinds(jobEnvironment.getInputDir() + ":" + "/home/worker/workDir/inDir:ro")
-                    .addBinds(jobEnvironment.getOutputDir() + ":" + "/home/worker/workDir/outDir:rw");
-            if (service.getType() == FtepService.Type.APPLICATION) {
-                dockerConfigBuilder.addPorts(FtepGuiServiceManager.GUACAMOLE_PORT);
-            }
-            LOG.info("Launching docker container for job {}", zooId);
-            job.setStage(JobStep.PROCESSING.getText());
-            jobDataService.save(job);
-            LaunchContainerResponse unused = worker.launchContainer(dockerConfigBuilder.build());
+            SetMultimap<String, FtepFile> jobOutputFiles = MultimapBuilder.hashKeys().hashSetValues().build();
 
-            // TODO Implement async service command execution
-
-            LOG.info("Job {} ({}) launched for service: {}", job.getId(), zooId, service.getName());
-
-            // Update GUI endpoint URL for client access
-            if (service.getType() == FtepService.Type.APPLICATION) {
-                String guiUrl = guiService.getGuiUrl(worker, rpcJob);
-                LOG.info("Updating GUI URL for job {} ({}): {}", zooId, job.getConfig().getService().getName(), guiUrl);
-                job.setGuiUrl(guiUrl);
+            if (service.getType() == FtepService.Type.PARALLEL_PROCESSOR) {
+                LOG.info("Launching parallel processing for job {}", zooId);
+                job.setStage(JobStep.PROCESSING.getText());
                 jobDataService.save(job);
-            }
 
-            // Wait for exit, with timeout if necessary
-            ContainerExitCode exitCode;
-            if (inputs.containsKey(TIMEOUT_PARAM)) {
-                int timeout = Integer.parseInt(Iterables.getOnlyElement(inputs.get(TIMEOUT_PARAM)));
-                exitCode = worker.waitForContainerExitWithTimeout(ExitWithTimeoutParams.newBuilder().setJob(rpcJob).setTimeout(timeout).build());
-            } else {
-                exitCode = worker.waitForContainerExit(ExitParams.newBuilder().setJob(rpcJob).build());
-            }
+                // Split the magical "parallelInputs" attribute to get the individual job "input" parameters
+                List<String> parallelInputs = inputs.get("parallelInputs").stream()
+                        .map(i -> Arrays.asList(i.split(",")))
+                        .flatMap(Collection::stream)
+                        .collect(toList());
 
-            switch (exitCode.getExitCode()) {
-                case 0:
-                    // Normal exit
-                    break;
-                case 137:
-                    LOG.info("Docker container terminated via SIGKILL (exit code 137)");
-                    break;
-                case 143:
-                    LOG.info("Docker container terminated via SIGTERM (exit code 143)");
-                    break;
-                default:
-                    throw new ServiceExecutionException("Docker container returned with exit code " + exitCode);
-            }
+                // Create the simpler map of parameters shared by all parallel jobs
+                SetMultimap<String, String> sharedParams = MultimapBuilder.hashKeys().hashSetValues().build(inputs);
+                sharedParams.removeAll("parallelInputs");
 
-            job.setStage(JobStep.OUTPUT_LIST.getText());
-            job.setEndTime(LocalDateTime.now()); // End time is when processing ends
-            job.setGuiUrl(null); // Any GUI services will no longer be available
-            jobDataService.save(job);
+                for (String parallelInput : parallelInputs) {
+                    SetMultimap<String, String> parallelJobParams = MultimapBuilder.hashKeys().hashSetValues().build(sharedParams);
+                    parallelJobParams.put("input", parallelInput);
 
-            // Repatriate output files
+                    Job parallelJob = jobDataService.buildNew(UUID.randomUUID().toString(), userId, serviceId, jobConfigLabel, parallelJobParams);
+                    com.cgi.eoss.ftep.rpc.Job parallelRpcJob = createRpcJob(parallelJob);
+                    List<JobParam> parallelRpcInputs = GrpcUtil.mapToParams(parallelJobParams);
 
-            // Enumerate files in the job output directory
-            OutputFileList outputFileList = worker.listOutputFiles(ListOutputFilesParam.newBuilder()
-                    .setJob(rpcJob)
-                    .setOutputsRootPath(jobEnvironment.getOutputDir())
-                    .build());
-            List<String> relativePaths = outputFileList.getItemsList().stream()
-                    .map(OutputFileItem::getRelativePath)
-                    .collect(Collectors.toList());
+                    LOG.info("Launching child job {} ({}) for job {} ({})", parallelJob.getExtId(), parallelJob.getId(), job.getExtId(), job.getId());
 
-            Map<String, String> outputsByRelativePath;
+                    Map<String, FtepFile> parallelJobOutputs = executeJob(parallelJob, parallelRpcJob, parallelRpcInputs, worker);
 
-            if (service.getType() == FtepService.Type.APPLICATION) {
-                // Collect all files in the output directory with simple index IDs
-                outputsByRelativePath = IntStream.range(0, relativePaths.size())
-                        .boxed()
-                        .collect(toMap(i -> Integer.toString(i + 1), relativePaths::get));
-            } else {
-                // Ensure we have one file per expected output
-                Set<String> expectedServiceOutputIds = service.getServiceDescriptor().getDataOutputs().stream()
-                        .map(FtepServiceDescriptor.Parameter::getId).collect(Collectors.toSet());
-                outputsByRelativePath = new HashMap<>(expectedServiceOutputIds.size());
-
-                for (String expectedOutputId : expectedServiceOutputIds) {
-                    Optional<String> relativePath = relativePaths.stream()
-                            .filter(path -> path.startsWith(expectedOutputId + "/"))
-                            .reduce((a, b) -> null);
-                    if (relativePath.isPresent()) {
-                        outputsByRelativePath.put(expectedOutputId, relativePath.get());
-                    } else {
-                        throw new ServiceExecutionException(String.format("Did not find expected single output for '%s' in outputs list: %s", expectedOutputId, relativePaths));
-                    }
-                }
-            }
-
-            Map<String, FtepFile> outputFiles = new HashMap<>(outputsByRelativePath.size());
-
-            for (Map.Entry<String, String> output : outputsByRelativePath.entrySet()) {
-                String outputId = output.getKey();
-                String relativePath = output.getValue();
-
-                Iterator<OutputFileResponse> outputFile = worker.getOutputFile(GetOutputFileParam.newBuilder()
-                        .setJob(rpcJob)
-                        .setPath(Paths.get(jobEnvironment.getOutputDir()).resolve(relativePath).toString())
-                        .build());
-
-                // First message is the file metadata
-                OutputFileResponse.FileMeta fileMeta = outputFile.next().getMeta();
-                LOG.info("Collecting output '{}' with filename {} ({} bytes)", outputId, fileMeta.getFilename(), fileMeta.getSize());
-
-                OutputProductMetadata outputProduct = OutputProductMetadata.builder()
-                        .owner(job.getOwner())
-                        .service(service)
-                        .jobId(zooId)
-                        .crs(Iterables.getOnlyElement(inputs.get("crs"), null))
-                        .geometry(Iterables.getOnlyElement(inputs.get("aoi"), null))
-                        .properties(new HashMap<>(ImmutableMap.<String, Object>builder()
-                                .put("jobId", zooId)
-                                .put("intJobId", job.getId())
-                                .put("serviceName", service.getName())
-                                .put("jobOwner", job.getOwner().getName())
-                                .put("jobStartTime", job.getStartTime().atOffset(ZoneOffset.UTC).toString())
-                                .put("jobEndTime", job.getEndTime().atOffset(ZoneOffset.UTC).toString())
-                                .put("filename", fileMeta.getFilename())
-                                .build()))
-                        .build();
-
-                // TODO Configure whether files need to be transferred via RPC or simply copied
-                Path outputPath = catalogueService.provisionNewOutputProduct(outputProduct, fileMeta.getFilename());
-                LOG.info("Writing output file for job {}: {}", zooId, outputPath);
-                try (BufferedOutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(outputPath, CREATE, TRUNCATE_EXISTING, WRITE))) {
-                    outputFile.forEachRemaining(Unchecked.consumer(of -> of.getChunk().getData().writeTo(outputStream)));
+                    parallelJobOutputs.forEach(jobOutputFiles::put);
                 }
 
-                outputFiles.put(outputId, catalogueService.ingestOutputProduct(outputProduct, outputPath));
-            }
-
-            job.setStatus(Job.Status.COMPLETED);
-            job.setOutputs(outputFiles.entrySet().stream().collect(toMultimap(
-                    e -> e.getKey(),
-                    e -> e.getValue().getUri().toString(),
-                    MultimapBuilder.hashKeys().hashSetValues()::build)));
-            job.setOutputFiles(ImmutableSet.copyOf(outputFiles.values()));
-            jobDataService.save(job);
-
-            if (service.getType() == FtepService.Type.BULK_PROCESSOR) {
-                // Auto-publish the output files
-                ImmutableSet.copyOf(outputFiles.values()).forEach(f -> securityService.publish(FtepFile.class, f.getId()));
+                // Wrap up the parent job
+                job.setStatus(Job.Status.COMPLETED);
+                job.setStage(JobStep.OUTPUT_LIST.getText());
+                job.setEndTime(LocalDateTime.now());
+                job.setGuiUrl(null);
+                job.setOutputs(jobOutputFiles.entries().stream().collect(toMultimap(
+                        e -> e.getKey(),
+                        e -> e.getValue().getUri().toString(),
+                        MultimapBuilder.hashKeys().hashSetValues()::build)));
+                job.setOutputFiles(ImmutableSet.copyOf(jobOutputFiles.values()));
+                jobDataService.save(job);
+            } else {
+                Map<String, FtepFile> jobOutputs = executeJob(job, rpcJob, rpcInputs, worker);
+                jobOutputs.forEach(jobOutputFiles::put);
             }
 
             chargeUser(job.getOwner(), job);
 
             // Transform the results for the WPS response
-            List<JobParam> outputs = job.getOutputs().asMap().entrySet().stream()
-                    .map(e -> JobParam.newBuilder().setParamName(e.getKey()).addAllParamValue(e.getValue()).build())
+            List<JobParam> outputs = jobOutputFiles.asMap().entrySet().stream()
+                    .map(e -> JobParam.newBuilder().setParamName(e.getKey()).addAllParamValue(e.getValue().stream().map(f -> f.getUri().toASCIIString()).collect(toSet())).build())
                     .collect(toList());
 
             responseObserver.onNext(FtepServiceResponse.newBuilder()
@@ -322,13 +209,192 @@ public class FtepServiceLauncher extends FtepServiceLauncherGrpc.FtepServiceLaun
         }
     }
 
+    private com.cgi.eoss.ftep.rpc.Job createRpcJob(Job job) {
+        return com.cgi.eoss.ftep.rpc.Job.newBuilder()
+                .setId(job.getExtId())
+                .setIntJobId(String.valueOf(job.getId()))
+                .setUserId(job.getOwner().getName())
+                .setServiceId(job.getConfig().getService().getName())
+                .build();
+    }
+
+    private Map<String, FtepFile> executeJob(Job job, com.cgi.eoss.ftep.rpc.Job rpcJob, List<JobParam> rpcInputs, FtepWorkerGrpc.FtepWorkerBlockingStub worker) throws IOException {
+        String zooId = job.getExtId();
+        String userId = job.getOwner().getName();
+        FtepService service = job.getConfig().getService();
+        Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
+
+        // Prepare inputs
+        LOG.info("Downloading input data for {}", zooId);
+        job.setStartTime(LocalDateTime.now());
+        job.setStatus(Job.Status.RUNNING);
+        job.setStage(JobStep.DATA_FETCH.getText());
+        jobDataService.save(job);
+
+        JobEnvironment jobEnvironment = worker.prepareEnvironment(JobInputs.newBuilder()
+                .setJob(rpcJob)
+                .addAllInputs(rpcInputs)
+                .build());
+
+        // Configure container
+        String dockerImageTag = service.getDockerTag();
+        JobDockerConfig.Builder dockerConfigBuilder = JobDockerConfig.newBuilder()
+                .setJob(rpcJob)
+                .setServiceName(service.getName())
+                .setDockerImage(dockerImageTag)
+                .addBinds("/data:/data:ro")
+                .addBinds(jobEnvironment.getWorkingDir() + "/FTEP-WPS-INPUT.properties:" + "/home/worker/workDir/FTEP-WPS-INPUT.properties:ro")
+                .addBinds(jobEnvironment.getInputDir() + ":" + "/home/worker/workDir/inDir:ro")
+                .addBinds(jobEnvironment.getOutputDir() + ":" + "/home/worker/workDir/outDir:rw");
+        if (service.getType() == FtepService.Type.APPLICATION) {
+            dockerConfigBuilder.addPorts(FtepGuiServiceManager.GUACAMOLE_PORT);
+        }
+        LOG.info("Launching docker container for job {}", zooId);
+        job.setStage(JobStep.PROCESSING.getText());
+        jobDataService.save(job);
+        LaunchContainerResponse unused = worker.launchContainer(dockerConfigBuilder.build());
+
+        // TODO Implement async service command execution
+
+        LOG.info("Job {} ({}) launched for service: {}", job.getId(), zooId, service.getName());
+
+        // Update GUI endpoint URL for client access
+        if (service.getType() == FtepService.Type.APPLICATION) {
+            String guiUrl = guiService.getGuiUrl(worker, rpcJob);
+            LOG.info("Updating GUI URL for job {} ({}): {}", zooId, job.getConfig().getService().getName(), guiUrl);
+            job.setGuiUrl(guiUrl);
+            jobDataService.save(job);
+        }
+
+        // Wait for exit, with timeout if necessary
+        ContainerExitCode exitCode;
+        if (inputs.containsKey(TIMEOUT_PARAM)) {
+            int timeout = Integer.parseInt(Iterables.getOnlyElement(inputs.get(TIMEOUT_PARAM)));
+            exitCode = worker.waitForContainerExitWithTimeout(ExitWithTimeoutParams.newBuilder().setJob(rpcJob).setTimeout(timeout).build());
+        } else {
+            exitCode = worker.waitForContainerExit(ExitParams.newBuilder().setJob(rpcJob).build());
+        }
+
+        switch (exitCode.getExitCode()) {
+            case 0:
+                // Normal exit
+                break;
+            case 137:
+                LOG.info("Docker container terminated via SIGKILL (exit code 137)");
+                break;
+            case 143:
+                LOG.info("Docker container terminated via SIGTERM (exit code 143)");
+                break;
+            default:
+                throw new ServiceExecutionException("Docker container returned with exit code " + exitCode);
+        }
+
+        job.setStage(JobStep.OUTPUT_LIST.getText());
+        job.setEndTime(LocalDateTime.now()); // End time is when processing ends
+        job.setGuiUrl(null); // Any GUI services will no longer be available
+        jobDataService.save(job);
+
+        // Repatriate output files
+
+        // Enumerate files in the job output directory
+        OutputFileList outputFileList = worker.listOutputFiles(ListOutputFilesParam.newBuilder()
+                .setJob(rpcJob)
+                .setOutputsRootPath(jobEnvironment.getOutputDir())
+                .build());
+        List<String> relativePaths = outputFileList.getItemsList().stream()
+                .map(OutputFileItem::getRelativePath)
+                .collect(Collectors.toList());
+
+        Map<String, String> outputsByRelativePath;
+
+        if (service.getType() == FtepService.Type.APPLICATION) {
+            // Collect all files in the output directory with simple index IDs
+            outputsByRelativePath = IntStream.range(0, relativePaths.size())
+                    .boxed()
+                    .collect(toMap(i -> Integer.toString(i + 1), relativePaths::get));
+        } else {
+            // Ensure we have one file per expected output
+            Set<String> expectedServiceOutputIds = service.getServiceDescriptor().getDataOutputs().stream()
+                    .map(FtepServiceDescriptor.Parameter::getId).collect(toSet());
+            outputsByRelativePath = new HashMap<>(expectedServiceOutputIds.size());
+
+            for (String expectedOutputId : expectedServiceOutputIds) {
+                Optional<String> relativePath = relativePaths.stream()
+                        .filter(path -> path.startsWith(expectedOutputId + "/"))
+                        .reduce((a, b) -> null);
+                if (relativePath.isPresent()) {
+                    outputsByRelativePath.put(expectedOutputId, relativePath.get());
+                } else {
+                    throw new ServiceExecutionException(String.format("Did not find expected single output for '%s' in outputs list: %s", expectedOutputId, relativePaths));
+                }
+            }
+        }
+
+        Map<String, FtepFile> outputFiles = new HashMap<>(outputsByRelativePath.size());
+
+        for (Map.Entry<String, String> output : outputsByRelativePath.entrySet()) {
+            String outputId = output.getKey();
+            String relativePath = output.getValue();
+
+            Iterator<OutputFileResponse> outputFile = worker.getOutputFile(GetOutputFileParam.newBuilder()
+                    .setJob(rpcJob)
+                    .setPath(Paths.get(jobEnvironment.getOutputDir()).resolve(relativePath).toString())
+                    .build());
+
+            // First message is the file metadata
+            OutputFileResponse.FileMeta fileMeta = outputFile.next().getMeta();
+            LOG.info("Collecting output '{}' with filename {} ({} bytes)", outputId, fileMeta.getFilename(), fileMeta.getSize());
+
+            OutputProductMetadata outputProduct = OutputProductMetadata.builder()
+                    .owner(job.getOwner())
+                    .service(service)
+                    .jobId(zooId)
+                    .crs(Iterables.getOnlyElement(inputs.get("crs"), null))
+                    .geometry(Iterables.getOnlyElement(inputs.get("aoi"), null))
+                    .properties(new HashMap<>(ImmutableMap.<String, Object>builder()
+                            .put("jobId", zooId)
+                            .put("intJobId", job.getId())
+                            .put("serviceName", service.getName())
+                            .put("jobOwner", job.getOwner().getName())
+                            .put("jobStartTime", job.getStartTime().atOffset(ZoneOffset.UTC).toString())
+                            .put("jobEndTime", job.getEndTime().atOffset(ZoneOffset.UTC).toString())
+                            .put("filename", fileMeta.getFilename())
+                            .build()))
+                    .build();
+
+            // TODO Configure whether files need to be transferred via RPC or simply copied
+            Path outputPath = catalogueService.provisionNewOutputProduct(outputProduct, fileMeta.getFilename());
+            LOG.info("Writing output file for job {}: {}", zooId, outputPath);
+            try (BufferedOutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(outputPath, CREATE, TRUNCATE_EXISTING, WRITE))) {
+                outputFile.forEachRemaining(Unchecked.consumer(of -> of.getChunk().getData().writeTo(outputStream)));
+            }
+
+            outputFiles.put(outputId, catalogueService.ingestOutputProduct(outputProduct, outputPath));
+        }
+
+        job.setStatus(Job.Status.COMPLETED);
+        job.setOutputs(outputFiles.entrySet().stream().collect(toMultimap(
+                e -> e.getKey(),
+                e -> e.getValue().getUri().toString(),
+                MultimapBuilder.hashKeys().hashSetValues()::build)));
+        job.setOutputFiles(ImmutableSet.copyOf(outputFiles.values()));
+        jobDataService.save(job);
+
+        if (service.getType() == FtepService.Type.BULK_PROCESSOR) {
+            // Auto-publish the output files
+            ImmutableSet.copyOf(outputFiles.values()).forEach(f -> securityService.publish(FtepFile.class, f.getId()));
+        }
+
+        return outputFiles;
+    }
+
     private boolean checkInputs(User user, List<JobParam> inputsList) {
         Multimap<String, String> inputs = GrpcUtil.paramsListToMap(inputsList);
 
         Set<URI> inputUris = inputs.entries().stream()
                 .filter(e -> this.isValidUri(e.getValue()))
                 .flatMap(e -> Arrays.stream(StringUtils.split(e.getValue(), ',')).map(URI::create))
-                .collect(Collectors.toSet());
+                .collect(toSet());
 
         return inputUris.stream().allMatch(uri -> catalogueService.canUserRead(user, uri));
     }
