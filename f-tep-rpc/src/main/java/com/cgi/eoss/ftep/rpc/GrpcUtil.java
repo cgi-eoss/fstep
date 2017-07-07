@@ -30,7 +30,7 @@ public class GrpcUtil {
      * @param params The parameters to be converted.
      * @return The params input collection mapped to {@link JobParam}s.
      */
-    public static Iterable<JobParam> mapToParams(Multimap<String, String> params) {
+    public static List<JobParam> mapToParams(Multimap<String, String> params) {
         ImmutableList.Builder<JobParam> paramsBuilder = ImmutableList.builder();
         params.keySet().forEach(
                 k -> paramsBuilder.add(JobParam.newBuilder().setParamName(k).addAllParamValue(params.get(k)).build()));
