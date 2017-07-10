@@ -39,6 +39,10 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.SetMultimap;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.log4j.Log4j2;
@@ -57,6 +61,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -66,6 +71,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -155,6 +163,10 @@ public class FtepServiceLauncher extends FtepServiceLauncherGrpc.FtepServiceLaun
                 SetMultimap<String, String> sharedParams = MultimapBuilder.hashKeys().hashSetValues().build(inputs);
                 sharedParams.removeAll("parallelInputs");
 
+                ExecutorService executorService = Executors.newCachedThreadPool();
+                ListeningExecutorService listeningExecutorService = MoreExecutors.listeningDecorator(executorService);
+                List<ListenableFuture<?>> jobFutures = new ArrayList<>(parallelInputs.size());
+
                 for (String parallelInput : parallelInputs) {
                     SetMultimap<String, String> parallelJobParams = MultimapBuilder.hashKeys().hashSetValues().build(sharedParams);
                     parallelJobParams.put("input", parallelInput);
@@ -165,10 +177,16 @@ public class FtepServiceLauncher extends FtepServiceLauncherGrpc.FtepServiceLaun
 
                     LOG.info("Launching child job {} ({}) for job {} ({})", parallelJob.getExtId(), parallelJob.getId(), job.getExtId(), job.getId());
 
-                    Map<String, FtepFile> parallelJobOutputs = executeJob(parallelJob, parallelRpcJob, parallelRpcInputs, worker);
-
-                    parallelJobOutputs.forEach(jobOutputFiles::put);
+                    jobFutures.add(listeningExecutorService.submit(Unchecked.runnable(() -> {
+                        Map<String, FtepFile> parallelJobOutputs = executeJob(parallelJob, parallelRpcJob, parallelRpcInputs, worker);
+                        parallelJobOutputs.forEach(jobOutputFiles::put);
+                    })));
                 }
+
+                // Join and wait for the forked jobs
+                LOG.info("Waiting for parallel child jobs to finish executing");
+                Futures.allAsList(jobFutures).get(1, TimeUnit.DAYS);
+                LOG.info("Parallel child jobs completed");
 
                 // Wrap up the parent job
                 job.setStatus(Job.Status.COMPLETED);
