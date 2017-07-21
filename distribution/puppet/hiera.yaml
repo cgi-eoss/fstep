@@ -1,0 +1,16 @@
+---
+version: 5
+
+defaults:
+  datadir: hieradata
+  data_hash: yaml_data
+
+hierarchy:
+  - name: "Per-node data"
+    path: "%{fqdn}.yaml"
+
+  - name: "Local override data"
+    path: "standalone.local.yaml"
+
+  - name: "Base config"
+    path: "standalone.yaml"
