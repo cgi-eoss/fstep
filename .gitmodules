@@ -2,3 +2,7 @@
 	path = third-party/puppet/cgieoss-fstep
 	url = https://github.com/cgi-eoss/puppet-fstep.git
 	branch = development
+[submodule "third-party/cxx/zoo-project/src"]
+	path = third-party/cxx/zoo-project/src
+	url = https://github.com/OSGeo/zoo-project.git
+	branch = master
