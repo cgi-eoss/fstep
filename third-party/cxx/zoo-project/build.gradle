@@ -4,8 +4,8 @@ buildscript {
     }
 }
 
-group 'com.cgi.eoss.f-tep'
-version '1.0.0-SNAPSHOT'
+group 'org.zoo-project'
+version '1.6.0'
 
 apply plugin: 'base'
 apply plugin: 'nebula.ospackage'
@@ -16,7 +16,7 @@ task buildZoo(type: Exec) {
 
 ospackage {
     packageName 'zoo-kernel'
-    version '1.5.0'
+    version '1.6.0'
     release '1'
     arch X86_64
     os LINUX
@@ -38,7 +38,7 @@ ospackage {
     }
     from("src/zoo-project/zoo-kernel/sql/schema.sql") {
         into '/var/www/cgi-bin/sql'
-        rename('schema.sql', 'V1_5_0__Schema_install.sql')
+        rename('schema.sql', 'V1_6_0__Schema_install.sql')
         user 'root'
     }
 }
