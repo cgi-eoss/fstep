@@ -3,5 +3,5 @@ class base {
 }
 
 node default {
-  include(lookup('classes'))
+  include(lookup('classes', { 'merge' => 'unique', 'default_value' => [] }))
 }

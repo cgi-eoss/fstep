@@ -60,19 +60,26 @@ Vagrant.configure('2') do |config|
     # Puppet provisioning
     #
     # Configure the local environment by editing distribution/puppet/hieradata/standalone.local.yaml
-    # For example:
-    # ---
-    # classes:
-    #   - fstep::backend
-    # fstep::repo::location: 'file:///vagrant/.dist/repo'
     #
-    config.puppet_install.puppet_version = '4.10.4'
+    fstep.puppet_install.puppet_version = '4.10.4'
+
+    # Install r10k to pull in the dependency modules
+    fstep.vm.provision 'shell', inline: <<EOF
+/opt/puppetlabs/puppet/bin/gem install --quiet r10k
+
+/opt/puppetlabs/puppet/bin/r10k -v info\
+  puppetfile install\
+  --moduledir /tmp/vagrant-puppet/environments/puppet/modules\
+  --puppetfile /tmp/vagrant-puppet/environments/puppet/Puppetfile
+EOF
+
+    # Use Vagrant's "puppet apply" provisioning
     fstep.vm.provision 'puppet' do |puppet|
       puppet.environment_path = '.dist'
       puppet.environment = 'puppet'
-      puppet.hiera_config_path = '.dist/puppet/hiera-global.yaml'
+      puppet.hiera_config_path = '.dist/puppet/hiera.yaml'
       puppet.working_directory = '/tmp/vagrant-puppet/environments/puppet'
-      #puppet.options = "--debug"
+      # puppet.options = "--debug"
     end
   end
 end
