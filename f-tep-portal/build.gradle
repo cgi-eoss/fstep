@@ -90,10 +90,8 @@ task requireJs(type: RequireJsTask) {
 
 @CacheableTask
 class RequireJsTask extends DefaultTask {
-    @Input
-    File jjs = project.file("${System.properties['java.home']}/bin/jjs")
-
-    @Classpath @InputFiles
+    @Classpath
+    @InputFiles
     Iterable<File> classpath
 
     @InputFile
@@ -116,11 +114,12 @@ class RequireJsTask extends DefaultTask {
         project.exec {
             standardOutput new FileOutputStream("${project.buildDir}/requireJs.log")
             errorOutput new FileOutputStream("${project.buildDir}/requireJs.err")
-            commandLine jjs, "-scripting",
+            executable new File("${System.properties['java.home']}/bin", 'jjs')
+            args = ["-scripting",
                     "-cp", classpath.asPath,
                     rJs, "--",
                     "-o", buildJs,
-                    "out=${outputDir}/${appJsFile}"
+                    "out=${outputDir}/${appJsFile}"]
         }
     }
 }
