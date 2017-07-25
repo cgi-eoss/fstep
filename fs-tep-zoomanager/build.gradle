@@ -1,0 +1,100 @@
+buildscript {
+    dependencies {
+        classpath pl.osDetector
+        classpath pl.osPackage
+        classpath pl.springBoot
+    }
+}
+
+group 'com.cgi.eoss.fs-tep'
+version '1.0.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'jacoco'
+
+apply plugin: 'org.springframework.boot'
+apply plugin: 'nebula.ospackage'
+apply plugin: 'com.google.osdetector'
+
+configurations {
+    zooJars
+}
+
+dependencies {
+    compileOnly 'org.projectlombok:lombok'
+
+    compile project(':fs-tep-model')
+    compile project(':fs-tep-rpc')
+    compile project(':fs-tep-zoolib')
+
+    compile 'com.google.guava:guava'
+    compile 'com.fasterxml.jackson.core:jackson-databind'
+    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    compile 'com.lmax:disruptor'
+    compile 'io.netty:netty-tcnative-boringssl-static'
+    compile 'org.apache.logging.log4j:log4j-iostreams'
+    compile 'org.apache.logging.log4j:log4j-jul'
+    compile 'org.freemarker:freemarker'
+    compile 'org.graylog2.log4j2:log4j2-gelf'
+    compile 'org.jooq:jool'
+    compile 'org.lognet:grpc-spring-boot-starter'
+    compile 'org.springframework.boot:spring-boot-autoconfigure'
+    compile 'org.springframework.boot:spring-boot-starter-actuator'
+    compile 'org.springframework.boot:spring-boot-starter-log4j2'
+    compile 'org.springframework.boot:spring-boot-starter-undertow'
+    compile 'org.springframework.cloud:spring-cloud-starter-eureka'
+
+    testCompile 'org.hamcrest:hamcrest-junit'
+    testCompile 'com.google.jimfs:jimfs'
+    testCompile 'junit:junit'
+    testCompile 'org.mockito:mockito-core'
+    testCompile 'org.springframework:spring-test'
+    testCompile 'org.springframework.boot:spring-boot-test'
+
+    zooJars(project(path: ':fs-tep-zoolib', configuration: 'shadow')) { transitive = false }
+}
+
+springBoot {
+    classifier = 'bin'
+    executable = true
+}
+
+// bootRepackage was depending on "archives" and creating a circular dependency
+bootRepackage.dependsOn = [jar]
+buildRpm.dependsOn bootRepackage
+buildDeb.dependsOn bootRepackage
+configurations { pkg }
+artifacts { pkg buildRpm }
+
+ospackage {
+    packageName 'fs-tep-zoomanager'
+    version getRpmVersion(project.version).version
+    release getRpmVersion(project.version).release
+    arch NOARCH
+    os LINUX
+
+    user 'fstep'
+    permissionGroup 'fstep'
+
+    preInstall file('src/ospackage/preinst.sh')
+    postInstall file('src/ospackage/postinst.sh')
+
+    into('/var/fs-tep/zoomanager') {
+        from("${buildDir}/libs") {
+            include '*-bin.jar'
+            rename('fs-tep-zoomanager-.*\\-bin.jar', 'fs-tep-zoomanager.jar')
+            fileMode 0500
+        }
+
+        from("src/ospackage/application.properties") {
+            fileType CONFIG | NOREPLACE
+        }
+    }
+
+    into('/var/www/cgi-bin/jars') {
+        from configurations.zooJars
+        rename('fs-tep-zoolib-.*\\-all.jar', 'fs-tep-zoolib.jar')
+    }
+
+    link('/etc/init.d/fs-tep-zoomanager', '/var/fs-tep/zoomanager/fs-tep-zoomanager.jar')
+}

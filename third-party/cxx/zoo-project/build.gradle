@@ -23,7 +23,7 @@ ospackage {
     packageDescription 'ZOO-Kernel WPS server'
     url 'http://zoo-project.org/'
     license 'MIT License'
-    vendor 'F-TEP'
+    vendor 'FS-TEP'
 
     requires('java-1.8.0-openjdk-headless')
     requires('gdal')

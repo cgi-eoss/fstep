@@ -4,7 +4,7 @@ buildscript {
     }
 }
 
-group 'com.cgi.eoss.f-tep'
+group 'com.cgi.eoss.fs-tep'
 version '1.0.0-SNAPSHOT'
 
 apply plugin: 'base'
@@ -19,7 +19,7 @@ ospackage {
     packageDescription 'Graylog Collector'
     url 'https://github.com/graylog-labs/collector/'
     license 'GNU General Public License v3.0'
-    vendor 'F-TEP'
+    vendor 'FS-TEP'
 
     requires('java-1.8.0-openjdk-headless')
 

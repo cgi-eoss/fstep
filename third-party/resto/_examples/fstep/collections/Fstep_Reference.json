@@ -1,0 +1,25 @@
+{
+  "name": "fstepref",
+  "model": "RestoModel_Fstep_Reference",
+  "status": "public",
+  "licenseId": "unlicensed",
+  "rights":{
+    "download": 1,
+    "visualize":0
+  },
+  "osDescription": {
+    "en": {
+      "ShortName": "fstepref",
+      "LongName": "Fstep Reference Data",
+      "Description": "This collection contains reference Data",
+      "Tags": "fstep reference data",
+      "Developer": "AA",
+      "Contact": "user@mail.com",
+      "Query": "FSTEP",
+      "Attribution": "AAA"
+    }
+  },
+  "propertiesMapping":{
+    "productType": "ReferenceData"
+  }
+}

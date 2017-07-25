@@ -1,0 +1,25 @@
+{
+  "name": "fstepinput",
+  "model": "RestoModel_Fstep_Input",
+  "status": "public",
+  "licenseId": "unlicensed",
+  "rights":{
+    "download": 1,
+    "visualize":0
+  },
+  "osDescription": {
+    "en": {
+      "ShortName": "fstep_input",
+      "LongName": "Fstep Input Data",
+      "Description": "This collection contains external data used in FS-TEP processing",
+      "Tags": "fstep input data",
+      "Developer": "AA",
+      "Contact": "user@mail.com",
+      "Query": "FSTEP",
+      "Attribution": "AAA"
+    }
+  },
+  "propertiesMapping":{
+    "productType": "FstepInputProduct"
+  }
+}

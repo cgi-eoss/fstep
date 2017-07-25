@@ -6,16 +6,16 @@ distribution/puppet/hieradata/standalone.local.yaml
 distribution/puppet/modules/
 init.gradle
 
-f-tep-portal/src/main/resources/bower_components
-f-tep-portal/src/main/resources/node_modules
-f-tep-portal/src/main/resources/.tmp
-f-tep-portal/src/main/resources/dist
-f-tep-portal/src/main/resources/.bowerrc
-f-tep-portal/src/main/resources/.sass-cache
-f-tep-portal/src/main/resources/app/styles/**.css
+fs-tep-portal/src/main/resources/bower_components
+fs-tep-portal/src/main/resources/node_modules
+fs-tep-portal/src/main/resources/.tmp
+fs-tep-portal/src/main/resources/dist
+fs-tep-portal/src/main/resources/.bowerrc
+fs-tep-portal/src/main/resources/.sass-cache
+fs-tep-portal/src/main/resources/app/styles/**.css
 
-f-tep-portal/src/main/resources/package.json
-f-tep-portal/src/main/resources/bower.json
+fs-tep-portal/src/main/resources/package.json
+fs-tep-portal/src/main/resources/bower.json
 
 ########
 

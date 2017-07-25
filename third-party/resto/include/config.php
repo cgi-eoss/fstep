@@ -161,7 +161,7 @@ return array(
          * Driver name must be associated to a RestoDatabaseDriver class called
          * RestoDatabaseDriver_{driver} (usually located under $RESTO_BUILD/include/resto/Drivers)
          */
-        'driver' => 'FtepPostgreSQL',
+        'driver' => 'FstepPostgreSQL',
 
         /*
          * Cache directory used to store Database queries

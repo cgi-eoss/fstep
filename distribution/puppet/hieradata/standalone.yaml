@@ -1,5 +1,5 @@
 ---
-# Uncomment the F-TEP classes desired. See the cgieoss-fstep module for
+# Uncomment the FS-TEP classes desired. See the cgieoss-fstep module for
 # available configuration of these classes.
 classes:
   - base
@@ -21,7 +21,7 @@ classes:
 # Uncomment and change to your local IP/port if using the webapp
 #fstep::globals::base_url: 'http://192.168.x.y:8080'
 
-# Uncomment and change these depending on how each F-TEP component can resolve the others
+# Uncomment and change these depending on how each FS-TEP component can resolve the others
 # e.g. this allows running some components outside the managed configuration
 #fstep::globals::hosts_override:
 #  fstep-db:

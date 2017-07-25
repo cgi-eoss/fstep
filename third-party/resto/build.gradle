@@ -4,7 +4,7 @@ buildscript {
     }
 }
 
-group 'com.cgi.eoss.f-tep'
+group 'com.cgi.eoss.fs-tep'
 version '2.4'
 
 apply plugin: 'base'
@@ -16,10 +16,10 @@ ospackage {
     release '5'
     arch X86_64
     os LINUX
-    packageDescription 'Resto Earth Observation products search engine (with F-TEP modifications)'
+    packageDescription 'Resto Earth Observation products search engine (with FS-TEP modifications)'
     url 'https://github.com/jjrom/resto'
     license 'Apache License 2.0'
-    vendor 'F-TEP'
+    vendor 'FS-TEP'
 
     user 'root'
 
