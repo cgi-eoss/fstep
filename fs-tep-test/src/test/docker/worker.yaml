@@ -1,0 +1,5 @@
+---
+classes:
+  - fstep::worker
+
+docker::manage_service: false

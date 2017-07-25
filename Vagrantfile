@@ -32,13 +32,13 @@ Vagrant.configure('2') do |config|
     fstep.vm.box = 'centos/7'
 
     # Expose the container's web server on 8080
-    fstep.vm.network 'forwarded_port', guest: 80, host: 8080 # apache
-    fstep.vm.network 'forwarded_port', guest: 5432, host: 5432 # postgresql
-    #fstep.vm.network 'forwarded_port', guest: 6565, host: 6565 # f-tep-server grpc
-    #fstep.vm.network 'forwarded_port', guest: 6566, host: 6566 # f-tep-worker grpc
-    #fstep.vm.network 'forwarded_port', guest: 6567, host: 6567 # f-tep-zoomanager grpc
-    #fstep.vm.network 'forwarded_port', guest: 8761, host: 8761 # f-tep-serviceregistry http
-    fstep.vm.network 'forwarded_port', guest: 12201, host: 12201 # graylog gelf tcp
+    fstep.vm.network 'forwarded_port', guest: 80, host: 8080, auto_correct: true # apache
+    #fstep.vm.network 'forwarded_port', guest: 5432, host: 5432 # postgresql
+    #fstep.vm.network 'forwarded_port', guest: 6565, host: 6565 # fs-tep-server grpc
+    #fstep.vm.network 'forwarded_port', guest: 6566, host: 6566 # fs-tep-worker grpc
+    #fstep.vm.network 'forwarded_port', guest: 6567, host: 6567 # fs-tep-zoomanager grpc
+    #fstep.vm.network 'forwarded_port', guest: 8761, host: 8761 # fs-tep-serviceregistry http
+    #fstep.vm.network 'forwarded_port', guest: 12201, host: 12201 # graylog gelf tcp
 
     # Create a private network, which allows host-only access to the machine
     # using a specific IP.

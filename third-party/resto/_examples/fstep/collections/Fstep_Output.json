@@ -1,0 +1,25 @@
+{
+  "name": "fstepoutput",
+  "model": "RestoModel_Fstep_Output",
+  "status": "public",
+  "licenseId": "unlicensed",
+  "rights":{
+    "download": 1,
+    "visualize":0
+  },
+  "osDescription": {
+    "en": {
+      "ShortName": "fstepref",
+      "LongName": "Fstep Reference Data",
+      "Description": "This collection contains product created by FSTEP platfrom Data",
+      "Tags": "fstep reference data",
+      "Developer": "AA",
+      "Contact": "user@mail.com",
+      "Query": "FSTEP",
+      "Attribution": "AAA"
+    }
+  },
+  "propertiesMapping":{
+    "productType": "FstepProduct"
+  }
+}

@@ -1,0 +1,7 @@
+---
+classes:
+  - fstep::db
+  - fstep::server
+  - fstep::wps
+
+fstep::db::trust_local_network: true
