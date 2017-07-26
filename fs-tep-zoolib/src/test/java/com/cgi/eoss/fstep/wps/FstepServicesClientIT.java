@@ -27,9 +27,9 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.io.MoreFiles;
+import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.internal.ServerImpl;
 import org.jooq.lambda.Seq;
 import org.junit.After;
 import org.junit.Before;
@@ -68,8 +68,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * <p>Integration test for launching WPS services.</p>
- * <p><strong>This uses a real Docker engine to build and run a container!</strong></p>
+ * <p>Integration test for launching WPS services.</p> <p><strong>This uses a real Docker engine to build and run a
+ * container!</strong></p>
  */
 public class FstepServicesClientIT {
     private static final String RPC_SERVER_NAME = FstepServicesClientIT.class.getName();
@@ -94,7 +94,7 @@ public class FstepServicesClientIT {
 
     private FstepServicesClient fstepServicesClient;
 
-    private ServerImpl server;
+    private Server server;
 
     @BeforeClass
     public static void precondition() {
