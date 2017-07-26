@@ -6,11 +6,9 @@ import com.cgi.eoss.fstep.rpc.worker.JobDockerConfig;
 import com.cgi.eoss.fstep.worker.WorkerConfig;
 import com.cgi.eoss.fstep.worker.WorkerTestConfig;
 import com.cgi.eoss.fstep.worker.io.ServiceInputOutputManager;
-import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
-import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Server;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.internal.ServerImpl;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -22,6 +20,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
+import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -52,7 +52,7 @@ public class FstepWorkerIT {
     @Autowired
     private FstepWorker worker;
 
-    private ServerImpl server;
+    private Server server;
 
     private FstepWorkerGrpc.FstepWorkerBlockingStub workerClient;
 

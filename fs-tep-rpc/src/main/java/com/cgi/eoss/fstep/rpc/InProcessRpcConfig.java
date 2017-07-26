@@ -2,9 +2,9 @@ package com.cgi.eoss.fstep.rpc;
 
 import io.grpc.BindableService;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.internal.ServerImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -38,7 +38,7 @@ public class InProcessRpcConfig {
 
     private static final class InProcessRpcServer {
 
-        private final ServerImpl server;
+        private final Server server;
 
         /**
          * <p>Construct a new in-process gRPC server. Note that all gRPC services registered as beans will be injected
