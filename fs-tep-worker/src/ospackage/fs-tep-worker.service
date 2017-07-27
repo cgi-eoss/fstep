@@ -1,0 +1,12 @@
+[Unit]
+Description=FS-TEP Worker
+After=syslog.target
+After=network.target
+
+[Service]
+User=fstep
+ExecStart=/var/fs-tep/worker/fs-tep-worker.jar
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

@@ -61,5 +61,8 @@ ospackage {
         }
     }
 
-    link('/etc/init.d/fs-tep-serviceregistry', '/var/fs-tep/serviceregistry/fs-tep-serviceregistry.jar')
+    into('/usr/lib/systemd/system') {
+        from 'src/ospackage/fs-tep-serviceregistry.service'
+        addParentDirs false
+    }
 }

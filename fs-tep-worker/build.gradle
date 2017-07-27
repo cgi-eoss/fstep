@@ -85,17 +85,20 @@ ospackage {
     preInstall file('src/ospackage/preinst.sh')
     postInstall file('src/ospackage/postinst.sh')
 
-    into '/var/fs-tep/worker'
+    into('/var/fs-tep/worker') {
+        from("${buildDir}/libs") {
+            include '*-bin.jar'
+            rename('fs-tep-worker-.*\\-bin.jar', 'fs-tep-worker.jar')
+            fileMode 0500
+        }
 
-    from("${buildDir}/libs") {
-        include '*-bin.jar'
-        rename('fs-tep-worker-.*\\-bin.jar', 'fs-tep-worker.jar')
-        fileMode 0500
+        from("src/ospackage/application.properties") {
+            fileType CONFIG | NOREPLACE
+        }
     }
 
-    from("src/ospackage/application.properties") {
-        fileType CONFIG | NOREPLACE
+    into('/usr/lib/systemd/system') {
+        from 'src/ospackage/fs-tep-worker.service'
+        addParentDirs false
     }
-
-    link('/etc/init.d/fs-tep-worker', '/var/fs-tep/worker/fs-tep-worker.jar')
 }
