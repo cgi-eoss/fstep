@@ -1,0 +1,12 @@
+[Unit]
+Description=FS-TEP Zoo Manager
+After=syslog.target
+After=network.target
+
+[Service]
+User=fstep
+ExecStart=/var/fs-tep/zoomanager/fs-tep-zoomanager.jar
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

@@ -96,5 +96,8 @@ ospackage {
         rename('fs-tep-zoolib-.*\\-all.jar', 'fs-tep-zoolib.jar')
     }
 
-    link('/etc/init.d/fs-tep-zoomanager', '/var/fs-tep/zoomanager/fs-tep-zoomanager.jar')
+    into('/usr/lib/systemd/system') {
+        from 'src/ospackage/fs-tep-zoomanager.service'
+        addParentDirs false
+    }
 }
