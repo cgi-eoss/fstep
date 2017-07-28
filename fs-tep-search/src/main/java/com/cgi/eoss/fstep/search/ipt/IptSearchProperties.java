@@ -1,4 +1,4 @@
-package com.cgi.eoss.fstep.search.scihub;
+package com.cgi.eoss.fstep.search.ipt;
 
 import lombok.Builder;
 import lombok.Data;
@@ -6,7 +6,7 @@ import okhttp3.HttpUrl;
 
 @Data
 @Builder
-public class SciHubSearchProperties {
+class IptSearchProperties {
 
     private final HttpUrl baseUrl;
     private final String username;
