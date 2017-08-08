@@ -29,18 +29,28 @@ ospackage {
     requires('gdal')
     requires('fcgi')
 
+    user 'root'
+
     postInstall file('postinst.sh')
 
-    into '/'
-    from("${buildDir}/staging") {
-        user 'root'
-        include '**'
+    into('/usr') {
+        into('include/zoo') {
+            from "${buildDir}/staging/usr/include/zoo"
+        }
+        into('lib') {
+            from "${buildDir}/staging/usr/lib"
+        }
     }
-    from("src/zoo-project/zoo-kernel/sql/schema.sql") {
-        into '/var/www/cgi-bin/sql'
-        rename('schema.sql', 'V1_6_0__Schema_install.sql')
-        user 'root'
+    into('/var/www/cgi-bin') {
+        from "${buildDir}/staging/var/www/cgi-bin"
+
+        into('sql') {
+            from('src/zoo-project/zoo-kernel/sql/schema.sql') {
+                rename('schema.sql', 'V1_6_0__Schema_install.sql')
+            }
+        }
     }
+
 }
 
 buildRpm.dependsOn buildZoo

@@ -94,6 +94,7 @@ ospackage {
     into('/var/www/cgi-bin/jars') {
         from configurations.zooJars
         rename('fs-tep-zoolib-.*\\-all.jar', 'fs-tep-zoolib.jar')
+        addParentDirs false
     }
 
     into('/usr/lib/systemd/system') {
