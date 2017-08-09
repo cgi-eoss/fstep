@@ -18,6 +18,7 @@ dependencies {
 
     compile 'com.fasterxml.jackson.core:jackson-core'
     compile 'com.fasterxml.jackson.core:jackson-databind'
+    compile 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     compile 'com.jayway.jsonpath:json-path'
     compile 'com.squareup.okhttp3:okhttp'
     compile 'com.squareup.okhttp3:logging-interceptor'

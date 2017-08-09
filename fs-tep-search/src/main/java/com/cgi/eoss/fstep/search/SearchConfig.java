@@ -3,6 +3,9 @@ package com.cgi.eoss.fstep.search;
 import com.cgi.eoss.fstep.catalogue.CatalogueConfig;
 import com.cgi.eoss.fstep.search.api.SearchFacade;
 import com.cgi.eoss.fstep.search.api.SearchProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.guava.GuavaModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import okhttp3.OkHttpClient;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +32,11 @@ public class SearchConfig {
     @Bean
     public OkHttpClient httpClient() {
         return new OkHttpClient.Builder().build();
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper().registerModules(new GuavaModule(), new JavaTimeModule());
     }
 
 }
