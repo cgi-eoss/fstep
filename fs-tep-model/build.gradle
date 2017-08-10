@@ -21,7 +21,7 @@ sourceSets {
 
 querydsl {
     library = 'com.querydsl:querydsl-apt:4.1.4'
-    querydslSourcesDir = "${buildDir}/generated/java"
+    querydslSourcesDir = file("${buildDir}/generated/java")
     hibernate = true
 }
 

@@ -1,4 +1,5 @@
 .idea/
+*.iml
 .dist/
 .repository/
 .home/
@@ -52,6 +53,7 @@ fs-tep-portal/src/main/resources/bower.json
 
 # IntelliJ
 /out/
+*/out/
 
 # mpeltonen/sbt-idea plugin
 .idea_modules/
