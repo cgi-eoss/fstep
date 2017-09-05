@@ -1,10 +1,12 @@
 .idea/
 *.iml
+*/out/
 .dist/
 .repository/
 .home/
 distribution/puppet/hieradata/standalone.local.yaml
 distribution/puppet/modules/
+distribution/config/
 init.gradle
 
 fs-tep-portal/src/main/resources/bower_components
@@ -53,7 +55,6 @@ fs-tep-portal/src/main/resources/bower.json
 
 # IntelliJ
 /out/
-*/out/
 
 # mpeltonen/sbt-idea plugin
 .idea_modules/
