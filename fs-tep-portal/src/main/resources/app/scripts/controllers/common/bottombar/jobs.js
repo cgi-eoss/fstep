@@ -8,7 +8,7 @@
 define(['../../../fstepmodules'], function (fstepmodules) {
     'use strict';
 
-    fstepmodules.controller('JobsCtrl', ['$scope', '$rootScope', 'CommonService', 'JobService', '$sce', function ($scope, $rootScope, CommonService, JobService, $sce) {
+    fstepmodules.controller('JobsCtrl', ['$scope', '$rootScope', '$location', 'CommonService', 'JobService', '$sce', 'TabService', function ($scope, $rootScope, $location, CommonService, JobService, $sce, TabService) {
 
             $scope.jobParams = JobService.params.explorer;
             $scope.jobOwnershipFilters = JobService.jobOwnershipFilters;
@@ -46,7 +46,13 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
             $scope.repeatJob = function(job){
                 JobService.getJobConfig(job).then(function(config){
-                    $rootScope.$broadcast('update.selectedService', config._embedded.service, config.inputs);
+                    $rootScope.$broadcast('update.selectedService', config._embedded.service, config.inputs, config.label);
+                });
+            };
+
+            $scope.terminateJob = function(job){
+                JobService.terminateJob(job).then(function(result){
+                    JobService.refreshJobs('explorer');
                 });
             };
 
@@ -153,6 +159,14 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             /* Split files for input tab */
             $scope.splitInputFiles = function(link) {
                 return link.split(',');
+            };
+
+            $scope.routeToManagePage = function(job) {
+                console.log(window.location.hostname);
+                TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
+                JobService.params.community.selectedJob = job;
+                JobService.refreshSelectedJob('community');
+                $location.path('/community');
             };
 
     }]);

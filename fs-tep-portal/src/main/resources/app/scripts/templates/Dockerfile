@@ -1,6 +1,6 @@
 FROM ubuntu:16.04
 
-MAINTAINER Food Security TEP
+MAINTAINER Forestry TEP
 
 # Dependencies
 RUN apt-get update && apt-get install -y\

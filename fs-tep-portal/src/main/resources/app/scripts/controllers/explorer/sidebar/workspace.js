@@ -14,9 +14,10 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         $scope.serviceParams = ProductService.params.explorer;
         $scope.isWorkspaceLoading = false;
 
-        $scope.$on('update.selectedService', function(event, service, inputs) {
+        $scope.$on('update.selectedService', function(event, service, inputs, label) {
             $scope.isWorkspaceLoading = true;
             $scope.serviceParams.inputValues = {};
+            $scope.serviceParams.label = label;
             $scope.serviceParams.dropLists = {};
             if(inputs){
                 for (var key in inputs) {
@@ -54,7 +55,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 iparams[key] = [value];
             }
 
-            JobService.createJobConfig($scope.serviceParams.selectedService, iparams).then(function(jobConfig){
+            JobService.createJobConfig($scope.serviceParams.selectedService, iparams, $scope.serviceParams.label).then(function(jobConfig){
                 JobService.estimateJob(jobConfig, $event).then(function(estimation){
 
                     var currency = ( estimation.estimatedCost === 1 ? 'coin' : 'coins' );
@@ -91,7 +92,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             if(dropObject && dropObject.type === 'outputs') {
                 for(var i = 0; i < dropObject.selectedOutputs.length; i++){
                     file = {
-                        name: dropObject.selectedOutputs[i].uri,
+                        name: dropObject.selectedOutputs[i]._links.fstep.href,
                         link: dropObject.selectedOutputs[i]._links.fstep.href,
                         start: dropObject.job.startTime,
                         stop: dropObject.job.endTime
@@ -105,11 +106,11 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             else if(dropObject && dropObject.type === 'results') {
                 for(var j = 0; j < dropObject.selectedItems.length; j++){
                     file = {
-                        name: dropObject.selectedItems[j].identifier,
-                        link: dropObject.selectedItems[j].link,
-                        start: dropObject.selectedItems[j].start,
-                        stop: dropObject.selectedItems[j].stop,
-                        bytes: dropObject.selectedItems[j].size
+                        name: dropObject.selectedItems[j].properties._links.fstep.href,
+                        link: dropObject.selectedItems[j].properties._links.fstep.href,
+                        start: dropObject.selectedItems[j].properties.extraParams.fstepStartTime,
+                        stop: dropObject.selectedItems[j].properties.extraParams.fstepEndTime,
+                        bytes: dropObject.selectedItems[j].properties.filesize
                     };
                     if($scope.serviceParams.inputValues[fieldId] === undefined || $scope.serviceParams.inputValues[fieldId].indexOf(file.link) < 0){
                         $scope.serviceParams.dropLists[fieldId].push(file);
@@ -119,7 +120,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             }
             else if(dropObject && dropObject.type === 'databasket') {
                 file = {
-                    name: dropObject.basket.name,
+                    name: "Databasket: " + dropObject.basket.name,
                     link: dropObject.basket._links.fstep.href
                 };
                 if($scope.serviceParams.inputValues[fieldId] === undefined || $scope.serviceParams.inputValues[fieldId].indexOf(file.link) < 0){
@@ -131,7 +132,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             else if(dropObject && dropObject.type === 'basketItems') {
                 for(var k = 0; k < dropObject.selectedItems.length; k++) {
                     file = {
-                        name: dropObject.selectedItems[k].filename,
+                        name: dropObject.selectedItems[k]._links.fstep.href,
                         link: dropObject.selectedItems[k]._links.fstep.href
                     };
                     if($scope.serviceParams.inputValues[fieldId] === undefined || $scope.serviceParams.inputValues[fieldId].indexOf(file.link) < 0){

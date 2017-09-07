@@ -23,11 +23,6 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 SHARED_PROJECTS: { id: 2, name: 'Shared', searchUrl: 'search/findByFilterAndNotOwner' }
         };
 
-        var userUrl;
-        UserService.getCurrentUser().then(function(currentUser){
-            userUrl = currentUser._links.self.href;
-        });
-
         /** PRESERVE USER SELECTIONS **/
         this.params = {
               explorer: {
@@ -225,7 +220,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                     '?sort=name&filter=' + (self.params[page].searchText ? self.params[page].searchText : '');
 
                 if(self.params[page].selectedOwnershipFilter !== self.projectOwnershipFilters.ALL_PROJECTS){
-                    url += '&owner=' + userUrl;
+                    url += '&owner=' + UserService.params.activeUser._links.self.href;
                 }
                 self.params[page].pollingUrl = url;
 
@@ -276,11 +271,9 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 if (self.params[page].selectedProject) {
                     getProject(self.params[page].selectedProject).then(function (project) {
                         self.params[page].selectedProject = project;
-                        if(project.access && project.access.currentLevel === 'ADMIN') {
-                            CommunityService.getObjectGroups(project, 'project').then(function (data) {
-                                self.params[page].sharedGroups = data;
-                            });
-                        }
+                        CommunityService.getObjectGroups(project, 'project').then(function (data) {
+                            self.params[page].sharedGroups = data;
+                        });
                     });
                 }
             }

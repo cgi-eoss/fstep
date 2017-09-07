@@ -24,11 +24,6 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 SHARED_FILES: { id: 2, name: 'Shared', searchUrl: 'search/findByFilterAndNotOwner' }
         };
 
-        var userUrl;
-        UserService.getCurrentUser().then(function(currentUser){
-            userUrl = currentUser._links.self.href;
-        });
-
         /** PRESERVE USER SELECTIONS **/
         this.params = {
             community: {
@@ -170,16 +165,17 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         };
 
         // For search items we have to create a respective file first
-        this.createGeoResultFile = function(item, source){
+        this.createGeoResultFile = function(item){
+
             var newProductFile = {
-                    properties: {
-                        productSource: source,
-                        productIdentifier: item.identifier,
-                        originalUrl: item.link,
-                        extraParams: item.details
-                    },
-                    type: 'Feature',
-                    geometry: item.geo
+                properties: {
+                    productSource: item.properties.productSource,
+                    productIdentifier: item.properties.productIdentifier,
+                    originalUrl: item.properties._links.fstep.href,
+                    extraParams: item.properties.extraParams
+                },
+                type: item.type,
+                geometry: item.geometry
             };
 
             return $q(function(resolve, reject) {
@@ -223,7 +219,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             });
         };
 
-        var getFile = function (file) {
+        this.getFile = function (file) {
             var deferred = $q.defer();
             halAPI.from(rootUri + '/fstepFiles/' + file.id + "?projection=detailedFstepFile")
                      .newRequest()
@@ -262,7 +258,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                     '&type=' + self.params[page].activeFileType;
 
                 if(self.params[page].selectedOwnershipFilter !== self.fileOwnershipFilters.ALL_FILES){
-                    url += '&owner=' + userUrl;
+                    url += '&owner=' + UserService.params.activeUser._links.self.href;
                 }
 
                 /* Get databasket list */
@@ -297,13 +293,11 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             if (self.params[page]) {
                 /* Get file contents if selected */
                 if (self.params[page].selectedFile) {
-                    getFile(self.params[page].selectedFile).then(function (file) {
+                    self.getFile(self.params[page].selectedFile).then(function (file) {
                         self.params[page].fileDetails = file;
-                        if(file.access.currentLevel === 'ADMIN') {
-                            CommunityService.getObjectGroups(file, 'fstepFile').then(function (data) {
-                                self.params[page].sharedGroups = data;
-                            });
-                        }
+                        CommunityService.getObjectGroups(file, 'fstepFile').then(function (data) {
+                            self.params[page].sharedGroups = data;
+                        });
                     });
                 }
             }

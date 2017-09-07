@@ -117,7 +117,7 @@
             <md-button class="toolbar-button md-secondary"
                        ng-show="dbParams.databasketOnMap.id != basket.id"
                        ng-click="loadBasket(basket)"
-                       uib-tooltip="Load"
+                       uib-tooltip="Load to map"
                        tooltip-placement="top"
                        tooltip-trigger="mouseenter"
                        tooltip-append-to-body="true">
@@ -127,11 +127,20 @@
             <md-button class="toolbar-button md-secondary"
                        ng-show="dbParams.databasketOnMap.id == basket.id"
                        ng-click="unloadBasket(basket)"
-                       uib-tooltip="Unload"
+                       uib-tooltip="Unload from map"
                        tooltip-placement="top"
                        tooltip-trigger="mouseenter"
                        tooltip-append-to-body="true">
                <i class="material-icons"> visibility_off</i>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
+                       ng-click="routeToManagePage(basket)"
+                       uib-tooltip="Open in Manage/Share"
+                       tooltip-placement="top"
+                       tooltip-trigger="mouseenter"
+                       tooltip-append-to-body="true">
+               <i class="material-icons">call_made</i>
             </md-button>
 
         </md-list-item>

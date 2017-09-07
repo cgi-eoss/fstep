@@ -1,4 +1,4 @@
-package com.cgi.eoss.fstep.search.fstep.opensearch;
+package com.cgi.eoss.fstep.search.resto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,7 +9,7 @@ import java.util.Map;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RestoSearchQuery {
+public class RestoResultQuery {
     @JsonProperty("originalFilters")
     private Map<String, Object> originalFilters;
     @JsonProperty("appliedFilters")

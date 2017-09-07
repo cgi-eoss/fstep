@@ -21,11 +21,6 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         var halAPI =  traverson.from(rootUri).jsonHal().useAngularHttp();
         var deleteAPI = traverson.from(rootUri).useAngularHttp();
 
-        var userUrl;
-        UserService.getCurrentUser().then(function(currentUser){
-            userUrl = currentUser._links.self.href;
-        });
-
         this.jobOwnershipFilters = {
             ALL_JOBS: { id: 0, name: 'All', searchUrl: 'search/findByFilterOnly'},
             MY_JOBS: { id: 1, name: 'Mine', searchUrl: 'search/findByFilterAndOwner' },
@@ -164,7 +159,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
 
                 /* Get owner parameter */
                 if(_this.params[page].selectedOwnershipFilter !== _this.jobOwnershipFilters.ALL_JOBS) {
-                    _this.params[page].pollingUrl += '&owner=' + userUrl;
+                    _this.params[page].pollingUrl += '&owner=' + UserService.params.activeUser._links.self.href;
                 }
 
                 /* Get status parameter */
@@ -377,7 +372,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                         }
                     });
 
-                    if(page === 'community' && job.access.currentLevel === 'ADMIN') {
+                    if(page === 'community') {
                         CommunityService.getObjectGroups(job, 'job').then(function (data) {
                             _this.params.community.sharedGroups = data;
                         });
@@ -416,13 +411,14 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             return deferred.promise;
         };
 
-        this.createJobConfig = function(service, inputs){
+        this.createJobConfig = function(service, inputs, label){
             return $q(function(resolve, reject) {
                     halAPI.from(rootUri + '/jobConfigs/')
                     .newRequest()
                     .post({
                         service: service._links.self.href,
-                        inputs: inputs
+                        inputs: inputs,
+                        label: label
                     })
                     .result
                     .then(
@@ -452,6 +448,26 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                     reject(JSON.parse(error.body));
                  });
             });
+        };
+
+        this.terminateJob = function(job) {
+            var deferred = $q.defer();
+            // Launch the jobConfig
+            halAPI.from(job._links.terminate.href)
+                    .newRequest()
+                    .post()
+                    .result
+                    .then(
+             function (document) {
+                 MessageService.addInfo('Job ' + job.id + ' cancelled', 'Job ' + job.id + ' terminated by the user.');
+                 deferred.resolve();
+             },
+             function(error){
+                 MessageService.addError('Could not terminate the Job', error);
+                 deferred.reject();
+             });
+
+            return deferred.promise;
         };
 
         return this;

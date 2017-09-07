@@ -38,10 +38,10 @@ public class ExternalProductDataServiceImpl implements ExternalProductDataServic
         String productSource = feature.getProperty("productSource").toString().toLowerCase().replaceAll("[^a-z0-9]", "");
         String productId = feature.getProperty("productIdentifier");
 
-        Long filesize = getFilesize(feature);
+        Long filesize = Optional.ofNullable((Long) feature.getProperties().get("filesize")).orElse(getFilesize(feature));
         feature.getProperties().put("filesize", filesize);
 
-        URI uri = getUri(productSource, productId);
+        URI uri = Optional.ofNullable((String) feature.getProperties().get("fstepUrl")).map(URI::create).orElse(getUri(productSource, productId));
         feature.getProperties().put("fstepUrl", uri);
 
         return Optional.ofNullable(fstepFileDataService.getByUri(uri)).orElseGet(() -> {
@@ -62,26 +62,17 @@ public class ExternalProductDataServiceImpl implements ExternalProductDataServic
         });
     }
 
-    private URI getUri(String productSource, String productId) {
+    @Override
+    public URI getUri(String productSource, String productId) {
         URI uri;
         try {
             CatalogueUri productSourceUrl = CatalogueUri.valueOf(productSource);
             uri = productSourceUrl.build(ImmutableMap.of("productId", productId));
         } catch (IllegalArgumentException e) {
             uri = URI.create(productSource.replaceAll("[^a-z0-9+.-]", "-") + ":///" + productId);
-            LOG.debug("Could not build a well-designed FS-TEP URI handler, returning automatic: {}", uri, e);
+            LOG.debug("Could not build a well-designed FS-TEP URI handler, returning automatic: {}", uri);
         }
         return uri;
-    }
-
-    private Long getFilesize(Feature feature) {
-        Long filesize = null;
-        Map<String, Object> extraParams = feature.getProperties().containsKey("extraParams") ? feature.getProperty("extraParams") : ImmutableMap.of();
-        if (extraParams.containsKey("file")) {
-            Map<String, Object> fileProperties = (Map<String, Object>) extraParams.get("file");
-            filesize = fileProperties.containsKey("data_file_size") ? Long.parseLong(fileProperties.get("data_file_size").toString()) : null;
-        }
-        return filesize;
     }
 
     @Override
@@ -93,6 +84,16 @@ public class ExternalProductDataServiceImpl implements ExternalProductDataServic
     @Override
     public void delete(FstepFile file) throws IOException {
         resto.deleteReferenceData(file.getRestoId());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Long getFilesize(Feature feature) {
+        return Optional.ofNullable((Map<String, Object>) feature.getProperties().get("extraParams"))
+                .map(ep -> (Map<String, Object>) ep.get("file"))
+                .map(file -> file.get("data_file_size"))
+                .map(Object::toString)
+                .map(Long::parseLong)
+                .orElse(null);
     }
 
 }

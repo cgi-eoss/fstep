@@ -1,4 +1,4 @@
-package com.cgi.eoss.fstep.search.scihub.opensearch;
+package com.cgi.eoss.fstep.search.resto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class OpenSearchEntryLink {
+public class RestoResultPropertiesLink {
     @JsonProperty("rel")
     private String relation;
     @JsonProperty("href")

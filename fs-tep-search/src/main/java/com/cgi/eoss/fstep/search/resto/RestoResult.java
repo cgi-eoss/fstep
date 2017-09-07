@@ -1,4 +1,4 @@
-package com.cgi.eoss.fstep.search.fstep.opensearch;
+package com.cgi.eoss.fstep.search.resto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,11 +9,11 @@ import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RestoSearchResult {
+public class RestoResult {
     @JsonProperty("type")
     private String type;
     @JsonProperty("properties")
-    private RestoSearchResultProperties properties;
+    private RestoResultProperties properties;
     @JsonProperty("features")
     private List<Feature> features;
 }
