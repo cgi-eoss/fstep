@@ -20,6 +20,7 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
 
     compile project(path: ':fs-tep-clouds', configuration: 'shadow')
+    compile project(':fs-tep-io')
     compile project(':fs-tep-logging')
     compile project(':fs-tep-rpc')
 

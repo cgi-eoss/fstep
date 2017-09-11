@@ -1,9 +1,15 @@
 package com.cgi.eoss.fstep.worker;
 
 import com.cgi.eoss.fstep.clouds.CloudsConfig;
+import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
+import com.cgi.eoss.fstep.io.ServiceInputOutputManagerImpl;
+import com.cgi.eoss.fstep.io.download.CachingSymlinkDownloaderFacade;
+import com.cgi.eoss.fstep.io.download.Downloader;
+import com.cgi.eoss.fstep.io.download.DownloaderFacade;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
 import com.google.common.base.Strings;
 import okhttp3.OkHttpClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
@@ -22,7 +28,7 @@ import java.nio.file.Paths;
 
 @Configuration
 @ComponentScan(
-        basePackageClasses = WorkerConfig.class,
+        basePackageClasses = {WorkerConfig.class, Downloader.class},
         excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = FstepWorkerApplication.class)
 )
 @Import({
@@ -33,6 +39,16 @@ import java.nio.file.Paths;
 public class WorkerConfig {
 
     @Bean
+    public Path cacheRoot(@Value("${fstep.worker.cache.baseDir:/data/cache/dl}") String cacheRoot) {
+        return Paths.get(cacheRoot);
+    }
+
+    @Bean
+    public Boolean unzipAllDownloads(@Value("${ftep.worker.io.unzipAllDownloads:true}") boolean unzipAllDownloads) {
+        return unzipAllDownloads;
+    }
+
+    @Bean
     public Integer cacheConcurrencyLevel(@Value("${fstep.worker.cache.concurrency:4}") int concurrencyLevel) {
         return concurrencyLevel;
     }
@@ -40,11 +56,6 @@ public class WorkerConfig {
     @Bean
     public Integer cacheMaxWeight(@Value("${fstep.worker.cache.maxWeight:1024}") int maximumWeight) {
         return maximumWeight;
-    }
-
-    @Bean
-    public Path cacheRoot(@Value("${fstep.worker.cache.baseDir:/data/cache/dl}") String cacheRoot) {
-        return Paths.get(cacheRoot);
     }
 
     @Bean
@@ -68,8 +79,21 @@ public class WorkerConfig {
 
     @Bean
     public FstepServerClient fstepServerClient(DiscoveryClient discoveryClient,
-                                             @Value("${fstep.worker.server.eurekaServiceId:fs-tep server}") String fstepServerServiceId) {
+                                               @Value("${fstep.worker.server.eurekaServiceId:fs-tep server}") String fstepServerServiceId) {
         return new FstepServerClient(discoveryClient, fstepServerServiceId);
+    }
+
+    @Bean
+    public DownloaderFacade downloaderFacade(@Qualifier("cacheRoot") Path cacheRoot,
+                                             @Qualifier("unzipAllDownloads") Boolean unzipAllDownloads,
+                                             @Qualifier("cacheConcurrencyLevel") Integer concurrencyLevel,
+                                             @Qualifier("cacheMaxWeight") Integer maximumWeight) {
+        return new CachingSymlinkDownloaderFacade(cacheRoot, unzipAllDownloads, concurrencyLevel, maximumWeight);
+    }
+
+    @Bean
+    public ServiceInputOutputManager serviceInputOutputManager(FstepServerClient ftepServerClient, DownloaderFacade downloaderFacade) {
+        return new ServiceInputOutputManagerImpl(ftepServerClient, downloaderFacade);
     }
 
 }

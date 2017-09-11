@@ -2,6 +2,8 @@ package com.cgi.eoss.fstep.worker.worker;
 
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
+import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
+import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.logging.Logging;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
@@ -23,11 +25,10 @@ import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.rpc.worker.PortBindings;
 import com.cgi.eoss.fstep.worker.docker.DockerClientFactory;
 import com.cgi.eoss.fstep.worker.docker.Log4jContainerCallback;
-import com.cgi.eoss.fstep.worker.io.ServiceInputOutputManager;
-import com.cgi.eoss.fstep.worker.io.ServiceIoException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
@@ -70,6 +71,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * <p>Service for executing FS-TEP (WPS) services inside Docker containers.</p>
@@ -165,22 +167,29 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                 buildDockerImage(dockerClient, request.getServiceName(), request.getDockerImage());
 
                 // Launch tag
-                CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(request.getDockerImage());
-                createContainerCmd.withBinds(request.getBindsList().stream().map(Bind::parse).collect(Collectors.toList()));
-                createContainerCmd.withExposedPorts(request.getPortsList().stream().map(ExposedPort::parse).collect(Collectors.toList()));
-                createContainerCmd.withPortBindings(request.getPortsList().stream()
-                        .map(p -> new shadow.dockerjava.com.github.dockerjava.api.model.PortBinding(new Ports.Binding(null, null), ExposedPort.parse(p)))
-                        .collect(Collectors.toList()));
+                try (CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(request.getDockerImage())) {
+                    createContainerCmd.withLabels(ImmutableMap.of(
+                            "jobId", request.getJob().getId(),
+                            "intJobId", request.getJob().getIntJobId(),
+                            "userId", request.getJob().getUserId(),
+                            "serviceId", request.getJob().getServiceId()
+                    ));
+                    createContainerCmd.withBinds(request.getBindsList().stream().map(Bind::parse).collect(Collectors.toList()));
+                    createContainerCmd.withExposedPorts(request.getPortsList().stream().map(ExposedPort::parse).collect(Collectors.toList()));
+                    createContainerCmd.withPortBindings(request.getPortsList().stream()
+                            .map(p -> new shadow.dockerjava.com.github.dockerjava.api.model.PortBinding(new Ports.Binding(null, null), ExposedPort.parse(p)))
+                            .collect(Collectors.toList()));
 
-                // Add proxy vars to the container, if they are set in the environment
-                createContainerCmd.withEnv(
-                        ImmutableSet.of("http_proxy", "https_proxy", "no_proxy").stream()
-                                .filter(var -> System.getenv().containsKey(var))
-                                .map(var -> var + "=" + System.getenv(var))
-                                .collect(Collectors.toList()));
+                    // Add proxy vars to the container, if they are set in the environment
+                    createContainerCmd.withEnv(
+                            ImmutableSet.of("http_proxy", "https_proxy", "no_proxy").stream()
+                                    .filter(var -> System.getenv().containsKey(var))
+                                    .map(var -> var + "=" + System.getenv(var))
+                                    .collect(Collectors.toList()));
 
-                containerId = createContainerCmd.exec().getId();
-                jobContainers.put(request.getJob().getId(), containerId);
+                    containerId = createContainerCmd.exec().getId();
+                    jobContainers.put(request.getJob().getId(), containerId);
+                }
 
                 LOG.info("Launching container {} for job {}", containerId, request.getJob().getId());
                 dockerClient.startContainerCmd(containerId).exec();
@@ -299,11 +308,12 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
 
             OutputFileList.Builder responseBuilder = OutputFileList.newBuilder();
 
-            Files.walk(outputDir, 3, FileVisitOption.FOLLOW_LINKS)
-                    .filter(Files::isRegularFile)
-                    .map(Unchecked.function(outputDir::relativize))
-                    .map(relativePath -> OutputFileItem.newBuilder().setRelativePath(relativePath.toString()).build())
-                    .forEach(responseBuilder::addItems);
+            try (Stream<Path> outputDirContents = Files.walk(outputDir, 3, FileVisitOption.FOLLOW_LINKS)) {
+                outputDirContents.filter(Files::isRegularFile)
+                        .map(Unchecked.function(outputDir::relativize))
+                        .map(relativePath -> OutputFileItem.newBuilder().setRelativePath(relativePath.toString()).build())
+                        .forEach(responseBuilder::addItems);
+            }
 
             responseObserver.onNext(responseBuilder.build());
             responseObserver.onCompleted();

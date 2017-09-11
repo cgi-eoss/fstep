@@ -208,7 +208,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         com.cgi.eoss.fstep.rpc.Job rpcJob = request.getJob();
 
         try {
-            FstepWorkerGrpc.FstepWorkerBlockingStub worker = Optional.ofNullable(jobWorkers.get(rpcJob)).orElseThrow(() -> new IllegalStateException("F-TEP worker not found for job " + rpcJob.getId()));
+            FstepWorkerGrpc.FstepWorkerBlockingStub worker = Optional.ofNullable(jobWorkers.get(rpcJob)).orElseThrow(() -> new IllegalStateException("FS-TEP worker not found for job " + rpcJob.getId()));
             LOG.info("Stop requested for job {}", rpcJob.getId());
             StopContainerResponse stopContainerResponse = worker.stopContainer(rpcJob);
             LOG.info("Successfully stopped job {}", rpcJob.getId());

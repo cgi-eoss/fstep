@@ -23,8 +23,8 @@ public class GeoUtilTest {
 
     @Before
     public void setUp() throws URISyntaxException {
-        shapefileDurango = Paths.get(getClass().getResource("/DurangoRef/F-TEPsampleDurangoLandCoverRefPolygons.shp").toURI());
-        shapefileChiapas = Paths.get(getClass().getResource("/F-TEPchiapasLandCover/F-TEPchiapasLandCover.shp").toURI());
+        shapefileDurango = Paths.get(getClass().getResource("/DurangoRef/FS-TEPsampleDurangoLandCoverRefPolygons.shp").toURI());
+        shapefileChiapas = Paths.get(getClass().getResource("/FS-TEPchiapasLandCover/FS-TEPchiapasLandCover.shp").toURI());
         geotiffDurango = Paths.get(getClass().getResource("/subset_0_of_S2A_OPER_MTD_SAFL1C_PDMC_20160521T232007_R055_V20160521T174723_20160521T174723_resampled_RGB.tif").toURI());
     }
 
