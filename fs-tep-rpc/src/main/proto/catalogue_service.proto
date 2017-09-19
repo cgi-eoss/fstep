@@ -13,6 +13,11 @@ service CatalogueService {
     rpc GetDataSourcePolicies (Uris) returns (UriDataSourcePolicies);
 }
 
+message FstepFile {
+    string filename = 1;
+    FstepFileUri uri = 2;
+}
+
 message FstepFileUri {
     string uri = 1;
 }
@@ -37,7 +42,7 @@ message Databasket {
 }
 
 message DatabasketContents {
-    repeated FstepFileUri fileUris = 1;
+    repeated FstepFile files = 1;
 }
 
 message Uris {

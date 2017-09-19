@@ -29,7 +29,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             APPLICATION: { id: 1, name: 'Application Services', value: 'APPLICATION' },
             PROCESSOR: { id: 2, name: 'Processor Services', value: 'PROCESSOR' },
             BULK_PROCESSOR: { id: 3, name: 'Bulk Processor Services', value: 'BULK_PROCESSOR' },
-            PARALLEL_PROCESSOR: { id: 4, name: 'Parallel Processor Services', value: 'PARALLEL_PROCESSOR'}
+            PARALLEL_PROCESSOR: { id: 4, name: 'Parallel Processor Services', value: 'PARALLEL_PROCESSOR' }
         };
 
         this.servicePublicationFilters = {
@@ -38,11 +38,6 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             PENDING_SERVICES: { id: 2, name: 'Pending', value: 'PENDING_SERVICES'},
             PRIVATE_SERVICES: { id: 3, name: 'Private', value: 'PRIVATE_SERVICES'}
         };
-
-        var userUrl;
-        UserService.getCurrentUser().then(function(currentUser){
-            userUrl = currentUser._links.self.href;
-        });
 
         this.params = {
             explorer: {
@@ -54,6 +49,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 selectedTypeFilter: self.serviceTypeFilters.ALL_SERVICES,
                 searchText: '',
                 inputValues: {},
+                label: undefined,
                 dropLists: {}
             },
             community: {
@@ -146,7 +142,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                         }
                     });
 
-                    if(page === 'community' && service.access.currentLevel === 'ADMIN') {
+                    if(page === 'community') {
                         CommunityService.getObjectGroups(service, 'service').then(function (data) {
                             self.params.community.sharedGroups = data;
                         });
@@ -319,6 +315,23 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             return deferred.promise;
         }
 
+        /* Get list of default services */
+        this.getDefaultServices = function(){
+            var deferred = $q.defer();
+            halAPI.from(rootUri + '/services/defaults')
+                       .newRequest()
+                       .getResource()
+                       .result
+                       .then(
+            function (document) {
+                deferred.resolve(document._embedded.services);
+            }, function (error) {
+                MessageService.addError('Could not get Services', error);
+                deferred.reject();
+            });
+            return deferred.promise;
+        }
+
         /* Fetch a new page */
         this.getServicesPage = function(page, url){
             if (self.params[page]) {
@@ -339,7 +352,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                                     (self.params[page].searchText ? self.params[page].searchText : '');
 
                 if(self.params[page].selectedOwnershipFilter !== self.serviceOwnershipFilters.ALL_SERVICES){
-                    url += '&owner=' + userUrl;
+                    url += '&owner=' + UserService.params.activeUser._links.self.href;
                 }
 
                 if(self.params[page].selectedTypeFilter !== self.serviceTypeFilters.ALL_SERVICES){

@@ -1,11 +1,12 @@
 package com.cgi.eoss.fstep.worker.worker;
 
+import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
+import com.cgi.eoss.fstep.io.download.DownloaderFacade;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.JobDockerConfig;
 import com.cgi.eoss.fstep.worker.WorkerConfig;
 import com.cgi.eoss.fstep.worker.WorkerTestConfig;
-import com.cgi.eoss.fstep.worker.io.ServiceInputOutputManager;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessServerBuilder;
@@ -39,6 +40,9 @@ public class FstepWorkerIT {
 
     @MockBean
     private ServiceInputOutputManager ioManager;
+
+    @MockBean
+    private DownloaderFacade downloaderFacade;
 
     @Autowired
     private InProcessServerBuilder serverBuilder;

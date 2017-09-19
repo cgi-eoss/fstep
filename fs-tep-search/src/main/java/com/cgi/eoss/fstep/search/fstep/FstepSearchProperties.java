@@ -6,7 +6,7 @@ import okhttp3.HttpUrl;
 
 @Data
 @Builder
-public class FstepSearchProperties {
+class FstepSearchProperties {
 
     private final HttpUrl baseUrl;
     private final String username;

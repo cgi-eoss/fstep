@@ -22,6 +22,7 @@ import com.cgi.eoss.fstep.rpc.catalogue.UriDataSourcePolicy;
 import com.cgi.eoss.fstep.rpc.catalogue.Uris;
 import com.cgi.eoss.fstep.security.FstepPermission;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.google.common.base.Stopwatch;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -42,8 +43,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -196,7 +195,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
             responseObserver.onNext(FileResponse.newBuilder().setMeta(fileMeta).build());
 
             // Then read the file, chunked at 8kB
-            LocalDateTime startTime = LocalDateTime.now();
+            Stopwatch stopwatch = Stopwatch.createStarted();
             try (ReadableByteChannel channel = Channels.newChannel(fileResource.getInputStream())) {
                 ByteBuffer buffer = ByteBuffer.allocate(FILE_STREAM_CHUNK_BYTES);
                 int position = 0;
@@ -211,7 +210,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                     buffer.flip();
                 }
             }
-            LOG.info("Transferred FstepFile {} ({} bytes) in {}", fileResource.getFilename(), fileResource.contentLength(), Duration.between(startTime, LocalDateTime.now()));
+            LOG.info("Transferred FstepFile {} ({} bytes) in {}", fileResource.getFilename(), fileResource.contentLength(), stopwatch.stop().elapsed());
 
             responseObserver.onCompleted();
         } catch (Exception e) {
@@ -227,7 +226,13 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
             Databasket databasket = getDatabasketFromUri(request.getUri());
 
             DatabasketContents.Builder responseBuilder = DatabasketContents.newBuilder();
-            databasket.getFiles().forEach(f -> responseBuilder.addFileUris(FstepFileUri.newBuilder().setUri(f.getUri().toASCIIString()).build()));
+            databasket.getFiles().forEach(f -> responseBuilder.addFiles(
+                    com.cgi.eoss.fstep.rpc.catalogue.FstepFile.newBuilder()
+                            .setFilename(f.getFilename())
+                            .setUri(FstepFileUri.newBuilder().setUri(f.getUri().toASCIIString()).build())
+                            .build()
+                    )
+            );
 
             responseObserver.onNext(responseBuilder.build());
             responseObserver.onCompleted();

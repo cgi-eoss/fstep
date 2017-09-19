@@ -29,12 +29,9 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.fstepURL = fstepProperties.FSTEP_URL;
         $scope.ssoURL = fstepProperties.SSO_URL;
         $scope.walletParams = WalletService.params.account;
-        $scope.user = undefined;
 
-        UserService.getCurrentUser().then(function(user){
-            $scope.user = user;
-            WalletService.refreshUserTransactions('account', user);
-        });
+        $scope.user = UserService.params.activeUser;
+        WalletService.refreshUserTransactions('account', $scope.user);
 
         $scope.hideContent = true;
         var navbar, userdetails, sidenav;

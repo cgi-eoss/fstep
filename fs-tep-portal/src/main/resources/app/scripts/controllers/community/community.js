@@ -22,9 +22,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.fileParams = FileService.params.community;
 
         /* Get current user */
-        UserService.getCurrentUser().then(function(data){
-            $scope.user = data;
-        });
+        $scope.user = UserService.params.activeUser;
 
         /* Active session message count */
         $scope.message = {};

@@ -24,8 +24,6 @@ define(['../../fstepmodules'], function (fstepmodules) {
 
         /* SIDE BAR */
         $scope.sideNavTabs = TabService.getExplorerSideNavs();
-        $scope.bottomNavTabs = TabService.getBottomNavTabs();
-        $scope.navInfo = TabService.navInfo.explorer;
 
         function showSidebarArea() {
             $scope.navInfo.sideViewVisible = true;
@@ -53,7 +51,6 @@ define(['../../fstepmodules'], function (fstepmodules) {
 
         /** BOTTOM BAR **/
         $scope.displayTab = function(tab, allowedToClose) {
-
             if ($scope.navInfo.activeBottomNav === tab && allowedToClose !== false) {
                 $scope.toggleBottomView();
             } else {
@@ -83,39 +80,22 @@ define(['../../fstepmodules'], function (fstepmodules) {
             function MetadataController($scope, $mdDialog, fstepProperties) {
                 $scope.item = data;
 
-                $scope.getQuicklookSrc = function(item){
-                    return item.ql;
-                };
-
                 $scope.closeDialog = function() {
                     $mdDialog.hide();
                 };
             }
             MetadataController.$inject = ['$scope', '$mdDialog', 'fstepProperties'];
-            if(data.type === 'file') {
-                $mdDialog.show({
-                    controller: MetadataController,
-                    templateUrl: 'views/explorer/templates/metadatafile.tmpl.html',
-                    parent: angular.element(document.body),
-                    targetEvent: $event,
-                    clickOutsideToClose: true,
-                    locals: {
-                        items: $scope.items
-                    }
-                });
-            }
-            else {
-                $mdDialog.show({
-                    controller: MetadataController,
-                    templateUrl: 'views/explorer/templates/metadata.tmpl.html',
-                    parent: angular.element(document.body),
-                    targetEvent: $event,
-                    clickOutsideToClose: true,
-                    locals: {
-                        items: $scope.items
-                    }
-                });
-            }
+
+            $mdDialog.show({
+                controller: MetadataController,
+                templateUrl: 'views/explorer/templates/metadata.tmpl.html',
+                parent: angular.element(document.body),
+                targetEvent: $event,
+                clickOutsideToClose: true,
+                locals: {
+                    items: $scope.items
+                }
+            });
         };
 
         /* Share Object Modal */

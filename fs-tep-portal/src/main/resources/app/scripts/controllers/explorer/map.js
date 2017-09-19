@@ -8,7 +8,7 @@
 define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules, ol, X2JS, clipboard) {
     'use strict';
 
-    fstepmodules.controller('MapCtrl', [ '$scope', '$rootScope', '$mdDialog', 'fstepProperties', 'MapService', 'GeoService', '$timeout', function($scope, $rootScope, $mdDialog, fstepProperties, MapService, GeoService, $timeout) {
+    fstepmodules.controller('MapCtrl', [ '$scope', '$rootScope', '$mdDialog', 'fstepProperties', 'MapService', 'SearchService', '$timeout', function($scope, $rootScope, $mdDialog, fstepProperties, MapService, SearchService, $timeout) {
 
         var EPSG_3857 = "EPSG:3857", // Spherical Mercator projection used by most web map applications (e.g Google, OpenStreetMap, Mapbox).
             EPSG_4326 = "EPSG:4326"; // Standard coordinate system used in cartography, geodesy, and navigation (including GPS).
@@ -27,7 +27,17 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
         /** ----- MAP STYLES TYPES ----- **/
         var resultStyle = new ol.style.Style({
             fill: new ol.style.Fill({ color: 'rgba(255,128,171,0.2)' }),
-            stroke: new ol.style.Stroke({ color: 'rgba(255,64,129,0.6)', width: 2 })
+            stroke: new ol.style.Stroke({ color: 'rgba(255,64,129,0.6)', width: 2 }),
+            image: new ol.style.Circle({
+                fill: new ol.style.Fill({
+                  color: 'rgba(255,128,171,0.2)'
+                }),
+                radius: 5,
+                stroke: new ol.style.Stroke({
+                  color: 'rgba(255,64,129,0.6)',
+                  width: 3
+                })
+            })
         });
 
         var searchBoxStyle = new ol.style.Style({
@@ -61,8 +71,8 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
             }
         });
 
-        modify.on('modifyend',function(e){
-            updateSearchPolygon(e.features.getArray()[0].getGeometry());
+        modify.on('modifyend',function(evt){
+            updateSearchPolygon(evt.features.getArray()[0].getGeometry());
         });
 
         var dragAndDropInteraction = new ol.interaction.DragAndDrop({
@@ -72,7 +82,32 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
             ]
         });
 
-        var selectClick = MapService.selectClick;
+        var selectClick = new ol.interaction.Select({
+            condition: ol.events.condition.click,
+            toggleCondition: ol.events.condition.shiftKeyOnly,
+            style: new ol.style.Style({
+                fill: new ol.style.Fill({
+                    color: 'rgba(174,213,129,0.8)'
+                }),
+                stroke: new ol.style.Stroke({
+                    color: 'rgba(85,139,47,0.8)',
+                    width: 3
+                }),
+                image: new ol.style.Circle({
+                    fill: new ol.style.Fill({
+                        color: 'rgba(174,213,129,0.8)'
+                    }),
+                    radius: 5,
+                    stroke: new ol.style.Stroke({
+                        color: 'rgba(85,139,47,0.8)',
+                        width: 3
+                    })
+                })
+            }),
+            filter: function(feature, layer) {
+                return feature.get('data') !== undefined;
+            }
+        });
 
         selectClick.on('select', function(evt) {
             var selectedItems = [];
@@ -304,12 +339,12 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
 
         $scope.clearMap = function() {
             $scope.clearSearchPolygon();
-            GeoService.params.geoResults = [];
+            SearchService.params.geoResults = [];
             if(resultsLayer) {
-               $scope.map.removeLayer(resultsLayer);
+                resultsLayer.getSource().clear()
             }
             if(basketLayer) {
-                $scope.map.removeLayer(basketLayer);
+                basketLayer.getSource().clear()
             }
             if(searchAreaLayer) {
                 searchAreaLayer.getSource().clear();
@@ -367,18 +402,24 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
             }, 1000);
         };
 
-        /* Get polygon for geometry to display on map */
-        function getGeometryPolygon(geo) {
-            if(geo && geo.coordinates) {
-                var lonlatPoints = [];
-                for(var k = 0; k < geo.coordinates.length; k++){
-                    for(var m = 0; m < geo.coordinates[k].length; m++){
-                        var point = geo.coordinates[k][m];
-                        lonlatPoints.push(point);
-                    }
+        /* Get geometry to display on map */
+        function getOlGeometryObject(geometry) {
+            if(geometry && geometry.coordinates) {
+                if(geometry.type === 'Point'){
+                    return new ol.geom[geometry.type](geometry.coordinates).transform(EPSG_4326, EPSG_3857);
                 }
-                return new ol.geom[geo.type]([lonlatPoints]).transform(EPSG_4326, EPSG_3857);
+                else {
+                    var lonlatPoints = [];
+                    for(var k = 0; k < geometry.coordinates.length; k++){
+                        for(var m = 0; m < geometry.coordinates[k].length; m++){
+                            var point = geometry.coordinates[k][m];
+                            lonlatPoints.push(point);
+                        }
+                    }
+                    return new ol.geom[geometry.type]([lonlatPoints]).transform(EPSG_4326, EPSG_3857);
+                }
             }
+            return undefined;
         }
         /* ----- END OF VARIOUS MAP FUNCTIONS ----- */
 
@@ -427,20 +468,21 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
         $scope.$on('update.geoResults', function(event, results) {
             selectAll(false);
             resultLayerFeatures.clear();
-            if(results){
-                for(var folderNr = 0; folderNr < results.length; folderNr++){
-                    if(results[folderNr].results && results[folderNr].results.entities && results[folderNr].results.entities.length > 0){
-                        for(var i = 0; i < results[folderNr].results.entities.length; i++){
-                            var item = results[folderNr].results.entities[i];
-                            var pol = getGeometryPolygon(item.geo);
-                            var resultItem =  new ol.Feature({
-                                geometry: pol,
-                                data: item
-                            });
-                            resultLayerFeatures.push(resultItem);
-                        }
-                        $scope.map.getView().fit(resultsLayer.getSource().getExtent(), $scope.map.getSize());
+            if(results && results.features && results.features.length > 0) {
+                var zoomToPlace = false;
+                for (var result in results.features) {
+                    var item = results.features[result];
+                    var resultItem = new ol.Feature({
+                        data: item
+                    });
+                    if (item.geometry) {
+                        resultItem.setGeometry(getOlGeometryObject(item.geometry));
+                        zoomToPlace = true;
                     }
+                    resultLayerFeatures.push(resultItem);
+                }
+                if (zoomToPlace) {
+                    $scope.map.getView().fit(resultsLayer.getSource().getExtent(), $scope.map.getSize());
                 }
             }
         });
@@ -449,21 +491,25 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
             selectItem(item, selected);
         });
 
-        function selectItem(item, selected){
+        function selectItem(item, selected) {
             var features = resultsLayer.getSource().getFeatures();
-            for(var i = 0; i < features.length; i++){
-                if((item.identifier && item.identifier === features[i].get('data').identifier)){
+            for (var i in features) {
+                var feature = features[i];
+                if(item.id && item.id === feature.get('data').properties.productIdentifier){
                     if(selected){
-                        selectClick.getFeatures().push(features[i]);
-                        $scope.map.getView().fit(features[i].getGeometry().getExtent(), $scope.map.getSize()); //center the map to the selected vector
+                        selectClick.getFeatures().push(feature);
+                        $scope.map.getView().fit(feature.getGeometry().getExtent(), $scope.map.getSize()); //center the map to the selected vector
                         var zoomLevel = 3;
-                        if($scope.map.getView().getZoom() > 3){
+                        if(feature.getGeometry() instanceof ol.geom.Point){
+                            zoomLevel = 6;
+                        }
+                        else if($scope.map.getView().getZoom() > 3){
                             zoomLevel = $scope.map.getView().getZoom()-2;
                         }
                         $scope.map.getView().setZoom(zoomLevel); //zoom out a bit, to show the location better
                     }
                     else {
-                        selectClick.getFeatures().remove(features[i]);
+                        selectClick.getFeatures().remove(feature);
                     }
                     break;
                 }
@@ -476,9 +522,7 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
 
         function selectAll(selected){
             if(resultsLayer){
-                while(selectClick.getFeatures().getLength() > 0){
-                    selectClick.getFeatures().pop();
-                }
+                selectClick.getFeatures().clear();
                 if(selected){
                     for(var i = 0; i < resultsLayer.getSource().getFeatures().length; i++){
                         selectClick.getFeatures().push(resultsLayer.getSource().getFeatures()[i]);
@@ -504,14 +548,14 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
             style: resultStyle
         });
 
-        $scope.$on('upload.basket', function(event, basketFiles) {
+        $scope.$on('load.basket', function(event, basketFiles) {
             $scope.map.removeLayer(resultsLayer);
             basketLayerFeatures.clear();
             if(basketFiles && basketFiles.length > 0){
                 for(var i = 0; i < basketFiles.length; i++){
                     var item = basketFiles[i];
                     if(item.metadata && item.metadata.geometry && item.metadata.geometry.coordinates){
-                        var pol = getGeometryPolygon(item.metadata.geometry);
+                        var pol = getOlGeometryObject(item.metadata.geometry);
                         var resultItem =  new ol.Feature({
                              geometry: pol,
                              data: item
@@ -537,7 +581,7 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
             var features = basketLayer.getSource().getFeatures();
 
             for(var i = 0; i < features.length; i++) {
-                if((item.id && item.id === features[i].get('data').id)){
+                if((item.id && item.id === features[i].get('data').properties.productIdentifier)){
                     if(selected){
                         selectClick.getFeatures().push(features[i]);
                         $scope.map.getView().fit(features[i].getGeometry().getExtent(), $scope.map.getSize());
@@ -586,7 +630,7 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
                 }
 
                 // Zoom into place
-                var polygon = getGeometryPolygon(files[files.length-1].metadata.geometry);
+                var polygon = getOlGeometryObject(files[files.length-1].metadata.geometry);
                 $scope.map.getView().fit(polygon.getExtent(), $scope.map.getSize());
             }
         });

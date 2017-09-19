@@ -43,5 +43,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             });
         };
 
+        $scope.getGeometryStr = function(geoJson){
+            return JSON.stringify(geoJson);
+        }
+
     }]);
 });
