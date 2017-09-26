@@ -1,0 +1,24 @@
+@import "../../../css/bulma-theme.sass";
+@import "~bulma/sass/components/navbar.sass";
+
+.navbar .navbar-item.has-dropdown.is-right .navbar-dropdown {
+    left: auto;
+    right: 0;
+}
+
+/*
+.navbar-brand {
+    background-color: #ee7421;
+}
+
+.navbar-menu {
+    transform: scaleY(0); 
+    background-color: #ee7421;
+    transform-origin: top;
+    transition: 0.5s;
+}
+
+.navbar-menu.is-active {
+    transform: scaleY(1); 
+}
+*/

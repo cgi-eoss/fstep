@@ -1,0 +1,10 @@
+<nav class="breadcrumb">
+    <ul>
+        <li *ngFor="let url of _urls; let last = last" [ngClass]="{'is-active': last}"> <!-- disable link of last item -->
+            <a *ngIf="!last && url == prefix" (click)="navigateTo('/')">{{url}}</a>
+            <a *ngIf="!last && url != prefix" (click)="navigateTo(url)">{{friendlyName(url)}}</a>
+            <a *ngIf="last">{{friendlyName(url)}}</a>
+            <a *ngIf="last && url == prefix">{{friendlyName('/')}}</a>
+        </li>
+    </ul>
+</nav>

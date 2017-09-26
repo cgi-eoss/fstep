@@ -1,0 +1,25 @@
+:host /deep/ .area {
+    fill: none;
+    clip-path: url(#clip);
+    stroke: #05a902;
+    stroke-width: 3px;
+  }
+  
+  :host /deep/ .zoom {
+    cursor: move;
+    fill: none;
+    pointer-events: all;
+  }
+  
+  .tooltip {
+      position: absolute;
+      line-height: 1;
+      font-weight: bold;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      border-radius: 2px;
+      display: none;
+  }
+  
+  

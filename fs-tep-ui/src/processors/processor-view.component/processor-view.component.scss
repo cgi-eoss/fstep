@@ -1,0 +1,18 @@
+.legend {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.22);
+    border-radius: 5px;
+}
+
+processor-legend {
+    position: absolute;
+    bottom: 30px;
+    right: 10px;
+    padding: 5px;
+    border-radius: 5px;
+    background: rgba(0,0,0,0.5);
+    border: solid 1px;
+}

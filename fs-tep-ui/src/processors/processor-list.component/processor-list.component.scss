@@ -1,0 +1,35 @@
+@import "../../../css/bulma-theme.sass";
+@import "~bulma/sass/layout/section.sass";
+@import "~bulma/sass/elements/image.sass";
+@import "~bulma/sass/grid/tiles.sass";
+@import "~bulma/sass/components/media.sass";
+@import "~bulma/sass/components/card.sass";
+
+/*
+.list_container {
+    height: calc(100vh - 6rem);
+}
+*/
+
+.list_container {
+    height: calc(100vh - 8rem);
+    overflow: auto;
+    position: absolute;
+}
+
+.list_container section {
+    padding: 20px;
+}
+
+.card {
+    height: 100%;
+    cursor: pointer;
+}
+
+.card-content {
+    min-height: 150px;
+}
+.card-content figure {
+    margin-right: 15px;
+}
+
