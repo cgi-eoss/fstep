@@ -1,0 +1,137 @@
+[
+    {
+        "id": "cab",
+        "name": "Leaf chlorophyll content (VISTA)",
+        "description": "Leaf chlorophyll content (Cab) is an indicator for crop nutrition status and photosynthetic capacity. Remote sensing of Cab plays an important role in crop growth monitoring, pest and disease diagnosis, and crop yield assessment",
+        "thumb": "images/cab.png",
+        "layer": {
+            "type": "WMS",
+            "config": {
+                "url": "/fstep-wms",
+                "layers": "fs-proc:CAB",
+                "colormap": ["#ffffe0", "#ffe0a9", "#ffbe84", "#ff986d", "#f47361", "#e35056", "#cb2f44", "#ae112a", "#8b0000"],
+                "domain": [0, 7]
+            }
+        },
+        "time_range": {
+            "start": "2017-04-13T00:00:00Z",
+            "end": "2017-07-13T00:00:00Z",
+            "frequency": "P5D"
+        }
+    },
+    {
+        "id": "lai",
+        "name": "Leaf Area Index (VISTA)",
+        "description": "Leaf Area Index (LAI) measures the amount of leaf material in an ecosystem, which imposes important controls on photosynthesis, respiration, rain interception, and other processes that link vegetation to climate. Consequently, LAI appears as a key variable in many models describing vegetation-atmosphere interactions, particularly with respect to the carbon and water cycles",
+        "thumb": "images/lai.png",
+        "layer": {
+            "type": "WMS",
+            "config": {
+                "url": "/fstep-wms",
+                "layers": "fs-prods:vista_lai",
+                "colormap": ["#8b4500", "#b98f00", "#e7d900", "#b9ff00", "#65ff00", "#00ce00", "#009d00", "#006a19", "#00354c", "#00007f"],
+                "domain": [0, 7]
+            }
+        },
+        "time_range": {
+            "start": "2017-03-25T00:00:00Z",
+            "end": "2017-08-17T00:00:00Z",
+            "list": ["2017-03-25T00:00:00.000Z", "2017-04-24T00:00:00.000Z", "2017-06-03T00:00:00.000Z", "2017-06-13T00:00:00.000Z", "2017-07-03T00:00:00.000Z", "2017-07-08T00:00:00.000Z", "2017-07-13T00:00:00.000Z", "2017-07-18T00:00:00.000Z", "2017-08-02T00:00:00.000Z", "2017-08-07T00:00:00.000Z", "2017-08-17T00:00:00.000Z"]
+        }
+    },
+    {
+        "id": "refboa",
+        "name": "Corrected Reflectance Image (VISTA)",
+        "description": "Reflectance is the fraction of incoming solar radiation that is reflected from Earth's surface. Retrieved from satellite images by correcting for atmospheric effects, surface reflectance images approximate what would be measured by a sensor held just above the Earth's surface, without any artifacts from the atmosphere or illumination and viewing geometry. Surface reflectance is the most basic remotely sensed surface parameter in the solar reflective wavelengths (i.e., visible and infrared), providing the primary input for essentially all higher-level surface geophysical parameters, including vegetation indices, albedo, Leaf Area Index (LAI), Fraction of Photosynthetically Absorbed Radiation (FPAR), burned area, land cover, and land cover change. Because removing atmospheric artifacts increases the comparability between images of Earth's surface taken at different times, surface reflectance is also used to detect and monitor changes on the Earth's surface.",
+        "thumb": "images/refboa.png",
+        "layer": {
+            "type": "WMS",
+            "config": {
+                "url": "/fstep-wms",
+                "layers": "fs-proc:REFBOA",
+                "legend": false
+            }
+        },
+        "time_range": {
+            "start": "2017-06-03T00:00:00Z",
+            "end": "2017-07-13T00:00:00Z",
+            "frequency": "P5D"
+        }
+    },
+    {
+        "id": "fapar",
+        "name": "FAPAR (VITO)",
+        "description": "FAPAR",
+        "thumb": "images/lai.png",
+        "layer": {
+            "type": "WMS",
+            "config": {
+                "url": "/fstep-wms",
+                "layers": "fs-prods:vito_fapar",
+                "legend": true
+            }
+        },
+        "time_range": {
+            "start": "2017-04-23T00:00:00Z",
+            "end": "2017-08-31T00:00:00Z",
+            "list": ["2017-04-23T00:00:00.000Z", "2017-05-16T00:00:00.000Z", "2017-05-26T00:00:00.000Z" , "2017-06-02T00:00:00.000Z", "2017-06-05T00:00:00.000Z", "2017-08-11T00:00:00.000Z", "2017-08-21T00:00:00.000Z", "2017-08-24T00:00:00.000Z", "2017-08-31T00:00:00.000Z"]
+        }
+    },
+    {
+        "id": "fcover",
+        "name": "Foliage Cover (VITO)",
+        "description": "Foliage Cover",
+        "thumb": "images/lai.png",
+        "layer": {
+            "type": "WMS",
+            "config": {
+                "url": "/fstep-wms",
+                "layers": "fs-prods:vito_fcover",
+                "legend": true
+            }
+        },
+        "time_range": {
+            "start": "2017-04-23T00:00:00Z",
+            "end": "2017-08-31T00:00:00Z",
+            "list": ["2017-04-23T00:00:00.000Z", "2017-05-16T00:00:00.000Z", "2017-05-26T00:00:00.000Z" , "2017-06-02T00:00:00.000Z", "2017-06-05T00:00:00.000Z", "2017-08-11T00:00:00.000Z", "2017-08-21T00:00:00.000Z", "2017-08-24T00:00:00.000Z", "2017-08-31T00:00:00.000Z"]
+        }
+    },
+    {
+        "id": "vito_lai",
+        "name": "Leaf Area Index (VITO)",
+        "description": "Leaf Area Index (LAI) measures the amount of leaf material in an ecosystem, which imposes important controls on photosynthesis, respiration, rain interception, and other processes that link vegetation to climate. Consequently, LAI appears as a key variable in many models describing vegetation-atmosphere interactions, particularly with respect to the carbon and water cycles",
+        "thumb": "images/lai.png",
+        "layer": {
+            "type": "WMS",
+            "config": {
+                "url": "/fstep-wms",
+                "layers": "fs-prods:vito_lai",
+                "legend": true
+            }
+        },
+        "time_range": {
+            "start": "2017-04-23T00:00:00Z",
+            "end": "2017-08-31T00:00:00Z",
+            "list": ["2017-04-23T00:00:00.000Z", "2017-05-16T00:00:00.000Z", "2017-05-26T00:00:00.000Z" , "2017-06-02T00:00:00.000Z", "2017-06-05T00:00:00.000Z", "2017-08-11T00:00:00.000Z", "2017-08-21T00:00:00.000Z", "2017-08-24T00:00:00.000Z", "2017-08-31T00:00:00.000Z"]
+        }
+    },
+    {
+        "id": "ndvi",
+        "name": "Vegetation Index (VITO)",
+        "description": "",
+        "thumb": "images/lai.png",
+        "layer": {
+            "type": "WMS",
+            "config": {
+                "url": "/fstep-wms",
+                "layers": "fs-prods:vito_ndvi",
+                "legend": true
+            }
+        },
+        "time_range": {
+            "start": "2017-04-23T00:00:00Z",
+            "end": "2017-08-31T00:00:00Z",
+            "list": ["2017-04-23T00:00:00.000Z", "2017-05-16T00:00:00.000Z", "2017-05-26T00:00:00.000Z" , "2017-06-02T00:00:00.000Z", "2017-06-05T00:00:00.000Z", "2017-08-11T00:00:00.000Z", "2017-08-21T00:00:00.000Z", "2017-08-24T00:00:00.000Z", "2017-08-31T00:00:00.000Z"]
+        }
+    }
+]

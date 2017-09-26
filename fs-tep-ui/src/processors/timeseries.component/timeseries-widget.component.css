@@ -1,0 +1,17 @@
+:host {
+    position: absolute;
+    background: white;
+    bottom: 50px;
+    left: 20px;
+    padding: 10px;
+    border-radius: 5px;
+    border: solid 2px #ee7421;
+    width: 70%;
+    height: 300px;
+}
+
+.delete {
+    position: absolute;
+    top: 0.3em;
+    right: 0.3em;
+}
