@@ -69,10 +69,10 @@
   top: 4px;
 }
 #bottombar-container #bottombar-expand .material-icons {
-  color: #33691e;
+  color: #E88300;
 }
 #bottombar-container #bottombar-expand:hover .material-icons {
-  color: #558b2f;
+  color: #E69824;
 }
 #bottombar-container.wide {
   padding-left: 44px !important;
@@ -131,7 +131,7 @@
   width: 100%;
 }
 #bottombar #bottombar-tabs md-tabs md-tabs-wrapper md-tab-data .tab-options .button-section button {
-  color: #33691e;
+  color: #E88300;
   float: right;
 }
 #bottombar #bottombar-tabs md-tabs md-tabs-wrapper md-tab-data .tab-options .button-section button:hover {
@@ -306,13 +306,13 @@
 .pagination-buttons .pagination a {
   background-color: transparent;
   border: none;
-  color: #558b2f;
+  color: #E69824;
   padding: 2px 0.5rem;
   border-left: #d2d2d2 solid 1px;
 }
 .pagination-buttons .pagination a:hover {
   background: #ff80ab;
-  color: #33691e;
+  color: #E88300;
 }
 .pagination-buttons .pagination .active a {
   background-color: #ff4081;
@@ -557,14 +557,14 @@
   }
 }
 #navbar .navbar-container .navbar-contents .nav li.active {
-  border-bottom: #558b2f solid 4px;
+  border-bottom: #E69824 solid 4px;
 }
 #navbar .navbar-container .navbar-contents .nav li.active p {
-  color: #33691e !important;
+  color: #E88300 !important;
 }
 @media (max-width: 767px) {
   #navbar .navbar-container .navbar-contents .nav li.active {
-    background-color: #aed581;
+    background-color: #ffd3a5;
     border: none;
   }
 }
@@ -575,7 +575,7 @@
   background-color: #d2d2d2;
 }
 #navbar .navbar-container .navbar-contents .nav li:hover p {
-  color: #33691e;
+  color: #E88300;
 }
 /** TODO: Remove after pre-realease **/
 .ribbon {
@@ -636,7 +636,7 @@
   min-height: 2rem;
 }
 #sidebar-left md-toolbar .md-toolbar-tools {
-  background-color: #aed581;
+  background-color: #ffd3a5;
   padding: 0;
   color: rgba(0, 0, 0, 0.7);
 }
@@ -702,16 +702,16 @@
   border-top: rgba(228, 228, 228, 0.9) solid 1px;
 }
 #sidenav #fstep-nav-wrapper .fstep-nav li:hover {
-  background-color: rgba(85, 139, 47, 0.7);
+  background-color: rgba(230, 152, 36, 0.7);
 }
 #sidenav #fstep-nav-wrapper .fstep-nav li:hover:hover {
-  background-color: #558b2f;
+  background-color: #E69824;
 }
 #sidenav #fstep-nav-wrapper .fstep-nav .active {
-  background-color: rgba(51, 105, 30, 0.7);
+  background-color: rgba(232, 131, 0, 0.7);
 }
 #sidenav #fstep-nav-wrapper .fstep-nav .active:hover {
-  background-color: #33691e;
+  background-color: #E88300;
 }
 #sidenav #fstep-nav-wrapper .fstep-nav .active-bottom {
   background-color: rgba(36, 82, 105, 0.7);
@@ -775,7 +775,7 @@
   margin-top: 0.2rem;
 }
 #community-container .community-item-container .section-title h3 {
-  color: #558b2f;
+  color: #E69824;
 }
 #community-container .community-item-container .section-title .title-text {
   padding: 0.2rem 0 0 0;
@@ -820,8 +820,8 @@
   padding: 1rem;
 }
 #refDataForm .drop-box-container .dragover {
-  background-color: #aed581;
-  border: 5px solid #33691e !important;
+  background-color: #ffd3a5;
+  border: 5px solid #E88300 !important;
 }
 #refDataForm .drop-box-container .drop-box {
   border: 5px dashed lightgray;
@@ -1004,11 +1004,11 @@
 }
 .fstep .fstep-card md-card-title,
 .fstep .fstep-card md-card-actions {
-  color: #558b2f;
+  color: #E69824;
   padding-top: 0;
 }
 .fstep .fstep-card md-card-actions a:hover {
-  color: #558b2f;
+  color: #E69824;
 }
 
 .fstep .chip-container {
@@ -1126,7 +1126,7 @@
   margin-top: 0px;
 }
 .fstep .md-dialog-container h5 {
-  color: #33691e;
+  color: #E88300;
   font-weight: bold;
   margin-top: 0;
 }
@@ -1476,7 +1476,7 @@
   padding: 0;
 }
 .fstep md-menu-item {
-  color: #558b2f;
+  color: #E69824;
 }
 .fstep md-menu-item .md-button {
   font-size: 14px;
@@ -1546,12 +1546,12 @@
 .fstep .pagination a {
   background-color: transparent;
   border: none;
-  color: #558b2f;
+  color: #E69824;
   border-left: #d2d2d2 solid 1px;
 }
 .fstep .pagination a:hover {
   background: #ff80ab;
-  color: #33691e;
+  color: #E88300;
 }
 .fstep .pagination .active a {
   background-color: #ff4081;
@@ -1577,7 +1577,7 @@
   margin: 0 0.2rem;
 }
 .fstep #paging .md-button:hover {
-  color: #558b2f;
+  color: #E69824;
 }
 .fstep #paging .md-button[disabled]:hover {
   color: #BBB;
@@ -1623,7 +1623,7 @@
   background-color: transparent;
   box-sizing: border-box;
   box-shadow: 0 -2px 0 0 #ff4081 inset;
-  color: #558b2f;
+  color: #E69824;
 }
 
 .fstep .toolbar-button {
@@ -1695,8 +1695,8 @@
   border-left: #d2d2d2 solid 1px;
 }
 #developer-container .right-container #service-form #editor-area-list .active {
-  background-color: #aed581;
-  border-color: #aed581;
+  background-color: #ffd3a5;
+  border-color: #ffd3a5;
   color: rgba(255, 255, 255, 0.87);
 }
 #developer-container .right-container #service-form #file-editor .CodeMirror {
@@ -1720,14 +1720,14 @@
   padding: 0 0 1.6rem 0;
 }
 #developer-container .right-container #service-form #file-editor #file-list .active {
-  background-color: #aed581;
+  background-color: #ffd3a5;
   color: white;
 }
 #developer-container .right-container #service-form #file-editor #file-list .active:hover {
-  background-color: #558b2f;
+  background-color: #E69824;
 }
 #developer-container .right-container #service-form #file-editor #file-list .active:hover .material-icons {
-  color: #33691e;
+  color: #E88300;
 }
 #developer-container .right-container #service-form #file-editor #file-list .add-file {
   font-size: 1rem;
@@ -1754,7 +1754,7 @@
   width: 28px;
 }
 #developer-container .right-container #service-form #file-editor #file-list li table .file-icon .material-icons {
-  color: #558b2f;
+  color: #E69824;
   font-size: 24px;
 }
 #developer-container .right-container #service-form #file-editor #file-list li table .file-name {
@@ -1812,14 +1812,14 @@
   margin-top: 1rem;
 }
 #developer-container .right-container #service-form .add-button .material-icons {
-  color: #aed581;
+  color: #ffd3a5;
   font-size: 1.6rem;
 }
 #developer-container .right-container #service-form .remove-button .material-icons,
 #developer-container .right-container #service-form .type-button .material-icons {
   font-size: 1rem;
   color: white;
-  background-color: #aed581;
+  background-color: #ffd3a5;
 }
 #developer-container .right-container #service-form .type-button {
   margin: 20px 0px 0px 0px;
@@ -1895,7 +1895,7 @@
   z-index: 1;
 }
 #map-container #footer a {
-  color: #33691e;
+  color: #E88300;
 }
 #map-container #footer img {
   height: 1rem;
@@ -2038,7 +2038,7 @@
   padding: 0;
 }
 #projects .panel-heading .panel-heading-container {
-  background-color: #33691e;
+  background-color: #E88300;
   color: rgba(255, 255, 255, 0.87);
   cursor: pointer;
 }
@@ -2094,7 +2094,7 @@
 }
 
 #services .item-list .service-type {
-  background-color: #558b2f;
+  background-color: #E69824;
   border-radius: 50%;
   color: rgba(255, 255, 255, 0.87);
   line-height: 0.5rem;
