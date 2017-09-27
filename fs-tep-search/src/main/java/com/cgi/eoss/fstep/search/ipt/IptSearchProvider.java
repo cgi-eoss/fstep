@@ -62,12 +62,14 @@ public class IptSearchProvider extends RestoSearchProvider {
     private static final Map<String, String> PARAMETER_NAME_MAPPING = ImmutableMap.<String, String>builder()
             .put("semantic", "q")
             .put("aoi", "geometry")
+            .put("s2ProcessingLevel", "processingLevel")
             .put("s1ProductType", "productType")
             .put("productDateStart", "startDate")
             .put("productDateEnd", "completionDate")
             .build();
     private static final Map<String, Function<String, String>> PARAMETER_VALUE_MAPPING = ImmutableMap.<String, Function<String, String>>builder()
             .put("productIdentifier", v -> "%" + v + "%")
+            .put("s2ProcessingLevel", v -> "LEVEL"+ v)
             .build();
 
     private final int priority;
@@ -200,11 +202,10 @@ public class IptSearchProvider extends RestoSearchProvider {
 
         feature.setProperty("extraParams", extraParams);
 
-        HttpUrl.Builder quicklookUrlBuilder = parameters.getRequestUrl().newBuilder();
-        parameters.getRequestUrl().queryParameterNames().forEach(quicklookUrlBuilder::removeAllQueryParameters);
-        quicklookUrlBuilder.addPathSegment("ql").addPathSegment(productSource).addPathSegment(productIdentifier);
-        featureLinks.add(new Link(quicklookUrlBuilder.build().toString(), "quicklook"));
-
+        Object quicklookURL = extraParams.get("thumbnail");
+        if (quicklookURL != null) {
+        		featureLinks.add(new Link(quicklookURL.toString(), "quicklook"));
+        }
         feature.setProperty("_links", featureLinks.stream().collect(Collectors.toMap(
                 Link::getRel,
                 l -> ImmutableMap.of("href", l.getHref())
