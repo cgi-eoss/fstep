@@ -2,6 +2,13 @@ group 'com.cgi.eoss.fs-tep'
 version '1.0.0-SNAPSHOT'
 
 apply plugin: 'base'
+apply plugin: 'eclipse'
+
+eclipse {
+ project {
+    name = 'third-party-pkg'
+ }
+}
 
 configurations { pkg }
 artifacts {
