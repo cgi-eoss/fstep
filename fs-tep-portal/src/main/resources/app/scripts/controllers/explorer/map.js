@@ -123,7 +123,10 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
 
         /** ----- MOUSE POSITION COORDINATES ----- **/
         var mousePositionControl = new ol.control.MousePosition({
-            coordinateFormat: ol.coordinate.createStringXY(4),
+            coordinateFormat: function(coord) {
+                coord[0] = (coord[0] + 180) % 360 - 180
+                return coord[0].toFixed(4) + ', ' + coord[1].toFixed(4)
+            },//ol.coordinate.createStringXY(4),
             projection: EPSG_4326,
             undefinedHTML: '&nbsp;'
         });
@@ -258,9 +261,18 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
             $scope.searchPolygon.searchAoi = polygonWSEN;
 
             //set the WKT when editing AOI manually
-            var area = angular.copy($scope.searchPolygon.selectedArea);
-            $scope.searchPolygon.wkt = (editedWkt ? editedWkt : new ol.format.WKT().writeGeometry(area.transform(EPSG_3857, EPSG_4326)));
+            var area = $scope.searchPolygon.selectedArea.clone().transform(EPSG_3857, EPSG_4326)
+            
+            //normalize lon to -180/180
+            area.applyTransform(function(coords) {
+               return coords.map(function(coord, idx) {
+                   coords[idx] = (idx % 2) ? coord : (coord + 180) % 360 - 180;
+                   return coords[idx]
+               });
+            });
 
+            $scope.searchPolygon.wkt = (editedWkt ? editedWkt : new ol.format.WKT().writeGeometry(area));
+            
             // re-fit when user has edited AOI manually
             if(refit && refit === true){
                 $scope.map.getView().fit(geom.getExtent(), /** @type {ol.Size} */ ($scope.map.getSize()));
