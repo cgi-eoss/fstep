@@ -9,6 +9,13 @@ version '3.0.12'
 
 apply plugin: 'java'
 apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'eclipse'
+
+eclipse {
+ project {
+    name = 'third-party-java-docker-java'
+ }
+}
 
 sourceSets {
     main {

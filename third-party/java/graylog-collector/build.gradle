@@ -9,6 +9,13 @@ version '1.0.0-SNAPSHOT'
 
 apply plugin: 'base'
 apply plugin: 'nebula.ospackage'
+apply plugin: 'eclipse'
+
+eclipse {
+ project {
+    name = 'third-party-java-graylog-collector'
+ }
+}
 
 ospackage {
     packageName 'graylog-collector'

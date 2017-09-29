@@ -42,6 +42,22 @@ mission:
     'catalogue':
       - 'SATELLITE'
 
+s2ProcessingLevel:
+  title: 'Processing level'
+  type: 'select'
+  defaultValue: ''
+  allowed:
+    values:
+      - value: ''
+        title: ''
+      - value: 'L1C'
+        title: 'L1C'
+      - value: 'L2A'
+        title: 'L2A'
+  onlyIf:
+    'mission':
+      - 'sentinel2'
+
 productDate:
   title: 'Product date'
   type: 'daterange'

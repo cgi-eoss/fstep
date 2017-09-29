@@ -2,6 +2,13 @@ group 'com.cgi.eoss.fs-tep'
 version '0.1.0'
 
 apply plugin: 'base'
+apply plugin: 'eclipse'
+
+eclipse {
+ project {
+    name = 'third-party-puppet'
+ }
+}
 
 configurations {
     moduleTars
