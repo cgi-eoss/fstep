@@ -206,6 +206,14 @@ public class IptSearchProvider extends RestoSearchProvider {
         if (quicklookURL != null) {
         		featureLinks.add(new Link(quicklookURL.toString(), "quicklook"));
         }
+        /*TODO A cleaner approach than above would be to build an internal reference to the quicklook and avoid
+         * providing a direct URL (which might not be available to the users), as below.  
+         * 
+        HttpUrl.Builder quicklookUrlBuilder = parameters.getRequestUrl().newBuilder();
+        parameters.getRequestUrl().queryParameterNames().forEach(quicklookUrlBuilder::removeAllQueryParameters);
+        quicklookUrlBuilder.addPathSegment("ql").addPathSegment(productSource).addPathSegment(productIdentifier);
+        featureLinks.add(new Link(quicklookUrlBuilder.build().toString(), "quicklook"));
+        */
         feature.setProperty("_links", featureLinks.stream().collect(Collectors.toMap(
                 Link::getRel,
                 l -> ImmutableMap.of("href", l.getHref())
