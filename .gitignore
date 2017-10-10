@@ -1,7 +1,9 @@
 .idea/
 *.iml
-*/out/
 .dist/
+*/out/
+*/bin/
+*.DS_Store
 .repository/
 .home/
 distribution/puppet/hieradata/standalone.local.yaml
