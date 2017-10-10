@@ -6,9 +6,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.model.QUser;
 import com.cgi.eoss.fstep.model.QUserPreference;
+import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.UserPreference;
 import com.cgi.eoss.fstep.persistence.dao.UserPreferenceDao;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.google.common.base.Strings;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.NumberPath;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +67,28 @@ public class UserPreferencesApiImpl extends BaseRepositoryApiImpl<UserPreference
     @Override
     public Page<UserPreference> findByName(String name, Pageable pageable) {
         return getFilteredResults(QUserPreference.userPreference.name.eq(name), pageable);
+    }
+
+
+    @Override
+    public Page<UserPreference> findByOwner(User user, String name, String type, Pageable pageable) {
+        return getFilteredResults(getPredicate(user, name, type), pageable);
+    }
+    
+    private Predicate getPredicate(User user, String name, String type) {
+        BooleanBuilder builder = new BooleanBuilder();
+        if (user != null) {
+            builder.and(getOwnerPath().eq(user));
+        }
+        if (!Strings.isNullOrEmpty(name)) {
+            builder.and(QUserPreference.userPreference.name.eq(name));
+        }
+        
+        if (!Strings.isNullOrEmpty(type)) {
+            builder.and(QUserPreference.userPreference.type.eq(type));
+        }
+
+        return builder.getValue();
     }
 
 }
