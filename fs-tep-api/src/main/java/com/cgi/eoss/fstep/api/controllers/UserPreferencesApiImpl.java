@@ -71,7 +71,7 @@ public class UserPreferencesApiImpl extends BaseRepositoryApiImpl<UserPreference
 
 
     @Override
-    public Page<UserPreference> findByOwner(User user, String name, String type, Pageable pageable) {
+    public Page<UserPreference> search(User user, String name, String type, Pageable pageable) {
         return getFilteredResults(getPredicate(user, name, type), pageable);
     }
     

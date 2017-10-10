@@ -35,8 +35,12 @@ public interface UserPreferencesApi extends BaseRepositoryApi<UserPreference>,
     void delete(@P("userPreference") UserPreference userPreference);
    
     @Override
+    @Query("select t from UserPreference t where t.owner=user")
+    Page<UserPreference> findByOwner(@Param("owner") User user, Pageable pageable);
+    
+    @Override
     @Query("select t from UserPreference t where t.owner=user and t.name=name and t.type=type")
-    Page<UserPreference> findByOwner(@Param("owner") User user, @Param("name")String name, @Param("type")String type, Pageable pageable);
+    Page<UserPreference> search(@Param("owner") User user, @Param("name")String name, @Param("type")String type, Pageable pageable);
 
     @Override
     @Query("select t from UserPreference t where not t.owner=user")

@@ -11,6 +11,6 @@ public interface UserPreferencesApiCustom {
 
     Page<UserPreference> findByName(String name, Pageable pageable);
     
-    Page<UserPreference> findByOwner(User user, String name, String type, Pageable pageable);
+    Page<UserPreference> search(User user, String name, String type, Pageable pageable);
 
 }
