@@ -88,7 +88,7 @@ public class JobsApiExtension {
                 .put("range", "0")
                 .put("sort", "timestamp%3Aasc")
                 .put("decorate", "false")
-                .put("fields", "timestamp%2Cmessage")
+                .put("stored_fields", "timestamp%2Cmessage")
                 .put("query", StrSubstitutor.replace(dockerJobLogQuery, ImmutableMap.of("zooId", job.getExtId()), "@{", "}"))
                 .build();
 
