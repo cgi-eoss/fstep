@@ -1,9 +1,9 @@
 package com.cgi.eoss.fstep.rpc;
 
 
+import org.springframework.scheduling.annotation.Async;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
-import org.springframework.scheduling.annotation.Async;
 
 public class LocalServiceLauncher {
     private final ManagedChannelBuilder inProcessChannelBuilder;
@@ -16,5 +16,11 @@ public class LocalServiceLauncher {
     public void asyncLaunchService(FstepServiceParams serviceParams, StreamObserver<FstepServiceResponse> responseObserver) {
         FstepServiceLauncherGrpc.FstepServiceLauncherStub serviceLauncher = FstepServiceLauncherGrpc.newStub(inProcessChannelBuilder.build());
         serviceLauncher.launchService(serviceParams, responseObserver);
+    }
+    
+    @Async
+    public void asyncStopService(StopServiceParams stopServiceParams, StreamObserver<StopServiceResponse> responseObserver) {
+        FstepServiceLauncherGrpc.FstepServiceLauncherStub serviceLauncher = FstepServiceLauncherGrpc.newStub(inProcessChannelBuilder.build());
+        serviceLauncher.stopService(stopServiceParams, responseObserver);
     }
 }
