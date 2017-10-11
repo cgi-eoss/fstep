@@ -60,6 +60,13 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
         }
     }
 
+    private void addTerminateLink(Resource resource, Job.Status status) {
+        if (status == Job.Status.RUNNING) {
+            // TODO Do this properly with a method reference
+            resource.add(new Link(resource.getLink("self").getHref() + "/terminate").withRel("terminate"));
+        }
+    }
+    
     @Component
     private final class BaseEntityProcessor implements ResourceProcessor<Resource<Job>> {
         @Override
@@ -70,7 +77,8 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addGuiLink(resource, entity.getStatus(), entity.getGuiUrl());
             addLogsLink(resource);
             addOutputLinks(resource, entity.getOutputs());
-
+            addTerminateLink(resource, entity.getStatus());
+            
             return resource;
         }
     }
@@ -85,7 +93,8 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addGuiLink(resource, entity.getStatus(), entity.getGuiUrl());
             addLogsLink(resource);
             addOutputLinks(resource, entity.getOutputs());
-
+            addTerminateLink(resource, entity.getStatus());
+            
             return resource;
         }
     }
@@ -99,7 +108,8 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addSelfLink(resource, entity);
             addGuiLink(resource, entity.getStatus(), entity.getGuiUrl());
             addLogsLink(resource);
-
+            addTerminateLink(resource, entity.getStatus());
+            
             return resource;
         }
     }
