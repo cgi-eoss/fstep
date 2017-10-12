@@ -11,12 +11,12 @@
     <div class="panel-body">
 
         <form id="searchForm" name="searchForm" ng-submit="search()">
-            <md-list id="active-catalog" class="catalogs" ng-show="searchParams.savedSearch.catalogue">
+            <md-list id="active-catalog" class="catalogs" ng-show="searchParams.catalogue">
                 <md-list-item class="md-2-line" ng-click="null">
-                    <md-icon class="material-icons md-24">{{getCatalogIcon(searchParams.selectedCatalog)}}</md-icon>
+                    <md-icon class="material-icons md-24">{{getCatalogIcon(selectedCatalog)}}</md-icon>
                     <div class="md-list-item-text">
-                        <h3>{{searchParams.selectedCatalog.title}}</h3>
-                        <p>{{searchParams.selectedCatalog.description}}</p>
+                        <h3>{{selectedCatalog.title}}</h3>
+                        <p>{{selectedCatalog.description}}</p>
                     </div>
                     <md-button class="md-icon-button" ng-click="closeCatalog()">
                         <md-icon class="md-default-theme material-icons" >close</md-icon>
@@ -27,7 +27,7 @@
 
             <div ng-repeat="(index, field) in catalogues">
 
-                <section ng-if="field.type === 'catalogue' && !searchParams.savedSearch.catalogue">
+                <section ng-if="field.type === 'catalogue' && !searchParams.catalogue">
 
                     <div class="row">
                         <div class="col-xs-12">
@@ -48,7 +48,7 @@
 
                 </section>
 
-                <div ng-if="searchParams.savedSearch.catalogue">
+                <div ng-if="searchParams.catalogue">
 
                     <section ng-if="displayField(field, 'select')" ng-init="getValues()">
                         <div class="row">
@@ -58,7 +58,7 @@
                         </div>
                         <div class="row" ng-init="value = setDefaultValue(field, index)">
                             <div class="col-xs-12">
-                                <md-select ng-model="searchParams.savedSearch[index]" aria-label="Select a mission" ng-change="getValues()">
+                                <md-select ng-model="searchParams[index]" aria-label="Select a mission" ng-change="getValues()">
                                     <md-option ng-repeat="value in allowedValues[field.title]" ng-value="value.value">
                                         <span>{{value.title}}</span>
                                     </md-option>
@@ -68,30 +68,7 @@
                     </section>
 
                     <section ng-if="displayField(field, 'polygon')">
-                        <div class="row">
-                            <div class="col-xs-12">
-                                <md-subheader class="md-accent md-subheader-title">{{field.title}}</md-subheader>
-                            </div>
-                        </div>
-                        <div class="row" ng-init="setDefaultValue(field, index)">
-                            <div class="col-xs-10">
-                                <md-input-container md-no-float>
-                                    <input ng-model="searchParams.savedSearch[index]" aria-label="{{field.title}}" />
-                                    <div class="hint" ng-show="true">{{value.description}}</div>
-                                </md-input-container>
-                            </div>
-                            <div class="col-xs-2 no-padding">
-                                <button type="button" class="btn search-input-button"
-                                        ng-click="pastePolygon(index)"
-                                        aria-label="Copy From Map"
-                                        uib-tooltip="Copy From Map"
-                                        tooltip-placement="right"
-                                        tooltip-trigger="mouseenter"
-                                        tooltip-append-to-body="true">
-                                    <i class="material-icons">content_copy</i>
-                                </button>
-                            </div>
-                        </div>
+                        <aoi-field value="searchParams[index]" label="field.title" description="value.description"></aoi-field>
                     </section>
 
                     <section ng-if="displayField(field, 'text')">
@@ -103,7 +80,7 @@
                         <div class="row" ng-init="setDefaultValue(field, index)">
                             <div class="col-xs-12">
                                 <md-input-container md-no-float>
-                                    <input ng-model="searchParams.savedSearch[index]" aria-label="{{field.title}}" />
+                                    <input ng-model="searchParams[index]" aria-label="{{field.title}}" />
                                     <div class="hint" ng-show="true">{{field.description}}</div>
                                 </md-input-container>
                             </div>
@@ -119,7 +96,7 @@
                         <div class="row" ng-init=" value = setDefaultValue(field, index)">
                             <div class="col-xs-12">
                                 <md-input-container md-no-float>
-                                    <input ng-model="searchParams.savedSearch[index]" type="number" min="{{field.allowed.min}}" max="{{field.allowed.max}}"  ng-value="value" aria-label="{{field.title}}" />
+                                    <input ng-model="searchParams[index]" type="number" min="{{field.allowed.min}}" max="{{field.allowed.max}}"  ng-value="value" aria-label="{{field.title}}" />
                                     <div class="hint" ng-show="true">{{field.description}}</div>
                                 </md-input-container>
                             </div>
@@ -134,11 +111,11 @@
                         </div>
                         <div class="row" ng-init="setDefaultValue(field, index)">
                             <div class="col-md-12 col-lg-6 no-padding date-container">
-                                <md-datepicker ng-required="true" ng-model="searchParams.savedSearch[index + 'Start']" md-placeholder="Start date" />
+                                <md-datepicker ng-required="true" ng-model="searchParams[index + 'Start']" md-placeholder="Start date" />
                             </div>
 
                             <div class="col-md-12 col-lg-6 no-padding date-container">
-                                <md-datepicker ng-required="true" ng-model="searchParams.savedSearch[index + 'End']" md-placeholder="End date" />
+                                <md-datepicker ng-required="true" ng-model="searchParams[index + 'End']" md-placeholder="End date" />
                             </div>
                         </div>
                     </section>
@@ -150,7 +127,7 @@
 
         <md-button id="searchButton"
                    class="icon-button md-icon-button md-fab md-mini btn-success"
-                   ng-if="searchParams.savedSearch.catalogue"
+                   ng-if="searchParams.catalogue"
                    type="submit"
                    form="searchForm"
                    ng-disabled="searchForm.$invalid"

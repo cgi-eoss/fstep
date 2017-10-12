@@ -1,0 +1,28 @@
+<md-content>
+    <md-list class="item-list md-dense">
+        <md-list-item class="md-1-line"
+            ng-repeat="aoi in aois"
+            ng-click="selectAoi(aoi);"
+            ng-class="{active: aoi == selectedAoi}">
+            <div class="md-list-item-text" layout="column">
+                <h3 class="selectable aoi-name">{{aoi.name}}</h3>
+            </div>
+
+            <md-button class="toolbar-button md-secondary"
+                    aria-label="Show on map"
+                    uib-tooltip="Show on map"
+                    tooltip-placement="top" tooltip-trigger="mouseenter" tooltip-append-to-body="true"
+                    ng-click="centerAoi(aoi)">
+                <i class="material-icons">center_focus_strong</i>
+            </md-button>
+            <md-button class="toolbar-button md-secondary"
+                aria-label="Delete area"
+                uib-tooltip="Delete area"
+                tooltip-placement="top" tooltip-trigger="mouseenter" tooltip-append-to-body="true"
+                ng-click="deleteAoi(aoi)" ng-if="aoi.id">
+            <i class="material-icons">delete</i>
+            </md-button>
+        </md-list-item>
+    </md-list>
+    <div ng-if="pagingData != null" id="paging" fstep-paging="{{pagingData}}"></div>
+</md-content>
