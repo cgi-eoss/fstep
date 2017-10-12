@@ -46,6 +46,7 @@ define([
         'URL': fstepConfig.apiUrl,
         'URLv2': fstepConfig.apiUrlv2,
         'SSO_URL': fstepConfig.ssoUrl,
+        'ANALYST_URL': fstepConfig.analystUrl,
         'MAPBOX_URL': "https://api.mapbox.com/styles/v1/mapbox/streets-v8/tiles/{z}/{x}/{y}?access_token=" + fstepConfig.mapboxToken
     });
     /* jshint +W117 */
