@@ -98,7 +98,7 @@ public class JobsApiImpl extends BaseRepositoryApiImpl<Job> implements JobsApiCu
     }
 
     private Predicate getFilterPredicate(String filter, Collection<Status> statuses) {
-        BooleanBuilder builder = new BooleanBuilder();
+        BooleanBuilder builder = new BooleanBuilder(Expressions.asBoolean(true).isTrue());
 
         if (!Strings.isNullOrEmpty(filter)) {
             builder.and(QJob.job.id.stringValue().contains(filter)
@@ -106,7 +106,7 @@ public class JobsApiImpl extends BaseRepositoryApiImpl<Job> implements JobsApiCu
                     .or(QJob.job.config.service.name.containsIgnoreCase(filter)));
         }
 
-        if (!statuses.isEmpty()) {
+        if (statuses != null && !statuses.isEmpty()) {
             builder.and(QJob.job.status.in(statuses));
         }
 
@@ -114,7 +114,7 @@ public class JobsApiImpl extends BaseRepositoryApiImpl<Job> implements JobsApiCu
     }
     
     private Predicate getFilterPredicate(String filter, Collection<Status> statuses, Long parentId) {
-        BooleanBuilder builder = new BooleanBuilder(Expressions.TRUE);
+        BooleanBuilder builder = new BooleanBuilder(Expressions.asBoolean(true).isTrue());
 
         if (!Strings.isNullOrEmpty(filter)) {
             builder.and(QJob.job.id.stringValue().contains(filter)
@@ -122,7 +122,7 @@ public class JobsApiImpl extends BaseRepositoryApiImpl<Job> implements JobsApiCu
                     .or(QJob.job.config.service.name.containsIgnoreCase(filter)));
         }
 
-        if (!statuses.isEmpty()) {
+        if (statuses != null && !statuses.isEmpty()) {
             builder.and(QJob.job.status.in(statuses));
         }
         
