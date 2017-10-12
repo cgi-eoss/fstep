@@ -13,6 +13,7 @@ define(['../fstepmodules'], function (fstepmodules) {
         $scope.user = undefined;
         $scope.ssoUrl = fstepProperties.SSO_URL;
         $scope.fstepUrl = fstepProperties.FSTEP_URL;
+        $scope.analystpUrl = fstepProperties.ANALYST_URL;
 
         $scope.isActive = function (route) {
             return route === $location.path();
