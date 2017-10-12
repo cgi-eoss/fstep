@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.api.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
@@ -15,20 +16,23 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.NumberPath;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
-@RequiredArgsConstructor(onConstructor = @__(@Autowired))
 @Getter
 @Component
 public class UserPreferencesApiImpl extends BaseRepositoryApiImpl<UserPreference>
         implements UserPreferencesApiCustom {
 
-    // TODO move this to configuration
-    private static final int MAX_PREFERENCES_PER_USER = 200;
+    private int maxPreferencesPerUser;
     private final FstepSecurityService securityService;
     private final UserPreferenceDao dao;
 
-
+    @Autowired
+    public UserPreferencesApiImpl(FstepSecurityService securityService, UserPreferenceDao dao, @Value("${fstep.api.maxPreferencesPerUser:200}") int maxPreferencesPerUser) {
+        this.securityService = securityService;
+        this.dao = dao;
+        this.maxPreferencesPerUser = maxPreferencesPerUser;
+    }
+    
     @Override
     public <S extends UserPreference> S save(S entity) {
         if (entity.getOwner() == null) {
@@ -36,9 +40,9 @@ public class UserPreferencesApiImpl extends BaseRepositoryApiImpl<UserPreference
         }
         // Allow max items per user
         int currentPreferenceCount = getDao().findByOwner(entity.getOwner()).size();
-        if (currentPreferenceCount >= MAX_PREFERENCES_PER_USER) {
+        if (currentPreferenceCount >= maxPreferencesPerUser) {
             throw new org.springframework.security.access.AccessDeniedException(
-                    "User preference limit of " + MAX_PREFERENCES_PER_USER + " reached");
+                    "User preference limit of " + maxPreferencesPerUser + " reached");
         }
         return getDao().save(entity);
     }
