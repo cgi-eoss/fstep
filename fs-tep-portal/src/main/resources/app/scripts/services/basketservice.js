@@ -308,7 +308,10 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
             var deferred = $q.defer();
             halAPI.from(rootUri + '/databaskets/' + databasket.id + '/fromSearch')
                 .newRequest()
-                .post(searchParams)
+                .withRequestOptions({
+                    qs: searchParams
+                })
+                .post()
                 .result
                 .then(
                     function(document) {
