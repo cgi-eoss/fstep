@@ -65,7 +65,7 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Job buildNew(String extId, String ownerId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs) {
+    public Job buildNew(String extId, String ownerId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs, Job parentJob) {
         User owner = userDataService.getByName(ownerId);
         FstepService service = serviceDataService.getByName(serviceId);
 
@@ -73,11 +73,17 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         config.setLabel(Strings.isNullOrEmpty(jobConfigLabel) ? null : jobConfigLabel);
         config.setInputs(inputs);
 
-        return buildNew(jobConfigDataService.save(config), extId, owner);
+        return buildNew(jobConfigDataService.save(config), extId, owner, parentJob);
+    }
+    
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Job buildNew(String extId, String ownerId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs) {
+    		return buildNew(extId, ownerId, serviceId, jobConfigLabel, inputs, null);
     }
 
-    private Job buildNew(JobConfig jobConfig, String extId, User owner) {
-        return dao.save(new Job(jobConfig, extId, owner));
+    private Job buildNew(JobConfig jobConfig, String extId, User owner, Job parentJob) {
+        return dao.save(new Job(jobConfig, extId, owner, parentJob));
     }
 
 }

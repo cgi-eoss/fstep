@@ -106,7 +106,9 @@ CREATE TABLE fstep_jobs (
   status     CHARACTER VARYING(255) NOT NULL CHECK (status IN
                                                     ('CREATED', 'RUNNING', 'COMPLETED', 'ERROR', 'CANCELLED')),
   job_config BIGINT                 NOT NULL FOREIGN KEY REFERENCES fstep_job_configs (id),
-  owner      BIGINT                 NOT NULL FOREIGN KEY REFERENCES fstep_users (uid)
+  owner      BIGINT                 NOT NULL FOREIGN KEY REFERENCES fstep_users (uid),
+  parent_job_id BIGINT REFERENCES fstep_jobs (id),
+  worker_id CHARACTER VARYING(255)
 );
 CREATE UNIQUE INDEX fstep_jobs_ext_id_idx
   ON fstep_jobs (ext_id);
