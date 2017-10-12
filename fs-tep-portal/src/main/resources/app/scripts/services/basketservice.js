@@ -304,6 +304,29 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
             }
         };
 
+        this.addToDatabasketFromSearch = function(databasket, searchParams) {
+            var deferred = $q.defer();
+            halAPI.from(rootUri + '/databaskets/' + databasket.id + '/fromSearch')
+                .newRequest()
+                .post(searchParams)
+                .result
+                .then(
+                    function(document) {
+                        if (200 <= document.status && document.status < 300) {
+                            MessageService.addInfo('Files successfully added', 'Files added to ' + databasket.name);
+                            deferred.resolve(document);
+                        } else {
+                            MessageService.addError('Could not add file/s to Databasket ' + databasket.name, document);
+                            deferred.reject();
+                        }
+                    }, function(error) {
+                        MessageService.addError('Could not add file/s to Databasket ' + databasket.name, error);
+                        deferred.reject();
+                });
+
+            return deferred.promise;
+        }
+
         this.addToDatabasket = function(databasket, items) {
             var itemLinks = [];
             var promises = [];

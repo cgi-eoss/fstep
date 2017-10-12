@@ -78,5 +78,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             BasketService.addToDatabasket($scope.dbParams.selectedDatabasket, items);
         };
 
+        $scope.addToDatabasketFromSearch = function() {
+            BasketService.addToDatabasketFromSearch($scope.dbParams.selectedDatabasket, SearchService.params.searchParameters);
+        }
+
     }]);
 });

@@ -27,7 +27,7 @@ require.config({
         domReady: 'vendor/domready/domReady',
         jquery: 'vendor/jquery/jquery',
         moment: 'vendor/moment/min/moment-with-locales',
-        ol: 'vendor/openlayers/ol',
+        ol: 'vendor/openlayers/ol-debug',
         requireLib: 'vendor/requirejs/require',
         traversonAngular: 'vendor/traverson-angular/browser/dist/traverson-angular',
         traversonHal: 'vendor/traverson-hal/browser/dist/traverson-hal',
@@ -35,6 +35,7 @@ require.config({
         codeMirror: 'vendor/codemirror/lib/codemirror',
         uiCodeMirror: 'js/ui-codemirror',
         x2js: 'vendor/x2js/x2js',
+        shp: 'vendor/shp/dist/shp.min',
 
         // FS-TEP modules
         fstepConfig: 'fstepConfig',

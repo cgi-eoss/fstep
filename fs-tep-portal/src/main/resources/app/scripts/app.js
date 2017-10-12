@@ -124,15 +124,9 @@ define([
     /* Custom angular-material color theme */
     app.config(['$mdThemingProvider', function ($mdThemingProvider) {
         $mdThemingProvider.theme('default')
-            .primaryPalette('light-green', {
-                'default': '800',
-                'hue-1': '300',
-                'hue-2': '900'
+            .primaryPalette('teal', {
             })
-            .accentPalette('pink', {
-                'default': 'A200',
-                'hue-1': 'A100',
-                'hue-2': 'A700'
+            .accentPalette('orange', {
             })
             .warnPalette('red')
             .backgroundPalette('grey');

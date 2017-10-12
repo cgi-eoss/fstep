@@ -1,55 +1,32 @@
-<md-menu id="mapMenu">
+<div id="map" ng-controller="MapCtrl">
+    <md-menu id="mapMenu">
+        <button type="button"
+                class="btn btn-control map-item map-type"
+                ng-click="$mdOpenMenu($event)"
+                aria-label="Menu"
+                title="{{mapType.active}} (Map Layer)">
+            <i class="material-icons">layers</i>
+        </button>
+        <md-menu-content id="map-layer">
+            <md-menu-item ng-class="{'active': backgroundLayer == 'Open Street'}">
+                <md-button ng-click="setBackgroundLayer('OSM')" aria-label="Open Street Map">Open Street Map</md-button>
+            </md-menu-item>
+            <md-menu-item ng-class="{'active': backgroundLayer == 'MapBox'}">
+                <md-button ng-click="setBackgroundLayer('MB')" aria-label="MapBox Map">MapBox Map</md-button>
+            </md-menu-item>
+        </md-menu-content>
+    </md-menu>
+            
     <button type="button"
-            class="btn btn-control map-item map-type"
-            ng-click="$mdOpenMenu($event)"
-            aria-label="Menu"
-            title="{{mapType.active}} (Map Layer)">
-        <i class="material-icons">layers</i>
-    </button>
-    <md-menu-content id="map-layer">
-        <md-menu-item ng-class="{'active': mapType.active == 'Open Street'}">
-            <md-button ng-click="setMapType('OSM')" aria-label="Open Street Map">Open Street Map</md-button>
-        </md-menu-item>
-        <md-menu-item ng-class="{'active': mapType.active == 'MapBox'}">
-            <md-button ng-click="setMapType('MB')" aria-label="MapBox Map">MapBox Map</md-button>
-        </md-menu-item>
-    </md-menu-content>
-</md-menu>
-
-<button type="button"
         class="btn btn-control map-item map-reset"
         ng-click="clearMap()"
         title="Clear Map"
         aria-label="Clear Map">
     <i class="material-icons">layers_clear</i>
-</button>
+    </button>
 
-<button type="button"
-        class="btn btn-control map-item map-clear"
-        ng-click="clearSearchPolygon()"
-        aria-label="Remove Polygon"
-        title="Remove Search Polygon">
-    <i class="material-icons">clear</i>
-</button>
-
-<button type="button"
-        class="btn btn-control map-item polygon-edit"
-        ng-click="editPolygonDialog($event, searchPolygon)"
-        aria-label="Edit Polygon"
-        title="Edit Polygon">
-    <i class="material-icons">edit</i>
-</button>
-
-<button type="button"
-        class="btn btn-control map-item polygon-copy"
-        ng-click="copyPolygon()"
-        ng-disabled="searchPolygon.wkt === undefined"
-        aria-label="Copy Polygon to Clipboard"
-        title="Copy Polygon to Clipboard">
-    <i class="material-icons">content_copy</i>
-</button>
-
-<section id="footer">
-    <a href="https://github.com/cgi-eoss/fstep/blob/development/LICENSE.txt">GNU Affero General Public License v3.0</a>
-    <a href="https://github.com/cgi-eoss/fstep"><img src="images/github.ico" alt="Github Source Code"></a>
-</section>
+    <section id="footer">
+            <a href="https://github.com/cgi-eoss/fstep/blob/development/LICENSE.txt">GNU Affero General Public License v3.0</a>
+            <a href="https://github.com/cgi-eoss/fstep"><img src="images/github.ico" alt="Github Source Code"></a>
+    </section>
+</div>

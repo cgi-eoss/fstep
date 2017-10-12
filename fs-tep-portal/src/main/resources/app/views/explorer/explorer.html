@@ -21,13 +21,8 @@
                 </div>
             </md-sidenav>
         </section>
-
-        <section id="map-container">
-            <div id="map" ng-controller="MapCtrl">
-                <div ng-include src="'views/explorer/map.html'" onload="finishLoading('map'); updateMap()"></div>
-            </div>
+        <section id="map-section" ng-include="'views/explorer/map.html'" onload="finishLoading('map')">
         </section>
-
         <section id="bottombar-container"
                  ng-class="{'col-xs-12 col-sm-12 col-md-8 col-xl-9 col-xxl-10':navInfo.sideViewVisible, 'col-md-12 wide':!navInfo.sideViewVisible, 'bottombar-tall': bottombarTall === true}"
                  class="explorer-content animationIf no-padding"
