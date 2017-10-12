@@ -12,8 +12,8 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
 
         var mousePositionControl = new ol.control.MousePosition({
             coordinateFormat: function(coord) {
-                coord[0] = (coord[0] + 180) % 360 - 180
-                return coord[0].toFixed(4) + ', ' + coord[1].toFixed(4)
+                coord[0] = (coord[0] + 180) % 360 - 180;
+                return coord[0].toFixed(4) + ', ' + coord[1].toFixed(4);
             },//ol.coordinate.createStringXY(4),
             projection: 'EPSG:4326',
             undefinedHTML: '&nbsp;'
@@ -52,11 +52,11 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
 
         this.getMap = function() {
             return map;
-        }
+        };
 
         this.fitExtent = function(extent) {
             map.getView().fit(extent, map.getSize());
-        }
+        };
 
         this.setBackgroundLayer = function(layer) {
             if(layer === 'OSM') {
@@ -70,7 +70,7 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
 
         this.getBackgroundLayer = function() {
             return map.getLayers(0).get('name');
-        }
+        };
 
     }]);
 });

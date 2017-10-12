@@ -24,8 +24,8 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
 
             return function(record) {
                 record.name = record.name.replace(regex, '');
-            }
-        }
+            };
+        };
 
         this.setPreference = function(type, key, value) {
             var deferred = $q.defer();
@@ -39,16 +39,18 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
                 .result
                 .then(
                 function (response) {
-                    if (response.statusText == 'Created')
+                    if (response.statusText === 'Created') {
                         deferred.resolve(response.data);
-                    else if (response.statusText == 'Conflict') 
-                        deferred.reject('Conflict')
+                    }
+                    else if (response.statusText === 'Conflict') {
+                        deferred.reject('Conflict');
+                    }
                 }, function (error) {
                     MessageService.addError('Set preference failed', error);
                     deferred.reject();
                 });
             return deferred.promise;
-        }
+        };
 
         this.deletePreference = function(id) {
             var deferred = $q.defer();
@@ -64,7 +66,7 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
                     deferred.reject();
                 });
             return deferred.promise;
-        }
+        };
 
         
         this.updatePreference = function(id, value) {
@@ -84,14 +86,14 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
                     deferred.reject();
                 });
             return deferred.promise;
-        }
+        };
 
         this.updatePreferenceWithName = function(type, key, value) {
             var self = this;
             this.getPreferenceByName(type, key).then(function(record) {
                 return self.updatePreference(record.id, value);
             });
-        }
+        };
 
 
         this.getPreferences = function(type) {
@@ -141,7 +143,7 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
                     deferred.reject();
                 });
             return deferred.promise;
-        }
+        };
 
         this.getPreferenceByName = function(type, name) {
             var deferred = $q.defer();
@@ -165,7 +167,7 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
                     deferred.reject();
                 });
             return deferred.promise;
-        }
+        };
 
 
         return this;

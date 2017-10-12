@@ -36,7 +36,7 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                 features: new ol.Collection()
             }),
             style: drawLayerStyle
-        })
+        });
 
         map.addLayer(drawLayer);
 
@@ -83,8 +83,10 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                 map.removeInteraction(this.drawInteraction);
                 delete this.drawInteraction;
             }
-            if (type == 'bbox') {
-                var drawInteraction = new ol.interaction.Draw({
+
+            var drawInteraction;
+            if (type === 'bbox') {
+                drawInteraction = new ol.interaction.Draw({
                     features: drawLayer.getSource().getFeaturesCollection(),
                     type: 'Circle',
                     geometryFunction: bboxGeometryFunction,
@@ -93,7 +95,7 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                 });
             }
             else {
-                var drawInteraction = new ol.interaction.Draw({
+                drawInteraction = new ol.interaction.Draw({
                     features: drawLayer.getSource().getFeaturesCollection(),
                     type: 'Polygon',
                     wrapX: true
@@ -135,15 +137,14 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
             });
 
             map.addInteraction(drawInteraction);
-
             this.drawInteraction = drawInteraction;
-        }
+        };
 
         this.setDrawArea = function(aoi, centerOnMap) {
             drawLayer.getSource().clear();
             if (aoi && aoi.geometry) {
                 var geometry = new ol.format.GeoJSON().readGeometry(aoi.geometry);
-                geometry.transform('EPSG:4326', 'EPSG:3857')
+                geometry.transform('EPSG:4326', 'EPSG:3857');
                 var feature = new ol.Feature({
                     geometry: geometry
                 });
@@ -153,14 +154,14 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                     MapService.fitExtent(geometry.getExtent());
                 }
             }
-        }
+        };
 
 
         rootScope.$watch(aoiService.getSearchAoi, function(aoi) {
             aoiLayer.getSource().clear();
             if (aoi && aoi.geometry) {
                 var geometry = new ol.format.GeoJSON().readGeometry(aoi.geometry);
-                geometry.transform('EPSG:4326', 'EPSG:3857')
+                geometry.transform('EPSG:4326', 'EPSG:3857');
                 var feature = new ol.Feature({
                     geometry: geometry
                 });
@@ -173,7 +174,7 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
             if (aoi) {
                 MapService.fitExtent(aoi.getGeometry().getExtent());
             }
-        }
+        };
 
     }]);
 });

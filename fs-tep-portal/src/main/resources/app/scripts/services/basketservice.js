@@ -325,7 +325,7 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
                 });
 
             return deferred.promise;
-        }
+        };
 
         this.addToDatabasket = function(databasket, items) {
             var itemLinks = [];
