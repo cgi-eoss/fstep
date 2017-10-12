@@ -36,12 +36,12 @@ public class DataBasketsApiExtension {
     private SearchApi searchApi;
     private CatalogueService catalogueService;
     private DatabasketDataService databasketDataService;
-    
+
     private int maxItemsDatabasketsFromSearch;
-    
+
     @Autowired
-    public DataBasketsApiExtension(SearchApi searchApi, CatalogueService catalogueService,
-            DatabasketDataService databasketDataService, @Value("${fstep.api.maxItemsDatabasketsFromSearch:500}") int maxItemsDatabasketsFromSearch) {
+    public DataBasketsApiExtension(SearchApi searchApi, CatalogueService catalogueService, DatabasketDataService databasketDataService,
+            @Value("${fstep.api.maxItemsDatabasketsFromSearch:500}") int maxItemsDatabasketsFromSearch) {
         this.searchApi = searchApi;
         this.catalogueService = catalogueService;
         this.databasketDataService = databasketDataService;
@@ -56,11 +56,11 @@ public class DataBasketsApiExtension {
             LOG.debug("Populating databasket {} with search results", databasket.getId());
             SearchResults searchResults = searchApi.search(request);
             Page resultPage = searchResults.getPage();
-            // TODO Allow max number of items to be added
             long totalElements = resultPage.getTotalElements();
             if (totalElements > maxItemsDatabasketsFromSearch) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(String.format("Too many search results to be added. Allowed: %s - requested %s", maxItemsDatabasketsFromSearch, totalElements));
+                        .body(String.format("Too many search results to be added. Allowed: %s - requested %s",
+                                maxItemsDatabasketsFromSearch, totalElements));
             }
             long pageNumber = resultPage.getNumber();
             long totalPages = resultPage.getTotalPages();
@@ -68,7 +68,8 @@ public class DataBasketsApiExtension {
             for (long i = pageNumber; i < totalPages; i++) {
                 TreeMap<String, String[]> additionalParameters = new TreeMap<String, String[]>();
                 additionalParameters.put("page", new String[] {Long.toString(i + 1)});
-                RequestWithAdditionalParameters requestWithAdditionalParameters = new RequestWithAdditionalParameters(request, additionalParameters);
+                RequestWithAdditionalParameters requestWithAdditionalParameters =
+                        new RequestWithAdditionalParameters(request, additionalParameters);
                 searchResults = searchApi.search(requestWithAdditionalParameters);
                 addSearchResultsToDatabasket(databasket, searchResults);
             }
@@ -77,8 +78,8 @@ public class DataBasketsApiExtension {
                     .body(String.format("Search results added to databasket %s - %s", databasket.getId(), databasket.getName()));
         } catch (IOException e) {
             LOG.error("Unable to add search results to databasket {} Error: {}", databasket.getId(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(String.format("Unable to add search results to databasket %s. Error: " + e.getMessage(), databasket.getId()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    String.format("Unable to add search results to databasket %s. Error: " + e.getMessage(), databasket.getId()));
 
         }
     }
@@ -111,7 +112,7 @@ public class DataBasketsApiExtension {
             additionalParameters = new TreeMap<String, String[]>();
             additionalParameters.putAll(additionalParams);
         }
-        
+
         @Override
         public String getParameter(final String name) {
             String[] strings = getParameterMap().get(name);
