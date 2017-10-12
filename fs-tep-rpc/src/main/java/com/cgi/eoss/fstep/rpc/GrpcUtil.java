@@ -51,4 +51,18 @@ public class GrpcUtil {
                 .setServiceId(job.getConfig().getService().getName())
                 .build();
     }
+    
+    /**
+     * <p>Convert a {@link com.cgi.eoss.fstep.model.Service} to its gRPC {@link Service} representation.</p>
+     *
+     * @param job The service to be converted.
+     * @return The input service mapped to {@link Service}.
+     */
+    public static Service toRpcService(com.cgi.eoss.fstep.model.FstepService service) {
+        return Service.newBuilder()
+        			.setId(String.valueOf(service.getId()))
+                .setName(service.getName())
+                .setDockerImageTag(service.getDockerTag())
+                .build();
+    }
 }

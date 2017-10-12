@@ -1,5 +1,12 @@
 package com.cgi.eoss.fstep.api.mappings;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.rest.webmvc.support.RepositoryEntityLinks;
+import org.springframework.hateoas.EntityLinks;
+import org.springframework.hateoas.Link;
+import org.springframework.hateoas.Resource;
+import org.springframework.hateoas.ResourceProcessor;
+import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.projections.DetailedJob;
@@ -8,13 +15,6 @@ import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.google.common.base.Strings;
 import com.google.common.collect.Multimap;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.rest.webmvc.support.RepositoryEntityLinks;
-import org.springframework.hateoas.EntityLinks;
-import org.springframework.hateoas.Link;
-import org.springframework.hateoas.Resource;
-import org.springframework.hateoas.ResourceProcessor;
-import org.springframework.stereotype.Component;
 
 /**
  * <p>HATEOAS resource processor for {@link Job}s. Adds extra _link entries for client use, e.g. job container logs.</p>
@@ -67,6 +67,13 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
         }
     }
     
+    private void addCancelLink(Resource resource, Job.Status status) {
+        if (status == Job.Status.CREATED) {
+            // TODO Do this properly with a method reference
+            resource.add(new Link(resource.getLink("self").getHref() + "/cancel").withRel("cancel"));
+        }
+    }
+    
     @Component
     private final class BaseEntityProcessor implements ResourceProcessor<Resource<Job>> {
         @Override
@@ -78,6 +85,7 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addLogsLink(resource);
             addOutputLinks(resource, entity.getOutputs());
             addTerminateLink(resource, entity.getStatus());
+            addCancelLink(resource, entity.getStatus());
             
             return resource;
         }
@@ -94,6 +102,7 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addLogsLink(resource);
             addOutputLinks(resource, entity.getOutputs());
             addTerminateLink(resource, entity.getStatus());
+            addCancelLink(resource, entity.getStatus());
             
             return resource;
         }
@@ -109,6 +118,7 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addGuiLink(resource, entity.getStatus(), entity.getGuiUrl());
             addLogsLink(resource);
             addTerminateLink(resource, entity.getStatus());
+            addCancelLink(resource, entity.getStatus());
             
             return resource;
         }

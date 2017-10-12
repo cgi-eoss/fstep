@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.rpc.CancelJobParams;
+import com.cgi.eoss.fstep.rpc.CancelJobResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
@@ -140,6 +142,24 @@ public class JobsApiExtension {
         latch.await(1, TimeUnit.MINUTES);
         return ResponseEntity.noContent().build();
     }
+    
+    @GetMapping("/{jobId}/cancel")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#job, 'write')")
+    @ResponseBody
+    public void cancelJob(@ModelAttribute("jobId") Job job) throws IOException {
+        CancelJobParams.Builder cancelJobParamsBuilder = CancelJobParams.newBuilder()
+                .setJob(GrpcUtil.toRpcJob(job));
+
+        CancelJobParams cancelJobParams = cancelJobParamsBuilder.build();
+
+        LOG.info("Cancelling job via REST API: {}", cancelJobParams);
+        
+        final CountDownLatch latch = new CountDownLatch(1);
+        JobCancelObserver responseObserver = new JobCancelObserver(latch);
+
+        localServiceLauncher.asyncCancelJob(cancelJobParams, responseObserver);
+        
+    }
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -178,6 +198,30 @@ public class JobsApiExtension {
         @Override
         public void onError(Throwable t) {
             LOG.error("Failed to stop service via REST API", t);
+        }
+
+        @Override
+        public void onCompleted() {
+            // No-op, the user has long stopped listening here
+        }
+    }
+    
+    private static final class JobCancelObserver implements StreamObserver<CancelJobResponse> {
+        private final CountDownLatch latch;
+
+        JobCancelObserver(CountDownLatch latch) {
+            this.latch = latch;
+        }
+
+        @Override
+        public void onNext(CancelJobResponse value) {
+            LOG.debug("Received CancelJobResponse: {}", value);
+            latch.countDown();
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            LOG.error("Failed to cancel job via REST API", t);
         }
 
         @Override

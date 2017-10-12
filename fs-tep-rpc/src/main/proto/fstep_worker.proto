@@ -9,6 +9,7 @@ option java_package = "com.cgi.eoss.fstep.rpc.worker";
 
 service FstepWorker {
     rpc PrepareEnvironment (JobInputs) returns (JobEnvironment);
+    rpc PrepareInputs (JobInputs) returns (JobEnvironment);
     rpc LaunchContainer (JobDockerConfig) returns (LaunchContainerResponse);
     rpc ExecuteServiceCmd (ServiceCmd) returns (ServiceCmdResponse);
     rpc GetPortBindings (Job) returns (PortBindings);
@@ -19,9 +20,36 @@ service FstepWorker {
     rpc GetOutputFile (GetOutputFileParam) returns (stream OutputFileResponse);
 }
 
+message JobSpec {
+	Service service = 1;
+	Job job = 2;
+	repeated JobParam inputs = 3;
+	bool hasTimeout = 4;
+	int32 timeoutValue = 5;
+	repeated string exposedPorts = 6;
+}
+
 message JobInputs {
     Job job = 1;
     repeated JobParam inputs = 2;
+}
+
+message JobEvent{
+	JobEventType jobEventType = 1;
+}
+enum JobEventType{
+	DATA_FETCHING_STARTED = 0;
+	DATA_FETCHING_COMPLETED = 1;
+	PROCESSING_STARTED = 2;
+}
+
+message JobError{
+	string errorDescription = 1;
+}
+
+message ContainerExit {
+    int32 exitCode = 1;
+    JobEnvironment jobEnvironment = 2;
 }
 
 message JobEnvironment {
