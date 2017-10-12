@@ -1,4 +1,4 @@
-define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
+define(['../../../fstepmodules','ol', 'shp', 'clipboard'], function (fstepmodules, ol, shp, clipboard) {
     'use strict';
 
     fstepmodules.directive('aoiField', ['AoiService', 'AoiLayerService', 'CommonService', '$mdDialog', '$mdPanel', function(aoiService, aoiLayerService, commonService, $mdDialog, $mdPanel) {
@@ -18,12 +18,12 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                         return aoiService.getSavedAoiGeometry(aoi);
                     },
                     selected: null
-                }
+                };
 
                 scope.importAoi = {
                     records: [],
                     selected: null
-                }
+                };
 
 
                 scope.$watch(aoiService.getSearchAoi, function(aoi) {
@@ -32,15 +32,15 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
 
                 scope.enableMapAoiDraw = function(type) {
                     aoiLayerService.enableDraw(type);
-                }
+                };
 
                 scope.clearAoi = function() {
                     aoiService.setSearchAoi(null);
-                }
+                };
 
                 scope.saveAoi = function($event) {
 
-                    var aoi = aoiService.getSearchAoi()
+                    var aoi = aoiService.getSearchAoi();
                     if (!aoi) {
                         return;
                     }
@@ -59,7 +59,7 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                             aoiService.saveAoi(name, aoi.geometry).then(function() {
 
                             }, function(error) {
-                                if (error == 'Conflict') {
+                                if (error === 'Conflict') {
                                     let duplicateDialog = $mdDialog.confirm()
                                         .title('Duplicate name')
                                         .textContent('An area with the same name already exists. Overwrite?')
@@ -72,20 +72,20 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
         
                                     });
                                 }
-                            })
+                            });
                         }
                     }, function() {
 
-                    })
-                }
+                    });
+                };
 
                 scope.editAoi = function($event) {
                     scope.editPolygonDialog($event, scope.value);
-                }
+                };
 
                 scope.copyToClipboard = function() {
                     clipboard.copy(scope.value);
-                }
+                };
 
                 scope.editPolygonDialog = function($event, wkt) {
                     function EditPolygonController($scope, $mdDialog, MapService) {
@@ -136,11 +136,12 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                           .ariaLabel(title)
                           .ok('OK')
                       );
-                }
+                };
+
                 var handleImportedPolygons = function(geomes) {
                     var polygons = geomes.filter(function(geom) {
-                        return geom.type == 'Polygon';
-                    })
+                        return geom.type === 'Polygon';
+                    });
 
                     if (!polygons.length) {
                         showAlert('Import error', 'No polygon found in the selected shapefile.');
@@ -155,15 +156,15 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                                 return {
                                     geometry: geom,
                                     name: 'aoi_' + idx++
-                                }
+                                };
                             })
                         };
-                    })
+                    });
 
                     scope.importAoi.selected = null;
                     scope.loadAoiDialog(null, scope.importAoi);
 
-                }
+                };
                 
                 element.find('#shpfile-in').bind('change', function(event) {
                     var file = event.target.files[0];
@@ -179,7 +180,7 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                                         }));
                                     }, function(error) {
                                         showAlert('Import error', 'Error parsing shapefile.');
-                                    })
+                                    });
                                 }
                                 else {
                                     var features = shp.parseShp(reader.result);
@@ -189,7 +190,7 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                             catch(e) {
                                 showAlert('Import error', 'Error parsing shapefile.');
                             }
-                        }
+                        };
 
                         reader.readAsArrayBuffer(file);
                     }
@@ -209,7 +210,7 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                             scope.loadAoiDialog($event, scope.savedAoi);
                         }
                     });
-                }
+                };
 
                 scope.loadAoiDialog = function($event, aoiData) {
 
@@ -258,7 +259,7 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                             AoiLayerService.setDrawArea(null);
                             AoiService.setSearchAoi(aoi);
                             $mdDialog.hide();
-                        }
+                        };
 
                     }
                     LoadAoiController.$inject = ['$scope', '$mdDialog', 'AoiService', 'AoiLayerService'];
@@ -269,12 +270,12 @@ define(['../../../fstepmodules', 'shp'], function (fstepmodules, shp) {
                         targetEvent: $event,
                         hasBackdrop: true,
                         clickOutsideToClose: false
-                    })
+                    });
                 };
 
                 
             },
             templateUrl: 'views/common/directives/aoiField.html'
-        }
-    }])
+        };
+    }]);
 });

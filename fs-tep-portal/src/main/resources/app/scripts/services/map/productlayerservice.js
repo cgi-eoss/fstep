@@ -46,14 +46,14 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                     map.getView().fit(polygon.getExtent(), map.getSize());
                 }
             }
-        }
+        };
 
         this.clear = function() {
             for(var i = 0; i < productLayers.length; i++){
                 map.removeLayer(productLayers[i]);
             }
             productLayers.length = 0;
-        }
+        };
 
     }]);
 });

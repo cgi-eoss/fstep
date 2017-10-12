@@ -100,7 +100,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
             $scope.isWmsVisible = function(outputFile){
                 return $scope.jobParams.wms.visibleList.indexOf(outputFile) > -1;
-            }
+            };
 
             $scope.$on('map.cleared', function () {
                 if( $scope.jobParams.selectedJob) {

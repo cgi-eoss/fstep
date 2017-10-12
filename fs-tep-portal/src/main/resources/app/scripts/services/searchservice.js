@@ -30,7 +30,7 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
                 params[key] = params[key][0];
             }
             _this.params.searchParameters = params;
-        }
+        };
 
         /* Get Groups for share functionality to fill the combobox */
         this.getSearchParameters = function(){

@@ -98,7 +98,7 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                     break;
                 }
             }
-        }
+        };
 
         this.selectAll = function(selected) {
             if (resultsLayer) {
@@ -109,14 +109,14 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                     }
                 }
             }
-        }
+        };
 
         this.selectItems = function(items) {
             this.selectAll(false);
             for (var i = 0; i < items.length; i++) {
                 this.selectItem(items[i], true);
             }
-        }
+        };
 
         this.setResults = function (results) {
             this.selectAll(false);
@@ -142,15 +142,15 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                     map.getView().fit(resultsLayer.getSource().getExtent(), map.getSize());
                 }
             }
-        }
+        };
 
         this.setVisible = function (visible) {
             resultsLayer.setVisible(visible);
-        }
+        };
 
         this.clear = function () {
             resultsLayer.getSource().clear();
-        }
+        };
 
     }]);
 });

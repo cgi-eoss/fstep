@@ -26,6 +26,6 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 }
             },
             templateUrl: 'views/common/directives/imageLoader.html'
-        }
-    })
+        };
+    });
 });

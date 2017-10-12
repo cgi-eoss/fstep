@@ -60,14 +60,15 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
 
         this.unloadBasket = function() {
             basketLayer.getSource().clear();
-        }
+        };
 
         this.setVisible = function(visible) {
             basketLayer.setVisible(visible);
-        }
+        };
 
 
         this.selectDatabasketItem = function(item, selected) {
+            /*
             var features = basketLayer.getSource().getFeatures();
 
             for (var i = 0; i < features.length; i++) {
@@ -86,12 +87,12 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                     break;
                 }
             }
-
-        }
+            */
+        };
 
         this.clear = function() {
             basketLayer.getSource().clear();
-        }
+        };
 
     }]);
 });

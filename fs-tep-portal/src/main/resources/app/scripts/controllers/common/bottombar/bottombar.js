@@ -80,7 +80,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         $scope.addToDatabasketFromSearch = function() {
             BasketService.addToDatabasketFromSearch($scope.dbParams.selectedDatabasket, SearchService.params.searchParameters);
-        }
+        };
 
     }]);
 });

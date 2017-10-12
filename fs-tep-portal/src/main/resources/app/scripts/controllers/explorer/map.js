@@ -13,7 +13,7 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
 
         $scope.backgroundLayer = MapService.getBackgroundLayer();
 
-        var map = MapService.getMap()
+        var map = MapService.getMap();
 
         setTimeout(function() {
             map.setTarget($element.get(0));
@@ -21,7 +21,7 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
 
 
         $scope.setBackgroundLayer = function(layer) {
-            MapService.setBackgroundLayer(layer)
+            MapService.setBackgroundLayer(layer);
         };
 
         $scope.clearMap = function() {
@@ -55,7 +55,7 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
             resultLayer.setVisible(false);
             basketLayer.loadBasket(basketFiles);
             basketLayer.setVisible(true);
-        })
+        });
 
         $scope.$on('unload.basket', function(event) {
             resultLayer.setVisible(true);
@@ -71,5 +71,5 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
         });
         
 
-    }])
+    }]);
 });
