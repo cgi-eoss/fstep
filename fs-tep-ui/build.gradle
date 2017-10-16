@@ -46,7 +46,7 @@ ospackage {
     arch NOARCH
     os LINUX
 
-    into '/var/www/html/fs-tep'
+    into '/var/www/html/analyst'
 
     from("${buildDir}/staging/dist") {
         user 'root'
