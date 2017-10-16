@@ -50,6 +50,7 @@ import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.JobStep;
 import com.cgi.eoss.fstep.model.User;
@@ -325,6 +326,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
                 if (subJob.getStatus() != Job.Status.CANCELLED)
                 cancelJob(subJob);
             }
+            //TODO Check if this implies parent is completed
         } else {
             if (job.getStatus() != Job.Status.CANCELLED) {
                 cancelJob(job);
@@ -340,8 +342,10 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         JobSpec queuedJobSpec = (JobSpec) queueService
                 .receiveSelectedObject(FstepQueueService.jobQueueName, "jobId = " + job.getId(), true);
         if (queuedJobSpec != null) {
-            costingService.refundUser(job.getOwner().getWallet(), job);
             LOG.info("Refunding user for job id {}", job.getId());
+            costingService.refundUser(job.getOwner().getWallet(), job);
+            job.setStatus(Status.CANCELLED);
+            jobDataService.save(job);
         }
     }
 
