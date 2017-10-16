@@ -36,6 +36,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var getMarkInfo = require("private").makeAccessor();
 
+exports.name = "regenerator-transform";
+
 exports.visitor = {
   Function: {
     exit: function exit(path, state) {
