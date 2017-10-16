@@ -1,14 +1,12 @@
 package com.cgi.eoss.fstep.worker.worker;
 
-import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
-import com.cgi.eoss.fstep.io.download.DownloaderFacade;
-import com.cgi.eoss.fstep.rpc.Job;
-import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
-import com.cgi.eoss.fstep.worker.WorkerConfig;
-import com.cgi.eoss.fstep.worker.WorkerTestConfig;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.Server;
-import io.grpc.inprocess.InProcessServerBuilder;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeTrue;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -20,17 +18,18 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
+import com.cgi.eoss.fstep.io.download.DownloaderFacade;
+import com.cgi.eoss.fstep.rpc.Job;
+import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
+import com.cgi.eoss.fstep.rpc.worker.JobDockerConfig;
+import com.cgi.eoss.fstep.worker.WorkerConfig;
+import com.cgi.eoss.fstep.worker.WorkerTestConfig;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.Server;
+import io.grpc.inprocess.InProcessServerBuilder;
 import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
 import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.UUID;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assume.assumeTrue;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = {WorkerConfig.class, WorkerTestConfig.class})
@@ -84,7 +83,7 @@ public class FstepWorkerIT {
 
     @Test
     public void testLaunchContainer() throws Exception {
-    		/*
+    		
         Mockito.when(ioManager.getServiceContext("service1")).thenReturn(Paths.get("src/test/resources/service1").toAbsolutePath());
 
         String tag = UUID.randomUUID().toString();
@@ -103,7 +102,7 @@ public class FstepWorkerIT {
         } finally {
             dockerClient.removeImageCmd(tag).exec();
         }
-        */
+        
     }
 
 }

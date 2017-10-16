@@ -80,7 +80,7 @@ public class WorkerConfig {
     }
 
     @Bean
-    public String workerId(@Value("${eureka.instance.metadataMap.workerId}") String workerId) {
+    public String workerId(@Value("${eureka.instance.metadataMap.workerId:workerId}") String workerId) {
         return workerId;
     }
 
