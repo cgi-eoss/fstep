@@ -1,5 +1,16 @@
 package com.cgi.eoss.fstep.services;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.jooq.lambda.Unchecked;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceContextFile;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
@@ -10,18 +21,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.ByteStreams;
 import lombok.extern.log4j.Log4j2;
-import org.jooq.lambda.Unchecked;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-import org.springframework.core.io.support.ResourcePatternResolver;
-import org.springframework.stereotype.Component;
-
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * <p>Access to the default FS-TEP service collection as Java objects.</p>
@@ -33,11 +32,11 @@ import java.util.stream.Collectors;
 public class DefaultFstepServices {
 
     private static final Map<String, FstepService.Type> DEFAULT_SERVICES = ImmutableMap.<String, FstepService.Type>builder()
-            .put("ForestChangeS2", FstepService.Type.PROCESSOR)
-            .put("LandCoverS1", FstepService.Type.PROCESSOR)
-            .put("LandCoverS2", FstepService.Type.PROCESSOR)
-            .put("S1Biomass", FstepService.Type.PROCESSOR)
-            .put("VegetationIndices", FstepService.Type.PROCESSOR)
+//            .put("ForestChangeS2", FstepService.Type.PROCESSOR)
+//            .put("LandCoverS1", FstepService.Type.PROCESSOR)
+//            .put("LandCoverS2", FstepService.Type.PROCESSOR)
+//            .put("S1Biomass", FstepService.Type.PROCESSOR)
+//            .put("VegetationIndices", FstepService.Type.PROCESSOR)
             .put("Monteverdi", FstepService.Type.APPLICATION)
             .put("QGIS", FstepService.Type.APPLICATION)
             .put("SNAP", FstepService.Type.APPLICATION)
