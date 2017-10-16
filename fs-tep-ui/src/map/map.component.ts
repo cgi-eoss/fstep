@@ -1,6 +1,7 @@
 import {Component, AfterViewInit, ViewChild, ElementRef} from "@angular/core";
 
 import {MapService} from './map.service';
+import {AoiLayer} from './aoi-layer';
 
 @Component({
   selector: 'map-widget',
@@ -15,7 +16,7 @@ import {MapService} from './map.service';
 export class MapComponent implements  AfterViewInit {
     @ViewChild("map_widget") container: ElementRef;
 
-    constructor(private map: MapService) {}
+    constructor(private map: MapService, private aoiLayer: AoiLayer) {}
 
     ngAfterViewInit() {
         this.map.initMap(this.container.nativeElement);

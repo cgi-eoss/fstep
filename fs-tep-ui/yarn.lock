@@ -70,16 +70,6 @@
   dependencies:
     tsickle "^0.21.0"
 
-"@mapbox/point-geometry@~0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@mapbox/point-geometry/-/point-geometry-0.1.0.tgz#8a83f9335c7860effa2eeeca254332aa0aeed8f2"
-
-"@mapbox/vector-tile@1.3.0":
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/@mapbox/vector-tile/-/vector-tile-1.3.0.tgz#c495f972525befccefcd838f45ffa37ef3b70fe8"
-  dependencies:
-    "@mapbox/point-geometry" "~0.1.0"
-
 "@ngtools/webpack@^1.5.5":
   version "1.5.5"
   resolved "https://registry.yarnpkg.com/@ngtools/webpack/-/webpack-1.5.5.tgz#d6e2a933184015653de3be33d38437fdd81009e7"
@@ -3237,12 +3227,11 @@ obuf@^1.0.0, obuf@^1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/obuf/-/obuf-1.1.1.tgz#104124b6c602c6796881a042541d36db43a5264e"
 
-ol@^4.2.0:
-  version "4.2.0"
-  resolved "https://registry.yarnpkg.com/ol/-/ol-4.2.0.tgz#b2c9d2f7576b30ff4dfa0194aedf3d3fb9a8bf64"
+ol@^4.4.1:
+  version "4.4.1"
+  resolved "https://registry.yarnpkg.com/ol/-/ol-4.4.1.tgz#fece838686e2a46dc5f31536a7d60ac04cc61ed2"
   dependencies:
-    "@mapbox/vector-tile" "1.3.0"
-    pbf "3.0.5"
+    pbf "3.1.0"
     pixelworks "1.1.0"
     rbush "2.0.1"
 
@@ -3421,9 +3410,9 @@ path-type@^2.0.0:
   dependencies:
     pify "^2.0.0"
 
-pbf@3.0.5:
-  version "3.0.5"
-  resolved "https://registry.yarnpkg.com/pbf/-/pbf-3.0.5.tgz#24f0fa2cbeb16e5c56a5901bb7e9c2ac0c8059be"
+pbf@3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/pbf/-/pbf-3.1.0.tgz#f70004badcb281761eabb1e76c92f179f08189e9"
   dependencies:
     ieee754 "^1.1.6"
     resolve-protobuf-schema "^2.0.0"

@@ -16,9 +16,10 @@ export class NavbarComponent implements AfterViewInit {
   username: string;
   public menuVisible = false;
 
-  constructor(private userSerice: UserService, private router: Router, private route: ActivatedRoute) {
-    userSerice.getUser().subscribe((value)=> {
-      this.username = value? value.name : null;
+  constructor(private userService: UserService, private router: Router, private route: ActivatedRoute) {
+    
+    this.userService.getUser().subscribe((user)=> {
+      this.username = user ? user.name : null;
     })
 
     this.router.events.subscribe((path)=>{
@@ -26,11 +27,12 @@ export class NavbarComponent implements AfterViewInit {
     });
     
 
-    this.userSerice.login('vito');
+    //this.userService.login('admin');
   }
 
   ngAfterViewInit() {
     
+    /*
     let user = this.route
       .queryParamMap
       .map(params => params.get('user'));
@@ -39,7 +41,7 @@ export class NavbarComponent implements AfterViewInit {
         if (val)
           this.userSerice.login(val);
     });
-    
+    */
     
     /*
     let user = this.route.snapshot.queryParamMap.get('user') || 'aaa';
