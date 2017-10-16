@@ -9,7 +9,7 @@
     "build-verbose": "webpack --config webpack.prod.js --display-error-details"
   },
   "author": "Stefano Marra",
-  "license": "",
+  "license": "GPL-3.0",
   "dependencies": {
     "@angular/animations": "^4.3.3",
     "@angular/common": "^4.3.3",
@@ -31,7 +31,7 @@
     "gemini-scrollbar": "^1.5.2",
     "geodesy": "^1.1.1",
     "moment": "^2.18.1",
-    "ol": "^4.2.0"
+    "ol": "^4.4.1"
   },
   "devDependencies": {
     "@ngtools/webpack": "^1.5.5",

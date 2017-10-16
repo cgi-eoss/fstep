@@ -52,4 +52,10 @@ export class MapService {
         return this.viewer;
     }
 
+    fitExtent(extent) {
+        this.getViewer().then((viewer)=>{
+            viewer.getView().fit(extent, viewer.getSize());
+        });
+    }
+
 };

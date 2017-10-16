@@ -2,6 +2,7 @@ import {NgModule} from '@angular/core';
 import {CommonModule} from '@angular/common';
 
 import {MapService} from './map.service';
+import {AoiLayer} from './aoi-layer';
 import {MapComponent} from './map.component';
 import {CoordService} from './coord.service';
 import {MapDrawControl} from './map-draw-control';
@@ -14,6 +15,6 @@ import {MouseCoordsComponent} from './mouse-coords.component/mouse-coords.compon
   declarations: [MapComponent, MouseCoordsComponent, LongitudePipe, LatitudePipe],
   imports: [CommonModule],
   exports: [MapComponent, MouseCoordsComponent, LongitudePipe, LatitudePipe],
-  providers: [MapService, CoordService, MapDrawControl]
+  providers: [MapService, AoiLayer, CoordService, MapDrawControl]
 })
 export class MapModule {}

@@ -14,7 +14,9 @@ import {NavbarComponent} from './navbar.component/navbar.component';
 import {StatusbarComponent} from './statusbar.component/statusbar.component';
 import {TimeSelectorComponent} from './timeselector.component/timeselector.component';
 
+import {AppConfig} from './app-config.service';
 import {UserService} from './user/user.service';
+import {UserPrefsService} from './user/user-prefs.service';
 import {TimeService} from './time.service';
 
 import {ProcessorsModule} from '../processors/processors.module';
@@ -22,7 +24,7 @@ import {ProcessorsModule} from '../processors/processors.module';
 @NgModule({
   declarations: [AppComponent, NavbarComponent, StatusbarComponent, TimeSelectorComponent],
   imports: [BrowserModule, HttpModule, BrowserAnimationsModule, MapModule, CommonComponentsModule, ProcessorsModule, AppRoutingModule],
-  providers: [UserService, TimeService],
+  providers: [AppConfig, UserService, UserPrefsService, TimeService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

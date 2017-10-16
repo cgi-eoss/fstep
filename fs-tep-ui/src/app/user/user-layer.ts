@@ -22,11 +22,13 @@ export class UserLayer {
             this.updateUserArea(userService.getCurrentUser());
         });
 
+        
         userService.getUser().subscribe((user)=>{
             if (this.viewer) {
                 this.updateUserArea(user);
             }
         })
+        
     }
 
     private initLayer() {
