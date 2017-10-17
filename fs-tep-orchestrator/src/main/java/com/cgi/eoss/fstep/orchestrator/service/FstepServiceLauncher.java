@@ -340,7 +340,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
     private void cancelJob(Job job) {
         LOG.info("Cancelling job with id {}", job.getId());
         JobSpec queuedJobSpec = (JobSpec) queueService
-                .receiveSelectedObject(FstepQueueService.jobQueueName, "jobId = " + job.getId(), true);
+                .receiveSelectedObject(FstepQueueService.jobQueueName, "jobId = " + job.getId());
         if (queuedJobSpec != null) {
             LOG.info("Refunding user for job id {}", job.getId());
             costingService.refundUser(job.getOwner().getWallet(), job);

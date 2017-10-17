@@ -75,7 +75,7 @@ public class FstepWorkerDispatcher {
 	public void getNewJobs(){
 		while (worker.hasCapacity()) {
 			capacityMissingInterval = 0L;
-			JobSpec nextJobSpec = (JobSpec)  queueService.receiveObject(FstepQueueService.jobQueueName);
+			JobSpec nextJobSpec = (JobSpec)  queueService.receiveObjectWithTimeout(FstepQueueService.jobQueueName, 100);
 			if (nextJobSpec != null) {
 				queueEmptyInterval = 0L;
 				worker.reserveNodeForJob(nextJobSpec.getJob());

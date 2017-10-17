@@ -13,7 +13,13 @@ public interface FstepQueueService {
     void sendObject(String queueName, Map<String, Object> additionalHeaders, Object object);
 
     public Object receiveObject(String queueName);
+    
+    public Object receiveObjectWithTimeout(String queueName, long timeout);
+   
+    public Object receiveSelectedObject(String queueName, String messageSelector);
+    
+    public Object receiveSelectedObjectWithTimeout(String queueName, String messageSelector, long timeout);
 
-    Object receiveSelectedObject(String queueName, String messageSelector, boolean wait);
+    public long getQueueLength(String queueName);
 
 }
