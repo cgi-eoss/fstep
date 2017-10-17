@@ -43,6 +43,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         });
 
         $scope.fstepUrl = fstepProperties.FSTEP_URL;
+        $scope.fstepPortalUrl = fstepProperties.FSTEP_PORTAL_URL;
 
         $scope.videos = [
                  {
