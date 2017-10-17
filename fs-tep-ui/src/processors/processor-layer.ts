@@ -28,7 +28,6 @@ export class ProcessorLayer {
         mapService.getViewer().then((viewer) => {
             this.viewer = viewer;
             this.initLayer();
-            this.updateUserArea(userService.getCurrentUser());
         });
 
         userService.getUser().subscribe((user)=>{
@@ -57,42 +56,64 @@ export class ProcessorLayer {
             });
         }
 
-
-
-        let fillStyle = new FillStyle({color: [0, 0, 0, 0]});
-        this.layer.on('precompose', (event) => {
-            var ctx = event.context;
-            var vecCtx = event.vectorContext;
-            ctx.save();
-            // Using a style is a hack to workaround a limitation in
-            // OpenLayers 3, where a geometry will not be draw if no
-            // style has been provided.
-            vecCtx.setFillStrokeStyle(fillStyle, null);
-            vecCtx.drawGeometry(this.clipGeom);
-            ctx.clip();
-        });
-        
-        this.layer.on('postcompose', (event) => {
-          var ctx = event.context;
-          ctx.restore();
-        });
-
         this.viewer.getLayers().push(this.layer);
 
         this.setVisible(this.state.value.visible);
+
+        this.onUserAreaUpdated();
 
     }
 
     private updateUserArea(user) {
         if (user) {
             let coords = user.subscription.area;
-            this.clipGeom = new MultiPolygon(coords);
 
-            if (this.layer) {
-                this.layer.setExtent(this.clipGeom.getExtent());
+            if (coords) {
+                this.clipGeom = new MultiPolygon(coords);
             }
         }
 
+        this.onUserAreaUpdated();
+
+    }
+
+    private onUserAreaUpdated() {
+        if (this.layer) {
+
+            if (this.clipGeom) {
+                this.layer.setExtent(this.clipGeom.getExtent());
+                
+                this.layer.on('precompose', this.onLayerPrecompose, this);
+                this.layer.on('postcompose', this.onLayerPostCompose, this);
+            }
+            else {
+
+                this.layer.setExtent();
+
+                this.layer.un('precompose', this.onLayerPrecompose, this);
+                this.layer.un('postcompose', this.onLayerPostCompose, this);
+            }
+        }
+    }
+
+    private onLayerPrecompose(event) {
+        
+        let fillStyle = new FillStyle({color: [0, 0, 0, 0]});
+
+        var ctx = event.context;
+        var vecCtx = event.vectorContext;
+        ctx.save();
+        // Using a style is a hack to workaround a limitation in
+        // OpenLayers 3, where a geometry will not be draw if no
+        // style has been provided.
+        vecCtx.setFillStrokeStyle(fillStyle, null);
+        vecCtx.drawGeometry(this.clipGeom);
+        ctx.clip();
+    }
+
+    private onLayerPostCompose(event) {
+        var ctx = event.context;
+        ctx.restore();
     }
 
     setDataSource(source) {

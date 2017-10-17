@@ -108,7 +108,9 @@ export class ProcessorLegendComponent implements AfterViewInit, OnDestroy {
     private updateUserArea(user) {
         if (user) {
             let coords = user.subscription.area;
-            this.userArea = helpers.multiPolygon(coords);
+            if (coords) {
+                this.userArea = helpers.multiPolygon(coords);
+            }
         }
 
     }
