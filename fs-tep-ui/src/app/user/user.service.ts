@@ -46,7 +46,7 @@ export class UserService {
                 this.user.next({
                     name: userData.name,
                     subscription: {
-                        area: [[[[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]]]]
+                        area: null
                     },
                     href: userData._links.self.href
                 });
