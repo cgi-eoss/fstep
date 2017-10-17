@@ -2,6 +2,7 @@
 define('fstepConfig', [], function () {
   return {
     fstepUrl: "https://fsdev.eoss-cloud.it/",
+    fstepPortalUrl: "https://foodsecurity-tep.eo.esa.int/",
     apiUrl: "https://fsdev.eoss-cloud.it/secure/api/v1.0",
     apiUrlv2: "https://fsdev.eoss-cloud.it/secure/api/v2.0",
     ssoUrl: "https://eo-sso-idp.evo-pdgs.com",

@@ -43,6 +43,7 @@ define([
     /* jshint -W117  */
     app.constant('fstepProperties', {
         'FSTEP_URL': fstepConfig.fstepUrl,
+        'FSTEP_PORTAL_URL': fstepConfig.fstepPortalUrl,
         'URL': fstepConfig.apiUrl,
         'URLv2': fstepConfig.apiUrlv2,
         'SSO_URL': fstepConfig.ssoUrl,
