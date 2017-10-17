@@ -161,7 +161,8 @@ public class FstepWorkerDispatcher {
 			.addAllPorts(ports)
 			.build();
 			worker.launchContainer(request);
-			int exitCode;
+			jobUpdateListener.jobUpdate(JobEvent.newBuilder().setJobEventType(JobEventType.PROCESSING_STARTED).build());
+            int exitCode;
 			if (jobSpec.getHasTimeout()) {
 				ExitWithTimeoutParams exitRequest = ExitWithTimeoutParams.newBuilder().setJob(jobSpec.getJob()).setTimeout(jobSpec.getTimeoutValue()).build();
 				ContainerExitCode containerExitCode = worker.waitForContainerExitWithTimeout(exitRequest);
