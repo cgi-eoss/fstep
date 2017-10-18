@@ -3,42 +3,14 @@
    <section class="filter-list">
         <ul class="list">
 
-            <div class="row list-group filter-list-title">
 
-                <div class="col-xs-11" ng-click="toggleFilters()">
-                    <label class="md-accent">Filters</label>
-                </div>
-
-                <div class="col-xs-1 expander">
-                    <i class="material-icons"
-                       ng-show="!jobParams.displayFilters"
-                       ng-click="toggleFilters()"
-                       aria-label="Show Filters"
-                       uib-tooltip="Show Filters"
-                       tooltip-placement="top"
-                       tooltip-trigger="mouseenter"
-                       tooltip-append-to-body="true">
-                        expand_less
-                    </i>
-                    <i class="material-icons"
-                       ng-show="jobParams.displayFilters"
-                       ng-click="toggleFilters()"
-                       aria-label="Hide Filters"
-                       uib-tooltip="Hide Filters"
-                       tooltip-placement="top"
-                       tooltip-trigger="mouseenter"
-                       tooltip-append-to-body="true">
-                        expand_more
-                    </i>
-                </div>
-
-            </div>
-
-            <md-input-container md-no-float ng-show="jobParams.displayFilters">
+            <md-input-container>
+                <label>Filter</label>
                 <input ng-model="jobParams.searchText" type="text" placeholder="Search" ng-keyup="filter()" aria-label="Jobs Search Filter">
             </md-input-container>
 
-            <md-input-container ng-show="jobParams.displayFilters" md-no-float>
+            <md-input-container>
+                <label>Job Status</label>
                 <md-select ng-model="jobParams.selectedStatuses" ng-change="filter()" multiple placeholder="Job Status">
                     <md-optgroup label="Statuses">
                         <md-option ng-repeat="jobStatus in jobStatuses"
@@ -50,18 +22,19 @@
                 </md-select>
             </md-input-container>
 
-            <div class="row filter-radiobutton" ng-show="jobParams.displayFilters">
+            <md-input-container class="md-input-has-value">
+                <label>Ownership</label>
                 <md-radio-group ng-model="jobParams.selectedOwnershipFilter" ng-change="filter()">
-                    <div ng-repeat="ownershipFilter in jobOwnershipFilters" class="col-md-12 col-lg-4 no-padding">
-                        <md-radio-button ng-value="ownershipFilter">
-                            {{ownershipFilter.name}}
-                        </md-radio-button>
-                    </div>
+                    <md-radio-button ng-repeat="ownershipFilter in jobOwnershipFilters" ng-value="ownershipFilter">
+                        {{ownershipFilter.name}}
+                    </md-radio-button>
                 </md-radio-group>
-            </div>
+            </md-input-container>
 
         </ul>
     </section>
+
+    <article ng-if="jobParams.jobs.length == 0" class="note ng-scope" style="">No jobs matching criteria</article>
 
     <section class="item-list" ng-if="jobParams.jobs.length > 0">
 

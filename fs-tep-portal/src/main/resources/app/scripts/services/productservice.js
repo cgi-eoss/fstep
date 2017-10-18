@@ -330,7 +330,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 deferred.reject();
             });
             return deferred.promise;
-        }
+        };
 
         /* Fetch a new page */
         this.getServicesPage = function(page, url){

@@ -1,0 +1,4 @@
+.breadcrumb li.is-active a {
+    font-weight: bold;
+    color: #ee7421;
+}

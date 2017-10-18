@@ -10,7 +10,7 @@
             </button>
 
             <a class="pull-left" ng-href="{{fstepUrl}}" target="_blank">
-                <img src="images/logo.png"  alt="Forestry TEP Logo">
+                <img src="images/logo.png"  alt="Food Security TEP Logo">
             </a>
         </div>
 
@@ -30,14 +30,22 @@
                     <p><i class="material-icons">person</i><span> Manage / Share</span></p>
                 </li>
 
-                <li ng-click="goTo('/helpdesk')" aria-label="Helpdesk" ng-class="{ active: isActive('/helpdesk')}">
-                   <p><i class="material-icons">help</i><span> Helpdesk</span></p>
-                </li>
+
 
                 <li ng-click="goTo('/admin')" ng-if="user.name && user.active.role === 'ADMIN'" aria-label="Admin"
                     ng-class="{ active: isActive('/admin')}">
                    <p><i class="material-icons">settings</i><span> Admin</span></p>
                 </li>
+
+                <li aria-label="Analyst">
+                    <a ng-href="{{analystpUrl}}" target="_blank">
+                        <p><i class="material-icons">insert_chart</i><span> Analyst</span></p>
+                    </a>
+                </li>
+
+                <li ng-click="goTo('/helpdesk')" aria-label="Helpdesk" ng-class="{ active: isActive('/helpdesk')}">
+                    <p><i class="material-icons">help</i><span> Help</span></p>
+                 </li>
 
                 <li ng-click="goTo('/account')" ng-if="user.name" aria-label="Account" ng-class="{ active: isActive('/account')}">
                    <p><i class="material-icons">account_circle</i><span> My Account</span></p>

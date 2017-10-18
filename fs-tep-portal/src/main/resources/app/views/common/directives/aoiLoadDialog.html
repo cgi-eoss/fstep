@@ -1,0 +1,12 @@
+<md-dialog id="polygon-editor" aria-label="Load area">
+    <md-dialog-content>
+        <h4>Load area:</h4>
+        <div class="dialog-content-area">
+            <aoi-list aois="aoiData.records" paging-data="aoiData.pagingData" aoi-geometry-cb="aoiData.getGeometry(aoi)" selected-aoi="aoiData.selected"></aoi-list>
+        </div>
+    </md-dialog-content>
+    <md-dialog-actions>
+        <md-button ng-click="loadAoi(aoiData.selected)" ng-disabled="!aoiData.selected" class="md-primary">Load</md-button>
+        <md-button ng-click="closeDialog()" class="md-primary">Cancel</md-button>
+    </md-dialog-actions>
+</md-dialog>

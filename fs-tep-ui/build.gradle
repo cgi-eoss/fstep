@@ -1,0 +1,67 @@
+buildscript {
+  dependencies {
+    classpath "com.moowork.gradle:gradle-node-plugin:1.2.0"
+    classpath pl.osPackage
+  }
+}
+
+
+group 'com.cgi.eoss.fs-tep'
+version '1.0.0-SNAPSHOT'
+
+apply plugin: 'com.moowork.node'
+apply plugin: 'java-base'
+apply plugin: 'nebula.ospackage'
+
+node {
+    download = true
+}
+
+task webpackBuild( type: YarnTask, dependsOn: 'yarn' ) {
+    args = ['build', '--', '--env.outpath=' + buildDir + '/dist']
+}
+
+
+task stageApp(type: Sync) {
+    into "${buildDir}/staging"
+    includeEmptyDirs = false
+
+    from("${buildDir}/dist") {
+        into 'dist'
+        include '**/*'
+    }
+    
+    dependsOn webpackBuild
+
+}
+
+
+buildRpm.dependsOn stageApp
+buildDeb.dependsOn stageApp
+
+ospackage {
+    packageName 'fs-tep-ui'
+    version getRpmVersion(project.version).version
+    release getRpmVersion(project.version).release
+    arch NOARCH
+    os LINUX
+
+    into '/var/www/html/analyst'
+
+    from("${buildDir}/staging/dist") {
+        user 'root'
+        include '**'
+    }
+
+}
+
+configurations { pkg }
+artifacts { pkg buildRpm }
+
+sonarqube {
+    properties {
+        property "sonar.sources", "src"
+        property "sonar.exclusions", "src/main/resources/app/scripts/vendor/**/*"
+    }
+}
+

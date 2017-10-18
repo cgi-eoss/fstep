@@ -1,0 +1,31 @@
+.popup-axis {
+    height: 100px;
+    cursor: move;
+    border-left: solid 2px #ee7421;
+    position: relative;
+}
+
+.popup-axis .icon {
+    position: absolute;
+    bottom: -18px;
+    left: -13px;
+    color: #ee7421;
+}
+
+.popup-content {
+    position: absolute;
+    top: 0;
+    left: 2px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: .5em 2em .5em .8em;
+    color: white;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    user-select: none;
+}
+
+.popup .delete {
+    position: absolute;
+    top: 0.2em;
+    right: 0.2em;
+}

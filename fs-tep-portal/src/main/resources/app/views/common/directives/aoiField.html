@@ -1,0 +1,48 @@
+<div class="row">
+    <div class="col-xs-12">
+        <md-subheader class="md-accent md-subheader-title">{{label}}</md-subheader>
+    </div>
+</div>
+<div class="row">
+    <div class="col-xs-12 item-list">
+        <md-input-container md-no-float>
+            <input ng-model="value" aria-label="{{title}}" />
+            <div class="hint" ng-show="true">{{description}}</div>
+        </md-input-container>
+
+        <div style="text-align: right">
+            <md-button class="toolbar-button md-secondary" ng-click="enableMapAoiDraw('bbox')" aria-label="Draw bbox" uib-tooltip="Draw bbox"
+                tooltip-placement="top" tooltip-trigger="mouseenter" tooltip-append-to-body="true">
+                <i class="material-icons">crop_5_4</i>
+            </md-button>
+            <md-button class="toolbar-button md-secondary" ng-click="enableMapAoiDraw('polygon')" aria-label="Draw polygon" uib-tooltip="Draw polygon"
+                tooltip-placement="top" tooltip-trigger="mouseenter" tooltip-append-to-body="true">
+                <i class="material-icons">signal_cellular_null</i>
+            </md-button>
+            <md-button class="toolbar-button md-secondary" ng-click="clearAoi()" ng-disabled="!value" aria-label="Clear area" uib-tooltip="Clear area" tooltip-placement="top"
+                tooltip-trigger="mouseenter" tooltip-append-to-body="true">
+                <i class="material-icons">close</i>
+            </md-button>
+            <md-button class="toolbar-button md-secondary" ng-click="editAoi($event)" ng-disabled="!value" aria-label="Edit area" uib-tooltip="Edit Area"
+                tooltip-placement="top" tooltip-trigger="mouseenter" tooltip-append-to-body="true">
+                <i class="material-icons">mode_edit</i>
+            </md-button>
+            <md-button class="toolbar-button md-secondary" ng-click="copyToClipboard()" ng-disabled="!value" aria-label="Copy to clipboard"
+                uib-tooltip="Copy to clipboard" tooltip-placement="top" tooltip-trigger="mouseenter" tooltip-append-to-body="true">
+                <i class="material-icons">content_copy</i>
+            </md-button>
+            <md-button class="toolbar-button md-secondary" ng-click="saveAoi($event)" ng-disabled="!value" aria-label="Save area" uib-tooltip="Save area"
+                tooltip-placement="top" tooltip-trigger="mouseenter" tooltip-append-to-body="true">
+                <i class="material-icons">save</i>
+            </md-button>
+            <md-button class="toolbar-button md-secondary" ng-click="loadArea($event)" aria-label="Load saved area" uib-tooltip="Load saved area" tooltip-placement="top"
+                tooltip-trigger="mouseenter" tooltip-append-to-body="true">
+                <i class="material-icons">input</i>
+            </md-button>
+            <input class="ng-hide" id="shpfile-in" type="file"/>
+            <label for="shpfile-in" class="btn toolbar-button md-secondary" aria-label="Import shapefile" uib-tooltip="Import shapefile" tooltip-placement="top"
+            tooltip-trigger="mouseenter" tooltip-append-to-body="true"><i class="material-icons">file_download</i></label>
+        </div>
+
+    </div>
+</div>

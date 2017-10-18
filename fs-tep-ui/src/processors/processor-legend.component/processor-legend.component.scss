@@ -1,0 +1,31 @@
+.processor_legend:not(.has-colormap) svg {
+    display: none;
+}
+
+.processor_legend.has-colormap img {
+    display: none;
+}
+
+.legend::ng-deep .cursor {
+    stroke-width: 2;
+    stroke: orange;
+    fill: none;
+}
+
+.legend::ng-deep .axis text {
+    fill: white!important;
+}
+
+.legend::ng-deep .axis line {
+    stroke: white!important;
+}
+
+.legend::ng-deep .axis path.domain {
+    stroke: none!important;
+}
+
+.processor_legend .image img {
+    height: 300px;
+    width: auto;
+    min-width: 25px;
+}

@@ -21,7 +21,8 @@ module.exports = {
             server: {
                 baseDir: 'app',
                 routes: {
-                    "/bower_components": "bower_components"
+                    "/bower_components": "bower_components",
+                    "/scripts/scripts": "app/scripts"
                 }
             }
         }

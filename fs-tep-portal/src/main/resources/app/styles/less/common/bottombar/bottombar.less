@@ -127,7 +127,7 @@
                             }
                         }
                         .bottombar-item-container {
-                            .border(border-right, @bg);
+                            .border(border-left, @bg);
                             height: 100%;
                             overflow-y: auto;
                             padding: 0;
@@ -145,24 +145,50 @@
                                 font-size: 1.6rem;
                             }
                         }
-                        .filter-checkboxes {
-                            font-size: 0.6rem;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
-                            white-space: nowrap;
-                            md-checkbox .md-icon,  md-checkbox .md-icon.md-ripple-container {
-                                transform: scale(.8);
+
+                        .filter-list {
+                            margin-left: 5px;
+                            padding-bottom: 5px;
+                            border-bottom: solid 1px #d2d2d2;
+                            margin-bottom: 5px;
+                            
+                            md-input-container {
+                                    margin: inherit;
+                                    width: auto;
+                                    margin-top: 25px;
+                                    margin-right: 10px;
+
+                                    md-radio-button {
+                                        display: inline-block;
+                                        margin-bottom: 0px;
+                                        margin-right: 10px;
+                                    }
+
+                                    md-checkbox {
+                                        margin-bottom: 0px;
+
+                                        .md-icon {
+                                            transform: scale(.8);
+                                        }
+
+                                        .md-icon.md-ripple-container {
+                                            transform: scale(.8);
+                                        }
+
+                                        .md-icon:after {
+                                            border-color: @dark-gray;
+                                        }
+                                    }
+
+                                    .text-sec();
+                                    .hint {
+                                        font-size: 0.6rem;
+                                        .text-hint();
+                                    }
                             }
                         }
-                        md-input-container {
-                            margin: 0;
-                            width: 100%;
-                            .text-sec();
-                            .hint {
-                                font-size: 0.6rem;
-                                .text-hint();
-                            }
-                        }
+
+
                         .md-subheader {
                             background-color: transparent;
                             color: @accent;
@@ -174,8 +200,10 @@
                             }
                         }
                         .note {
-                            border-right: none;
-                            border-top: none;
+                            border: none;
+                            background: none;
+                            color: @dark-gray;
+                            padding: 0.5em
                         }
                         .resulthighlight {
                             background-color: @alert-border;
