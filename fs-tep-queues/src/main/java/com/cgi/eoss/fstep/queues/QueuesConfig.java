@@ -33,14 +33,22 @@ public class QueuesConfig {
     public FstepQueueService queueService(JmsTemplate jmsTemplate) {
         return new FstepJMSQueueService(jmsTemplate);
     }
-
-    @Value("${spring.activemq.broker-url:vm://localhost?broker.persistent=false}")
+    
+    @Value("${spring.activemq.broker-url:vm://localhost?persistent=false}")
     private String brokerUrl;
+    
+    @Value("${spring.activemq.user:admin}")
+    private String brokerUserName;
+    
+    @Value("${spring.activemq.password:admin}")
+    private String brokerPassword;
  
     
     @Bean
     public ActiveMQConnectionFactory activeMQConnectionFactory() {
       ActiveMQConnectionFactory activeMQConnectionFactory = new ActiveMQConnectionFactory();
+      activeMQConnectionFactory.setUserName(brokerUserName);
+      activeMQConnectionFactory.setPassword(brokerPassword);
       activeMQConnectionFactory.setTrustedPackages(Arrays.asList("com.google.protobuf"));
       activeMQConnectionFactory.setBrokerURL(brokerUrl);
 
@@ -51,12 +59,13 @@ public class QueuesConfig {
     public JmsTemplate jmsTemplate() {
       return new JmsTemplate(new SingleConnectionFactory(activeMQConnectionFactory()));
     }
+   
     
     @Bean
     public DefaultJmsListenerContainerFactory jmsListenerContainerFactory() {
       DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
       factory.setConnectionFactory(activeMQConnectionFactory());
-      factory.setConcurrency("3-10");
+      factory.setConcurrency("1-1");
       return factory;
     }
     
