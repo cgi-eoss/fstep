@@ -5,8 +5,11 @@ import {BehaviorSubject} from 'rxjs/BehaviorSubject';
 
 import 'rxjs/add/operator/toPromise';
 
+import WMSCapabilities from 'ol/format/wmscapabilities';
+
 import {TimeService} from '../app/time.service';
 import {BreadcrumbService} from '../common/breadcrumb.component/breadcrumb.service';
+import {AppConfig} from '../app/app-config.service';
 
 import {Processor} from './processor';
 
@@ -23,7 +26,7 @@ export class ProcessorsService {
         end: new Date
     });
     
-    constructor(private http: Http, private timeService: TimeService, breadcrumbService: BreadcrumbService) {
+    constructor(private http: Http, private timeService: TimeService, breadcrumbService: BreadcrumbService, private appConfig: AppConfig) {
         this.timeSeriesState.value.start.setMonth(this.timeSeriesState.value.start.getMonth() - 6);
 
         
@@ -31,25 +34,82 @@ export class ProcessorsService {
         breadcrumbService.addCallbackForRouteRegex('^/processor/.*$', this.getProcessorName.bind(this));
     }
 
+
     getProcessorsList() : Promise<Array<Processor>> {
-        if (!this.processors) {
-            return this.http.get(this.serviceUrl + 'processors.json')
-                .toPromise()
-                .then((response)=>{
-                    this.processors = response.json().map((el)=>{
-                        return new Processor(el);
+        return new Promise((resolve, reject)=>{
+            if (this.processors) {
+                resolve(this.processors);
+            }
+            else {
+                this.appConfig.getConfig().then((config) => {
+                    
+                    this.http.get(config.geoserver.url + '/' + config.geoserver.products_workspace + '/ows', {
+                        params: {
+                            request: 'getCapabilities',
+                            version: '1.3.0',
+                            service: 'WMS'
+                        }
+                    })
+                    .toPromise().then((response)=>{
+                        let parser = new WMSCapabilities();
+                        let capabilities = parser.read(response.text());
+                        let layers = capabilities.Capability.Layer.Layer;
+
+                        console.log(layers);
+                        this.processors  = layers.map((layer) => {
+
+                            let timeDimension = layer.Dimension.find((dim)=>{
+                                return dim.name == 'time'
+                            });
+
+                            if (!timeDimension) {
+                                return;
+                            }
+
+                            if (!timeDimension.values || !/,/.test(timeDimension.values)) {
+                                return;
+                            }
+
+                            let times = timeDimension.values.split(',');
+
+                            let processor = null;
+
+                            try {
+                                processor =  new Processor({
+                                    id: layer.Name.toLowerCase(),
+                                    name: layer.Title,
+                                    description: layer.Abstract,
+                                    thumb: layer.Name,
+                                    layer: {
+                                        type: "WMS",
+                                        config: {
+                                            url: config.geoserver.url + '/'  + config.geoserver.products_workspace + '/wms',
+                                            layers: layer.Name,
+                                            legend: true
+                                        }
+                                    },
+                                    time_range: {
+                                        start: times[0],
+                                        end: times[times.length - 1],
+                                        list: times
+                                    }
+                                });
+                            }
+                            catch(e) {
+
+                            }
+
+                            return processor;
+
+                        }).filter((processor) => {
+                            return processor != null;
+                        });
+                        
+                        resolve(this.processors);
                     });
-                    return this.processors
-                })
-                .catch((error)=>{
-                    return Promise.reject(error.message || error);
                 });
             }
-        else {
-            return new Promise((resolve, reject)=>{
-                resolve(this.processors);
-            });
-        }
+        })
     }
 
     getProcessor(id): Promise<Processor>{

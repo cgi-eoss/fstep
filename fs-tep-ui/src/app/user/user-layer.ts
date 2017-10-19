@@ -45,30 +45,41 @@ export class UserLayer {
     private updateUserArea(user) {
         if (user) {
             let coords = user.subscription.area;
-            
-            let view = this.viewer.getView();
 
-            let geom = this.jsonParser.readGeometryFromObject({type: 'MultiPolygon', coordinates: coords}, {
-                dataProjection: 'EPSG:4326',
-                featureProjection: view.getProjection()
-            });
+            if (coords) {
+                
+                let view = this.viewer.getView();
 
-            if (geom) {
-                let feature = new Feature({
-                    geometry: geom
-                });
+                try {
+                    let geom = this.jsonParser.readGeometryFromObject({type: 'MultiPolygon', coordinates: coords}, {
+                        dataProjection: 'EPSG:4326',
+                        featureProjection: view.getProjection()
+                    });
 
-                this.layer.getSource().addFeature(feature);
+                    if (geom) {
+                        let feature = new Feature({
+                            geometry: geom
+                        });
+    
+                        this.layer.getSource().addFeature(feature);
+    
+                        let extent = geom.getExtent()
+    
+                        if (view.getProjection().getCode() != 'EPSG:4326') {
+                            extent = Proj.transformExtent(extent,  'EPSG:4326', view.getProjection());
+                        }   
+                        view.fit(extent, {
+                            maxZoom: Math.max(view.getZoom(), 16),
+                            duration: 1000
+                        });
+                    }
+                }
+                catch(e) {
 
-                let extent = geom.getExtent()
+                }
 
-                if (view.getProjection().getCode() != 'EPSG:4326') {
-                    extent = Proj.transformExtent(extent,  'EPSG:4326', view.getProjection());
-                }   
-                view.fit(extent, {
-                    maxZoom: Math.max(view.getZoom(), 16),
-                    duration: 1000
-                });
+
+
             }
         }
 
