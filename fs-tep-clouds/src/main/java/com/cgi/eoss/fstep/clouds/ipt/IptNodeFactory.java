@@ -1,13 +1,19 @@
 package com.cgi.eoss.fstep.clouds.ipt;
 
-import com.cgi.eoss.fstep.clouds.service.Node;
-import com.cgi.eoss.fstep.clouds.service.NodeFactory;
-import com.cgi.eoss.fstep.clouds.service.NodePoolStatus;
-import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
-import com.cgi.eoss.fstep.clouds.service.SSHSession;
-import com.google.common.base.Strings;
-import lombok.Getter;
-import lombok.extern.log4j.Log4j2;
+import static org.awaitility.Awaitility.with;
+import static org.awaitility.Duration.FIVE_HUNDRED_MILLISECONDS;
+import static org.awaitility.Duration.FIVE_SECONDS;
+import static org.awaitility.Duration.TWO_MINUTES;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openstack4j.api.Builders;
 import org.openstack4j.api.OSClient.OSClientV3;
 import org.openstack4j.api.client.IOSClientBuilder;
@@ -18,19 +24,14 @@ import org.openstack4j.model.compute.Keypair;
 import org.openstack4j.model.compute.Server;
 import org.openstack4j.model.compute.ServerCreate;
 import org.openstack4j.model.compute.ServerUpdateOptions;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
-import static org.awaitility.Awaitility.with;
-import static org.awaitility.Duration.FIVE_HUNDRED_MILLISECONDS;
-import static org.awaitility.Duration.FIVE_SECONDS;
-import static org.awaitility.Duration.TWO_MINUTES;
+import com.cgi.eoss.fstep.clouds.service.Node;
+import com.cgi.eoss.fstep.clouds.service.NodeFactory;
+import com.cgi.eoss.fstep.clouds.service.NodePoolStatus;
+import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
+import com.cgi.eoss.fstep.clouds.service.SSHSession;
+import com.google.common.base.Strings;
+import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 
 /**
  * <p>This service may be used to provision and tear down FS-TEP compute nodes in the IPT cloud context.</p>
@@ -55,12 +56,29 @@ public class IptNodeFactory implements NodeFactory {
         this.maxPoolSize = maxPoolSize;
         this.osClientBuilder = osClientBuilder;
         this.provisioningConfig = provisioningConfig;
+        currentNodes.addAll(loadExistingNodes());
+    }
+
+    private Set<Node> loadExistingNodes() {
+        OSClientV3 osClient = osClientBuilder.authenticate();
+        Map<String, String> filteringParams = new HashMap<String, String>();
+        filteringParams.put("name", SERVER_NAME_PREFIX + "*");
+        //TODO Filtering could be performed at API level - not a big issue with few servers
+        return osClient.compute().servers().list().stream()
+                .filter(server -> server.getName().startsWith(SERVER_NAME_PREFIX))
+                .map(server -> Node.builder()
+                .id(server.getId())
+                .name(server.getName())
+                .dockerEngineUrl("tcp://" + server.getAccessIPv4() + ":" + DEFAULT_DOCKER_PORT)
+                .build()).collect(Collectors.toSet());
     }
 
     @Override
     public Node provisionNode(Path environmentBaseDir) {
         OSClientV3 osClient = osClientBuilder.authenticate();
-        // TODO Check against maxPoolSize
+        if (getCurrentNodes().size() >= maxPoolSize) {
+            throw new NodeProvisioningException("Cannot provision node - pool exhausted. Used: " + getCurrentNodes().size() + " Max: " + maxPoolSize);
+        }
         return provisionNode(osClient, environmentBaseDir, provisioningConfig.getDefaultNodeFlavor());
     }
 

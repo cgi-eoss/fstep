@@ -1,13 +1,5 @@
 package com.cgi.eoss.fstep.orchestrator;
 
-import com.cgi.eoss.fstep.catalogue.CatalogueConfig;
-import com.cgi.eoss.fstep.costing.CostingConfig;
-import com.cgi.eoss.fstep.orchestrator.service.FstepServiceLauncher;
-import com.cgi.eoss.fstep.orchestrator.service.WorkerFactory;
-import com.cgi.eoss.fstep.persistence.PersistenceConfig;
-import com.cgi.eoss.fstep.persistence.service.WorkerLocatorExpressionDataService;
-import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
-import com.cgi.eoss.fstep.security.SecurityConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
@@ -19,6 +11,16 @@ import org.springframework.context.annotation.Import;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 
+import com.cgi.eoss.fstep.catalogue.CatalogueConfig;
+import com.cgi.eoss.fstep.costing.CostingConfig;
+import com.cgi.eoss.fstep.orchestrator.service.FstepServiceLauncher;
+import com.cgi.eoss.fstep.orchestrator.service.WorkerFactory;
+import com.cgi.eoss.fstep.persistence.PersistenceConfig;
+import com.cgi.eoss.fstep.persistence.service.WorkerLocatorExpressionDataService;
+import com.cgi.eoss.fstep.queues.QueuesConfig;
+import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
+import com.cgi.eoss.fstep.security.SecurityConfig;
+
 /**
  * <p>Spring configuration for the FS-TEP Orchestrator component.</p>
  * <p>Manages access to distributed workers and provides the {@link FstepServiceLauncher} RPC service.</p>
@@ -29,6 +31,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 
         CatalogueConfig.class,
         CostingConfig.class,
+        QueuesConfig.class,
         InProcessRpcConfig.class,
         PersistenceConfig.class,
         SecurityConfig.class

@@ -23,4 +23,10 @@ public class LocalServiceLauncher {
         FstepServiceLauncherGrpc.FstepServiceLauncherStub serviceLauncher = FstepServiceLauncherGrpc.newStub(inProcessChannelBuilder.build());
         serviceLauncher.stopService(stopServiceParams, responseObserver);
     }
+    
+    @Async
+    public void asyncCancelJob(CancelJobParams cancelJobParams, StreamObserver<CancelJobResponse> responseObserver) {
+        FstepServiceLauncherGrpc.FstepServiceLauncherStub serviceLauncher = FstepServiceLauncherGrpc.newStub(inProcessChannelBuilder.build());
+        serviceLauncher.cancelJob(cancelJobParams, responseObserver);
+    }
 }

@@ -12,6 +12,7 @@ dependencies {
     compile project(':fs-tep-logging')
     compile project(':fs-tep-model')
     compile project(':fs-tep-persistence')
+    compile project(':fs-tep-queues')
     compile project(':fs-tep-rpc')
     compile project(':fs-tep-security')
 

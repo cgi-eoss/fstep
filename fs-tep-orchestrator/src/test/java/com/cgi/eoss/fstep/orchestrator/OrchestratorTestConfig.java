@@ -1,13 +1,12 @@
 package com.cgi.eoss.fstep.orchestrator;
 
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.inprocess.InProcessChannelBuilder;
-import io.grpc.inprocess.InProcessServerBuilder;
+import static org.mockito.Mockito.mock;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import static org.mockito.Mockito.mock;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.inprocess.InProcessChannelBuilder;
+import io.grpc.inprocess.InProcessServerBuilder;
 
 @Configuration
 public class OrchestratorTestConfig {
