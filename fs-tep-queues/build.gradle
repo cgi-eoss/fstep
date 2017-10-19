@@ -8,10 +8,12 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	
 	compile 'org.springframework.boot:spring-boot-starter-activemq'
-    compile 'org.apache.activemq:activemq-broker'
-    
+     
 	testCompile 'junit:junit'
     testCompile 'org.hamcrest:hamcrest-junit'
     testCompile 'org.mockito:mockito-core'
     testCompile 'org.springframework:spring-test'
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile 'org.springframework.boot:spring-boot-starter-log4j2'
+    
 }
