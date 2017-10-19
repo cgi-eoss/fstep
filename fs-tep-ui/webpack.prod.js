@@ -3,8 +3,9 @@ const webpack = require('webpack');
 const webpackMerge = require('webpack-merge');
 const commonConfig = require('./webpack.common.js');
 const AotPlugin = require('@ngtools/webpack').AotPlugin;
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
-const config = (env) => {
+const config = (env = {}) => {
     return webpackMerge(commonConfig(env), {
         module: {
             rules: [
@@ -44,7 +45,14 @@ const config = (env) => {
                     conditionals: false
                 },
                 comments: false
-            })
+            }),
+            new CopyWebpackPlugin([
+                {
+                    context: path.resolve(__dirname, 'assets', 'data'),
+                    from: '**/*',
+                    to: path.join(env.outpath || path.resolve(__dirname, "dist"), 'assets', 'data')
+                }
+            ])
         ],
         devtool: 'source-map'
     });

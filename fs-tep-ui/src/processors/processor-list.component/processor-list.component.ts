@@ -74,7 +74,7 @@ export class ProcessorListComponent implements AfterViewInit{
     processorsService.setActiveProcessor(null);
     processorsService.getProcessorsList().then((data)=>{
       Array.prototype.push.apply(this.processors, data);
-      for (let i = 0; i < ~~(data.length / 4); ++i) {
+      for (let i = 0; i <= ~~((data.length - 1) / 4); ++i) {
         let procs = [];
         for (let j=0; j < 4; ++j) {
           let proc = data[i * 4 + j];

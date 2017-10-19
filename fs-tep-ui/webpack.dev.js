@@ -35,12 +35,12 @@ const config = (env) => {
                     '^/proba-v': ''
                     }
                 },
-                '/fstep-wms': {
-                    target: 'http://cgi-int.eoss-cloud.it/geoserver/wms',
+                '/geoserver': {
+                    target: 'http://cgi-int.eoss-cloud.it/geoserver',
                     secure: false,
                     changeOrigin: true,
                     pathRewrite: {
-                    '^/fstep-wms': ''
+                    '^/geoserver': ''
                     }
                 }
             }
