@@ -470,6 +470,26 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             return deferred.promise;
         };
 
+        this.cancelJob = function(job) {
+            var deferred = $q.defer();
+            // Launch the jobConfig
+            halAPI.from(job._links.cancel.href)
+                    .newRequest()
+                    .get()
+                    .result
+                    .then(
+             function (document) {
+                 MessageService.addInfo('Job ' + job.id + ' cancelled', 'Job ' + job.id + ' cancelled by the user.');
+                 deferred.resolve();
+             },
+             function(error){
+                 MessageService.addError('Could not cancel the Job', error);
+                 deferred.reject();
+             });
+
+            return deferred.promise;
+        };
+
         return this;
     }]);
 });

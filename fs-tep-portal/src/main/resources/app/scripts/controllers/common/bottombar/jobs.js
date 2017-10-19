@@ -50,6 +50,12 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 });
             };
 
+            $scope.cancelJob = function(job){
+                JobService.cancelJob(job).then(function(result){
+                    JobService.refreshJobs('explorer');
+                });
+            };
+
             $scope.terminateJob = function(job){
                 JobService.terminateJob(job).then(function(result){
                     JobService.refreshJobs('explorer');
