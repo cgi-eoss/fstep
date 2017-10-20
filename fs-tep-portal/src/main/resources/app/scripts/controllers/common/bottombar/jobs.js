@@ -46,6 +46,12 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
             $scope.repeatJob = function(job){
                 JobService.getJobConfig(job).then(function(config){
+                    //rerun single batch processing subjob
+                    if (config._embedded.service.type == "PARALLEL_PROCESSOR" && !config.inputs.parallelInputs) {
+                        if (config.inputs.input) {
+                            config.inputs.parallelInputs = [config.inputs.input];
+                        }
+                    }
                     $rootScope.$broadcast('update.selectedService', config._embedded.service, config.inputs, config.label);
                 });
             };
@@ -61,6 +67,11 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                     JobService.refreshJobs('explorer');
                 });
             };
+
+            $scope.setParentJobFilter = function(job) {
+                $scope.jobParams.parentId = job ? job.id : null;
+                JobService.getJobsByFilter('explorer');
+            }
 
             $scope.hasGuiEndPoint = function (job) {
                 if (job._links && job._links.gui && job._links.gui.href && job._links.gui.href.includes("http")) {
@@ -140,7 +151,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
             $scope.selectAllOutputs = function(){
                 $scope.jobParams.jobSelectedOutputs = [];
-                $scope.jobParams.jobSelectedOutputs.push.apply($scope.jobParams.jobSelectedOutputs, $scope.jobParams.selectedJob.outputs.result);
+                $scope.jobParams.jobSelectedOutputs.push.apply($scope.jobParams.jobSelectedOutputs, $scope.jobParams.selectedJob.outputFiles);
             };
 
             $scope.clearOutputsSelection = function(){
@@ -149,9 +160,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
             $scope.invertOutputsSelection = function(){
                 var newSelection = [];
-                for(var i = 0; i < $scope.jobParams.selectedJob.outputs.result.length; i++) {
-                    if($scope.jobParams.jobSelectedOutputs.indexOf($scope.jobParams.selectedJob.outputs.result[i]) < 0){
-                         newSelection.push($scope.jobParams.selectedJob.outputs.result[i]);
+                for(var i = 0; i < $scope.jobParams.selectedJob.outputFiles.length; i++) {
+                    if($scope.jobParams.jobSelectedOutputs.indexOf($scope.jobParams.selectedJob.outputFiles[i]) < 0){
+                         newSelection.push($scope.jobParams.selectedJob.outputFiles[i]);
                     }
                 }
                 $scope.jobParams.jobSelectedOutputs = [];

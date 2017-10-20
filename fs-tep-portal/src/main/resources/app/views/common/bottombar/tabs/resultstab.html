@@ -111,8 +111,8 @@
                     </md-button>
                 </md-menu-item>
                 <md-menu-item>
-                    <md-button ng-disabled="dbParams.selectedDatabasket == undefined"
-                               ng-click="addToDatabasketFromSearch(resultParams.selectedResultItems, true)"
+                    <md-button ng-disabled="dbParams.selectedDatabasket == undefined || (!resultsParams.geoResults || resultsParams.geoResults.length < 1)"
+                               ng-click="addToDatabasketFromSearch()"
                                aria-label="Add all search results to {{dbParams.selectedDatabasket.name}}">
                         <span>
                             <span class="material-icons">shopping_basket</span>
@@ -226,12 +226,13 @@
     </md-button>
 
     <md-button class="toolbar-button"
-        ng-disabled="dbParams.selectedDatabasket == undefined"
-        ng-click="addToDatabasketFromSearch(resultParams.selectedResultItems, true)"
+        ng-disabled="dbParams.selectedDatabasket == undefined || (!resultsParams.results.geoResults || resultsParams.results.geoResults.length < 1)"
+        ng-click="addToDatabasketFromSearch()"
         aria-label="Add all search results to Databasket"
         uib-tooltip="Add all search results to {{dbParams.selectedDatabasket.name}}"
         tooltip-trigger="mouseenter"
         tooltip-append-to-body="true">
-    <i class="material-icons">shopping_basket</i>
+        <md-icon md-svg-src="images/cart_search.svg" class="s24" style="color:inherit"></md-icon>
+    <!--i class="material-icons">shopping_basket</i-->
     </md-button>
 </div>
