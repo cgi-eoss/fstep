@@ -11,7 +11,7 @@ import { ProcessorLayer } from '../processor-layer';
 @Component({
     selector: 'processor-info',
     templateUrl: './processor-info.component.html',
-    styleUrls: ['./processor-info.component.css']
+    styleUrls: ['./processor-info.component.scss']
 })
 export class ProcessorInfoComponent implements AfterViewInit, OnDestroy {
     @ViewChild("container") container: ElementRef;

@@ -11,7 +11,7 @@
     </div>
     <div class="navbar-menu" id="navMenu" [ngClass]="{'is-active': menuVisible}">
         <div class="navbar-start">
-            <a class="navbar-item" routerLink="/processor">
+            <a class="navbar-item is-tab" [ngClass]="{'is-active': activeTab == 'products'}" routerLink="/processor">
                 Products
             </a>
         </div>

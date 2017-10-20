@@ -12,7 +12,7 @@ interface SeriesItem {
 @Component({
   selector: 'timeseries-plot',
   templateUrl: './timeseries-plot.component.html',
-  styleUrls: ['./timeseries-plot.component.css']
+  styleUrls: ['./timeseries-plot.component.scss']
 })
 export class TimeseriesPlot implements AfterViewInit, OnChanges {
     @Input() width: number;

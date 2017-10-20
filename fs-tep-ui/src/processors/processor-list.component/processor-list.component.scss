@@ -21,6 +21,10 @@
     padding: 20px;
 }
 
+.tile.is-ancestor {
+    flex-wrap: wrap;
+}
+
 .card {
     height: 100%;
     cursor: pointer;

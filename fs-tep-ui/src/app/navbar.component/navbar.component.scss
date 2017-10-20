@@ -6,6 +6,19 @@
     right: 0;
 }
 
+.navbar-brand .navbar-item {
+    padding: 0 0.5rem;
+}
+
+.navbar-brand .navbar-item img {
+    max-height: 50px;
+    padding: 5px;
+}
+
+.navbar .navbar-item {
+    border-right: solid 1px #d2d2d2;
+}
+
 /*
 .navbar-brand {
     background-color: #ee7421;

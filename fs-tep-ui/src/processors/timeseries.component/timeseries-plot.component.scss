@@ -1,7 +1,9 @@
+@import "../../../css/variables.sass";
+
 :host /deep/ .area {
     fill: none;
     clip-path: url(#clip);
-    stroke: #05a902;
+    stroke: $accent;
     stroke-width: 3px;
   }
   

@@ -1,3 +1,5 @@
+@import "../../../css/variables.sass";
+
 :host {
     position: absolute;
     background: white;
@@ -5,7 +7,7 @@
     left: 20px;
     padding: 10px;
     border-radius: 5px;
-    border: solid 2px #ee7421;
+    border: solid 2px $brand-dark;
     width: 70%;
     height: 300px;
 }

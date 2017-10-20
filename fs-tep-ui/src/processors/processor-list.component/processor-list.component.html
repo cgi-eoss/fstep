@@ -1,8 +1,8 @@
 <div #container class="list_container">
     <section>
         <div [@fadeIn]="processors.length">
-            <div class="tile is-ancestor" *ngFor="let line of lines" >
-                <div class="tile is-3 is-parent" *ngFor="let processor of line" >
+            <div class="tile is-ancestor">
+                <div class="tile is-3 is-parent" *ngFor="let processor of processors" >
                     <div class="tile is-child" >
                         <div class="card" (click)="onProcessorSelect(processor)" [ngClass]="{'is-active': processor == processorsService.getActiveProcessor()}">
                             <header class="card-header">

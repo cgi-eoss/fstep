@@ -1,5 +1,5 @@
 import {Component, ViewChild, ElementRef, AfterViewInit} from "@angular/core";
-import {Router, ActivatedRoute} from '@angular/router';
+import {Router, ActivatedRoute, NavigationEnd} from '@angular/router';
 
 import 'rxjs/add/operator/map';
 
@@ -15,6 +15,7 @@ export class NavbarComponent implements AfterViewInit {
 
   username: string;
   public menuVisible = false;
+  public activeTab = '';
 
   constructor(private userService: UserService, private router: Router, private route: ActivatedRoute) {
     
@@ -22,31 +23,18 @@ export class NavbarComponent implements AfterViewInit {
       this.username = user ? user.name : null;
     })
 
-    this.router.events.subscribe((path)=>{
+    this.router.events.subscribe((navigationEnd: NavigationEnd)=>{
       this.menuVisible = false;
+      this.activeTab = '';
+      if (navigationEnd.url.search(/\/processor/) != -1) {
+        this.activeTab = 'products';
+      }
     });
     
-
-    //this.userService.login('admin');
   }
 
   ngAfterViewInit() {
     
-    /*
-    let user = this.route
-      .queryParamMap
-      .map(params => params.get('user'));
-
-    user.subscribe((val)=>{
-        if (val)
-          this.userSerice.login(val);
-    });
-    */
-    
-    /*
-    let user = this.route.snapshot.queryParamMap.get('user') || 'aaa';
-    this.userSerice.login(user);
-    */
   }
 
   onMobileMenuClick() {
