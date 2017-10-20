@@ -14,20 +14,26 @@
             <md-sidenav id="sidebar-left" class="md-sidenav-left md-whiteframe-4dp"
                         md-component-id="left" md-disable-backdrop md-whiteframe="4" md-is-open="navInfo.sideViewVisible">
                 <div class="panel-container">
-                    <div ng-controller="ProjectCtrl" ng-include src="'views/explorer/sidebar/project.html'" class="sidebar-header" />
+                    <div class="col-xs-1 no-padding heading-item" style="position: absolute; z-index: 1000; right: 10px; top: 5px; color: white;">
+                        <md-button class="toolbar-button right toolbar-right"
+                                    ng-click="hideSidebarArea(); $event.stopPropagation()"
+                                    aria-label="Close Sidebar"
+                                    uib-tooltip="Close"
+                                    tooltip-placement="right"
+                                    tooltip-trigger="mouseenter"
+                                    tooltip-append-to-body="true">
+                            <i class="material-icons">close</i>
+                        </md-button>
+                    </div>
+                    <!--div ng-controller="ProjectCtrl" ng-include src="'views/explorer/sidebar/projectdisabled.html'" class="sidebar-header" /-->
                     <div ng-controller="SearchbarCtrl" ng-include src="'views/explorer/sidebar/search.html'" ng-if="navInfo.activeSideNav === 0" class="sidebar-item panel-container" />
                     <div ng-controller="ServicesCtrl" ng-include src="'views/explorer/sidebar/services.html'" ng-if="navInfo.activeSideNav === 1" class="sidebar-item panel-container" />
                     <div ng-controller="WorkspaceCtrl" ng-include src="'views/explorer/sidebar/workspace.html'" ng-show="navInfo.activeSideNav === 2" class="sidebar-item panel-container" />
                 </div>
             </md-sidenav>
         </section>
-
-        <section id="map-container">
-            <div id="map" ng-controller="MapCtrl">
-                <div ng-include src="'views/explorer/map.html'" onload="finishLoading('map'); updateMap()"></div>
-            </div>
+        <section id="map-section" ng-include="'views/explorer/map.html'" onload="finishLoading('map')">
         </section>
-
         <section id="bottombar-container"
                  ng-class="{'col-xs-12 col-sm-12 col-md-8 col-xl-9 col-xxl-10':navInfo.sideViewVisible, 'col-md-12 wide':!navInfo.sideViewVisible, 'bottombar-tall': bottombarTall === true}"
                  class="explorer-content animationIf no-padding"

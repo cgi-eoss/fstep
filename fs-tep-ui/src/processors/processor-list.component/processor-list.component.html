@@ -1,0 +1,26 @@
+<div #container class="list_container">
+    <section>
+        <div [@fadeIn]="processors.length">
+            <div class="tile is-ancestor">
+                <div class="tile is-3 is-parent" *ngFor="let processor of processors" >
+                    <div class="tile is-child" >
+                        <div class="card" (click)="onProcessorSelect(processor)" [ngClass]="{'is-active': processor == processorsService.getActiveProcessor()}">
+                            <header class="card-header">
+                                <p class="card-header-title">
+                                    {{processor.name}}
+                                </p>
+                            </header>
+
+                            <div class="card-content">
+                                <figure class="image is-96x96 is-pulled-left">
+                                    <img src="http://bulma.io/images/placeholders/96x96.png" alt="Image">
+                                </figure>
+                                <p>{{processor.description}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>

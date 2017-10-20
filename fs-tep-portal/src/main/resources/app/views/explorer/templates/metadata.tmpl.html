@@ -6,7 +6,8 @@
 
             <div class="row" ng-if="item.properties._links.quicklook">
                 <div class="col-md-12 quicklook-cointainer">
-                    <img class="quicklook-img" ng-src="{{item.properties._links.quicklook.href}}" alt="Quicklook not available" />
+                    <!--img class="quicklook-img" ng-src="{{item.properties._links.quicklook.href}}" alt="Quicklook not available" /-->
+                    <image-loader source="item.properties._links.quicklook.href" error-src="'images/no-image.png'" error-alt="'Quicklook not available'"></image-loader>
                 </div>
             </div>
 

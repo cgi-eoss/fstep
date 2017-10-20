@@ -12,6 +12,9 @@ define([
     './controllers/common/bottombar/databasket',
     './controllers/common/bottombar/jobs',
     './controllers/common/bottombar/results',
+    './controllers/common/directives/imageLoader',
+    './controllers/common/directives/aoiField',
+    './controllers/common/directives/aoiList',
 
     './controllers/community/community',
     './controllers/community/sidebar/databaskets',
@@ -46,7 +49,6 @@ define([
     './services/fileservice',
     './services/groupservice',
     './services/jobservice',
-    './services/mapservice',
     './services/messageservice',
     './services/projectservice',
     './services/productservice',
@@ -54,6 +56,14 @@ define([
     './services/searchservice',
     './services/tabservice',
     './services/userservice',
-    './services/walletservice'
+    './services/walletservice',
+    './services/userprefservice',
+    './services/aoiservice',
+    './services/map/mapservice',
+    './services/map/aoilayerservice',
+    './services/map/resultlayerservice',
+    './services/map/basketlayerservice',
+    './services/map/productlayerservice'
+
 
 ], function () {});

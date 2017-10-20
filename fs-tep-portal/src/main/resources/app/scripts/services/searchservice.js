@@ -5,7 +5,7 @@
  * # SearchService
  * Service in the fstepApp.
  */
-define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJsonHalAdapter) {
+define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, TraversonJsonHalAdapter, moment) {
 
     'use strict';
 
@@ -19,10 +19,17 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         this.spinner = { loading: false };
 
         this.params = {
-            savedSearch: {},
-            selectedCatalog: {},
             pagingData: {},
-            results: {}
+            results: {},
+            searchParameters: {}
+        };
+
+        var updateSearchParametersFromResponse = function(response) {
+            var params = response.parameters.parameters;
+            for (var key in params) {
+                params[key] = params[key][0];
+            }
+            _this.params.searchParameters = params;
         };
 
         /* Get Groups for share functionality to fill the combobox */
@@ -44,8 +51,8 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
 
         /* Get search name to display in the bottombar tab */
         this.getSearchName = function() {
-            if(this.params.savedSearch.mission) {
-                return ': ' + this.params.savedSearch.mission;
+            if(this.params.searchParameters.mission) {
+                return ': ' + this.params.searchParameters.mission;
             } else {
                 return '';
             }
@@ -78,14 +85,20 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             this.spinner.loading = true;
             var deferred = $q.defer();
 
+            var params = angular.extend({}, searchParameters, {
+                productDateStart: moment(searchParameters.productDateStart).format('YYYY-MM-DD[T00:00:00Z]'),
+                productDateEnd: moment(searchParameters.productDateEnd).format('YYYY-MM-DD[T23:59:59Z]')
+            });
+
             halAPI.from(rootUri + '/search')
                 .newRequest()
-                .withRequestOptions({ qs: searchParameters })
+                .withRequestOptions({ qs: params })
                 .getResource()
                 .result
                 .then(
                 function (response) {
                     _this.spinner.loading = false;
+                    updateSearchParametersFromResponse(response);
                     deferred.resolve(response);
                 }, function (error) {
                     _this.spinner.loading = false;

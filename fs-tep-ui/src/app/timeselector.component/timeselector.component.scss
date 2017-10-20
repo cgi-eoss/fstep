@@ -1,0 +1,17 @@
+.time_selector {
+    cursor: pointer;
+    position: relative;
+}
+
+.time_selector > span {
+    display: inline-block;
+    margin-right: 8px;
+}
+
+#date_in {
+    position: absolute;
+    top: 0;
+    left: 0;
+    visibility: hidden;
+    width: 100%;
+}
