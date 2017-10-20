@@ -13,6 +13,12 @@ service FstepServiceLauncher {
     rpc StopService (StopServiceParams) returns (StopServiceResponse);
 }
 
+service FstepJobLauncher {
+	rpc SubmitJob (FstepServiceParams) returns (stream FstepServiceResponse);
+    rpc CancelJob (CancelJobParams) returns (CancelJobResponse);
+    rpc StopJob (StopServiceParams) returns (StopServiceResponse);
+}
+
 message FstepServiceParams {
     string jobId = 1;
     string userId = 2;
@@ -49,4 +55,12 @@ message StopServiceParams {
 }
 
 message StopServiceResponse {
+}
+
+message CancelJobParams {
+    Job job = 1;
+}
+
+message CancelJobResponse {
+    Job job = 1;
 }

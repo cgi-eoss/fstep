@@ -22,6 +22,7 @@ dependencies {
     compile project(path: ':fs-tep-clouds', configuration: 'shadow')
     compile project(':fs-tep-io')
     compile project(':fs-tep-logging')
+    compile project(':fs-tep-queues')
     compile project(':fs-tep-rpc')
 
     // Pre-built shaded docker-java jar
@@ -41,6 +42,7 @@ dependencies {
     compile 'org.jooq:jool'
     compile 'org.lognet:grpc-spring-boot-starter'
     compile 'org.springframework:spring-context'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.9.1'
     compile 'org.springframework.boot:spring-boot-autoconfigure'
     compile 'org.springframework.boot:spring-boot-starter-actuator'
     compile 'org.springframework.boot:spring-boot-starter-log4j2'
