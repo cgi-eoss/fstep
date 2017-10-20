@@ -1,7 +1,9 @@
+@import "../../../css/variables.sass";
+
 .popup-axis {
     height: 100px;
     cursor: move;
-    border-left: solid 2px #ee7421;
+    border-left: solid 2px $brand-dark;
     position: relative;
 }
 
@@ -9,7 +11,7 @@
     position: absolute;
     bottom: -18px;
     left: -13px;
-    color: #ee7421;
+    color: $brand-dark;
 }
 
 .popup-content {

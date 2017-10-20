@@ -132,7 +132,8 @@ const config = ((env = {}) => {
             new HtmlWebpackPlugin({
                 //inject: 'head',
                 //hash: true,
-                template: './src/index.html'
+                template: './src/index.ejs',
+                baseUrl: env.baseUrl || '/analyst/'
             })
         ]
     }

@@ -1,5 +1,5 @@
 {
-    "serviceUrl" : "/secure/api/v2.0",
+    "serviceUrl" : "/secure/api/v2.0/",
     "geoserver": {
         "url": "/geoserver",
         "products_workspace": "fs-prods"

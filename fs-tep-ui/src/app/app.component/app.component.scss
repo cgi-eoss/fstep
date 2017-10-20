@@ -1,6 +1,5 @@
 @import "../../../css/bulma-theme.sass";
 @import "~bulma/bulma.sass";
-@import 'gemini-scrollbar/gemini-scrollbar.css';
 @import 'flatpickr/dist/flatpickr.min.css';
 
 
@@ -21,19 +20,11 @@ body {
 breadcrumb {
     position: relative;
     width: 100%;
-    background: rgba(255, 255, 255, 0.81);
+    background: rgba(232, 131, 0, 0.9);
     display: block;
     border-bottom: solid 1px;
 }
 
-.gm-scrollbar .thumb, {
-  background-color:rgba(238, 116, 33, 0.5);
-}
-.gm-scrollbar .thumb:hover,
-.gm-scrollbar .thumb:active {
-  background-color: #ee7421;
-}
-
 .flatpickr-day.selected {
-    background-color: #ee7421;
+    background-color: $brand-dark;
 }

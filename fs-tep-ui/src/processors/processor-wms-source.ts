@@ -72,6 +72,11 @@ export class ProcessorWMSSource {
         this.source.updateParams({
             TIME: this.getNearestWMSTime(dt)
         });
+        //this.source.setTileLoadFunction(this.source.getTileLoadFunction());
+        this.source.refresh();
+        //this.source.clear();
+        //this.source.tileCache.clear()
+        //this.source.setTileUrlFunction(this.source.getTileUrlFunction(), function () { return (new Date()).getTime(); });
         if (this.rasterSource) {
             this.rasterSource.changed();
         }

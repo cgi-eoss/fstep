@@ -8,7 +8,7 @@ import { ProcessorLayer } from '../processor-layer';
 @Component({
   selector: 'timeseries-widget',
   templateUrl: './timeseries-widget.component.html',
-  styleUrls: ['./timeseries-widget.component.css']
+  styleUrls: ['./timeseries-widget.component.scss']
 })
 export class TimeSeriesWidget implements AfterViewInit {
 

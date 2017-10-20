@@ -16,7 +16,9 @@ export class TimeSelectorComponent implements AfterViewInit {
     private flatPickerInstance;
 
     constructor(private timeService: TimeService) {
-
+        this.timeService.getSelectedDate().subscribe((value) => {
+            this.onTimeChange(value);
+        })
     }
 
     ngAfterViewInit() {
@@ -25,12 +27,9 @@ export class TimeSelectorComponent implements AfterViewInit {
                 if (value && value.length)
                     this.timeService.setSelectedDate(value[0]);
             },
+            defaultDate: this.timeService.getCurrentDate(),
             disableMobile: "true"
         });
-
-        this.timeService.getSelectedDate().subscribe((value) => {
-            this.onTimeChange(value);
-        })
 
         this.timeService.getDateConstraintsObs().subscribe((constraints) => {
             if(!constraints) {
@@ -51,8 +50,10 @@ export class TimeSelectorComponent implements AfterViewInit {
 
     private onTimeChange(dt: Date) {
         this.ts = moment(dt).format('YYYY-MM-DD');
-        this.flatPickerInstance.jumpToDate(dt);
-        this.flatPickerInstance.setDate(dt);
+        if (this.flatPickerInstance) {
+            this.flatPickerInstance.jumpToDate(dt);
+            this.flatPickerInstance.setDate(dt);
+        }
     }
 
     selectDate() {
