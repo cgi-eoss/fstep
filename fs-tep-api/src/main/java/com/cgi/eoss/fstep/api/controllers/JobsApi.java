@@ -65,19 +65,19 @@ public interface JobsApi extends BaseRepositoryApi<Job>, JobsApiCustom, PagingAn
     Page<Job> findByFilterAndNotOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("owner") User user, Pageable pageable);
 
     @Override
-    @RestResource(path="findByFilterOnlyAndIsParent", rel="findByFilterOnlyAndIsParent")
+    @RestResource(path="findByFilterAndIsNotSubjob", rel="findByFilterAndIsNotSubjob")
     @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.status in (:status) and t.parentJob=null")
-    Page<Job> findByFilterOnlyAndIsParent(@Param("filter") String filter,  @Param("status") Collection<Status> statuses, Pageable pageable);
+    Page<Job> findByFilterAndIsNotSubjob(@Param("filter") String filter,  @Param("status") Collection<Status> statuses, Pageable pageable);
 
     @Override
-    @RestResource(path="findByFilterAndIsParentAndOwner", rel="findByFilterAndIsParentAndOwner")
+    @RestResource(path="findByFilterAndIsNotSubjobAndOwner", rel="findByFilterAndIsNotSubjobAndOwner")
     @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob=null and t.status in (:status) and t.owner=:owner")
-    Page<Job> findByFilterAndIsParentAndOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("owner") User user, Pageable pageable);
+    Page<Job> findByFilterAndIsNotSubjobAndOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("owner") User user, Pageable pageable);
 
     @Override
-    @RestResource(path="findByFilterAndIsParentAndNotOwner", rel="findByFilterAndIsParentAndNotOwner")
+    @RestResource(path="findByFilterAndIsNotSubjobAndNotOwner", rel="findByFilterAndIsNotSubjobAndNotOwner")
     @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob=null and t.status in (:status) and not t.owner=:owner")
-    Page<Job> findByFilterAndIsParentAndNotOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("owner") User user, Pageable pageable);
+    Page<Job> findByFilterAndIsNotSubjobAndNotOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("owner") User user, Pageable pageable);
 
     @Override
     @RestResource(path="findByFilterAndParent", rel="findByFilterAndParent")

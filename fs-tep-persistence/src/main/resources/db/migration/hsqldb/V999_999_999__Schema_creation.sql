@@ -100,6 +100,7 @@ CREATE TABLE fstep_jobs (
   end_time   TIMESTAMP WITHOUT TIME ZONE,
   ext_id     CHARACTER VARYING(255) NOT NULL,
   gui_url    CHARACTER VARYING(255),
+  is_parent  BOOLEAN DEFAULT FALSE,
   outputs    CLOB,
   stage      CHARACTER VARYING(255),
   start_time TIMESTAMP WITHOUT TIME ZONE,

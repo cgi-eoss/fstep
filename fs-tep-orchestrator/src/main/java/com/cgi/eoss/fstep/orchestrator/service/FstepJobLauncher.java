@@ -383,6 +383,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             parentJob.getSubJobs().add(childJob);
             childJobs.add(childJob);
         }
+        parentJob.setParent(true);
         jobDataService.save(parentJob);
         return childJobs;
     }

@@ -15,11 +15,11 @@ public interface JobsApiCustom {
 
     Page<Job> findByFilterAndNotOwner(String filter, Collection<Status> statuses, User user, Pageable pageable);
     
-    Page<Job> findByFilterOnlyAndIsParent(String filter, Collection<Status> statuses, Pageable pageable);
+    Page<Job> findByFilterAndIsNotSubjob(String filter, Collection<Status> statuses, Pageable pageable);
 
-    Page<Job> findByFilterAndIsParentAndOwner(String filter, Collection<Status> statuses, User user, Pageable pageable);
+    Page<Job> findByFilterAndIsNotSubjobAndOwner(String filter, Collection<Status> statuses, User user, Pageable pageable);
 
-    Page<Job> findByFilterAndIsParentAndNotOwner(String filter, Collection<Status> statuses, User user, Pageable pageable);
+    Page<Job> findByFilterAndIsNotSubjobAndNotOwner(String filter, Collection<Status> statuses, User user, Pageable pageable);
 
     Page<Job> findByFilterAndParent(String filter, Collection<Status> statuses, Long parentId, Pageable pageable);
 

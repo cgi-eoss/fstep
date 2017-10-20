@@ -44,8 +44,8 @@ public class JobsApiImpl extends BaseRepositoryApiImpl<Job> implements JobsApiCu
         return Job.class;
     }
 
-    BooleanExpression isParent() {
-        return QJob.job.subJobs.size().gt(0);
+    BooleanExpression isNotSubjob() {
+        return QJob.job.parentJob.isNull();
     }
     
     BooleanExpression isChildOf(Long parentId) {
@@ -68,18 +68,18 @@ public class JobsApiImpl extends BaseRepositoryApiImpl<Job> implements JobsApiCu
     }
     
     @Override
-    public Page<Job> findByFilterOnlyAndIsParent(String filter, Collection<Status> statuses, Pageable pageable){
-        return getFilteredResults(isParent().and(getFilterPredicate(filter, statuses)), pageable);
+    public Page<Job> findByFilterAndIsNotSubjob(String filter, Collection<Status> statuses, Pageable pageable){
+        return getFilteredResults(isNotSubjob().and(getFilterPredicate(filter, statuses)), pageable);
     }
     
     @Override
-    public Page<Job> findByFilterAndIsParentAndOwner(String filter, Collection<Status> statuses, User user, Pageable pageable){
-        return getFilteredResults(isParent().and(getOwnerPath().eq(user)).and(getFilterPredicate(filter, statuses)), pageable);
+    public Page<Job> findByFilterAndIsNotSubjobAndOwner(String filter, Collection<Status> statuses, User user, Pageable pageable){
+        return getFilteredResults(isNotSubjob().and(getOwnerPath().eq(user)).and(getFilterPredicate(filter, statuses)), pageable);
     }
 
     @Override
-    public Page<Job> findByFilterAndIsParentAndNotOwner(String filter, Collection<Status> statuses, User user, Pageable pageable){
-        return getFilteredResults(isParent().and(getOwnerPath().ne(user)).and(getFilterPredicate(filter, statuses)), pageable);
+    public Page<Job> findByFilterAndIsNotSubjobAndNotOwner(String filter, Collection<Status> statuses, User user, Pageable pageable){
+        return getFilteredResults(isNotSubjob().and(getOwnerPath().ne(user)).and(getFilterPredicate(filter, statuses)), pageable);
     }
 
     @Override

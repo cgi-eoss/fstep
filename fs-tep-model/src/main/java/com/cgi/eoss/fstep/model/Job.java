@@ -141,6 +141,13 @@ public class Job implements FstepEntityWithOwner<Job> {
     @ManyToOne
     private Job parentJob;
     
+    /**
+     * <p>Tells if a job is a parent job</p>
+     */
+    @Column(name = "is_parent")
+    private boolean isParent;
+    
+    
     public Job(JobConfig config, String extId, User owner, Job parentJob) {
         this(config, extId, owner);
         this.parentJob = parentJob;
