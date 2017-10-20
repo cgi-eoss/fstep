@@ -1,15 +1,14 @@
 package com.cgi.eoss.fstep.model.projections;
 
-import com.cgi.eoss.fstep.security.FstepAccess;
-import com.cgi.eoss.fstep.model.Job;
-import com.cgi.eoss.fstep.model.JobConfig;
-import com.google.common.collect.Multimap;
+import java.time.LocalDateTime;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.rest.core.config.Projection;
 import org.springframework.hateoas.Identifiable;
-
-import java.time.LocalDateTime;
-import java.util.Set;
+import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.security.FstepAccess;
+import com.google.common.collect.Multimap;
 
 /**
  * <p>Comprehensive representation of a Job entity, including outputs and jobConfig, for embedding in
@@ -24,6 +23,7 @@ public interface DetailedJob extends Identifiable<Long> {
     String getStage();
     LocalDateTime getStartTime();
     LocalDateTime getEndTime();
+    boolean isParent();
     @Value("#{target.config.service.name}")
     String getServiceName();
     Multimap<String, String> getOutputs();
