@@ -653,9 +653,9 @@
   min-height: 2rem;
 }
 #sidebar-left md-toolbar .md-toolbar-tools {
-  background-color: #ffd3a5;
+  background-color: #E88300;
   padding: 0;
-  color: rgba(0, 0, 0, 0.7);
+  color: rgba(255, 255, 255, 0.87);
 }
 #sidebar-left md-toolbar .md-toolbar-tools span {
   font-size: 1.0rem;
@@ -801,6 +801,40 @@
   font-size: 0.8rem;
   margin: 0;
   padding-bottom: 0.5rem;
+}
+#community-container section.filter-list {
+  margin-left: 5px;
+  padding-bottom: 5px;
+  border-bottom: solid 1px #d2d2d2;
+  margin-bottom: 5px;
+}
+#community-container section.filter-list md-input-container {
+  margin: inherit;
+  width: auto;
+  margin-top: 25px;
+  margin-right: 10px;
+  color: rgba(0, 0, 0, 0.7);
+}
+#community-container section.filter-list md-input-container md-radio-button {
+  display: inline-block;
+  margin-bottom: 0px;
+  margin-right: 10px;
+}
+#community-container section.filter-list md-input-container md-checkbox {
+  margin-bottom: 0px;
+}
+#community-container section.filter-list md-input-container md-checkbox .md-icon {
+  transform: scale(0.8);
+}
+#community-container section.filter-list md-input-container md-checkbox .md-icon.md-ripple-container {
+  transform: scale(0.8);
+}
+#community-container section.filter-list md-input-container md-checkbox .md-icon:after {
+  border-color: rgba(0, 0, 0, 0.54);
+}
+#community-container section.filter-list md-input-container .hint {
+  font-size: 0.6rem;
+  color: rgba(0, 0, 0, 0.4);
 }
 
 #file-manage-container #file-details,

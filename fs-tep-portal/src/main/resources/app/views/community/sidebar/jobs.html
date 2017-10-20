@@ -8,68 +8,45 @@
 
 <section id="sidebar-list">
 
-    <div class="filter-list">
-        <ul class="list">
-
-            <div class="row list-group filter-list-title">
-
-                <div class="col-xs-10" ng-click="toggleFilters()">
-                    <label class="md-accent">Filters</label>
-                </div>
-
-                <div class="col-xs-2 expander">
-                    <i class="material-icons"
-                       ng-show="!jobParams.displayFilters"
-                       ng-click="toggleFilters()"
-                       aria-label="Show Filters"
-                       uib-tooltip="Show Filters"
-                       tooltip-placement="top"
-                       tooltip-trigger="mouseenter"
-                       tooltip-append-to-body="true">
-                        expand_less
-                    </i>
-                    <i class="material-icons"
-                       ng-show="jobParams.displayFilters"
-                       ng-click="toggleFilters()"
-                       aria-label="Hide Filters"
-                       uib-tooltip="Hide Filters"
-                       tooltip-placement="top"
-                       tooltip-trigger="mouseenter"
-                       tooltip-append-to-body="true">
-                        expand_more
-                    </i>
-                </div>
-
-            </div>
-
-            <md-input-container md-no-float ng-show="jobParams.displayFilters">
-                <input ng-model="jobParams.searchText" type="text" placeholder="Search" ng-keyup="filter()" aria-label="Jobs Search Filter">
-            </md-input-container>
-
-            <md-input-container ng-show="jobParams.displayFilters" md-no-float>
-                <md-select ng-model="jobParams.selectedStatuses" ng-change="filter()" multiple placeholder="Job Status">
-                    <md-optgroup label="Statuses">
-                        <md-option ng-repeat="jobStatus in jobStatuses"
-                                   ng-value="jobStatus.name"
-                                   aria-label="Job Filter">
-                            {{jobStatus.title}}
-                        </md-option>
-                    </md-optgroup>
-                </md-select>
-            </md-input-container>
-
-            <div class="row filter-radiobutton" ng-show="jobParams.displayFilters">
-                <md-radio-group ng-model="jobParams.selectedOwnershipFilter" ng-change="filter()">
-                    <div ng-repeat="ownershipFilter in jobOwnershipFilters" class="col-md-12 col-lg-4 no-padding">
-                        <md-radio-button ng-value="ownershipFilter">
+    <section class="filter-list">
+            <ul class="list">
+    
+    
+                <md-input-container>
+                    <label>Filter</label>
+                    <input ng-model="jobParams.searchText" type="text" placeholder="Search" ng-keyup="filter()" aria-label="Jobs Search Filter">
+                </md-input-container>
+    
+                <md-input-container>
+                    <label>Job Status</label>
+                    <md-select ng-model="jobParams.selectedStatuses" ng-change="filter()" multiple placeholder="Job Status">
+                        <md-optgroup label="Statuses">
+                            <md-option ng-repeat="jobStatus in jobStatuses"
+                                       ng-value="jobStatus.name"
+                                       aria-label="Job Filter">
+                                {{jobStatus.title}}
+                            </md-option>
+                        </md-optgroup>
+                    </md-select>
+                </md-input-container>
+    
+                <md-input-container class="md-input-has-value">
+                    <label>Ownership</label>
+                    <md-radio-group ng-model="jobParams.selectedOwnershipFilter" ng-change="filter()">
+                        <md-radio-button ng-repeat="ownershipFilter in jobOwnershipFilters" ng-value="ownershipFilter">
                             {{ownershipFilter.name}}
                         </md-radio-button>
-                    </div>
-                </md-radio-group>
-            </div>
-
-        </ul>
-    </div>
+                    </md-radio-group>
+                </md-input-container>
+    
+                <md-chips readonly="true" md-removable="true" ng-if="jobParams.parentId">
+                    <md-chip>
+                        <div class="md-chip-content">Parent job ID: {{jobParams.parentId}}</div>
+                        <button class="md-chip-remove" ng-click="setParentJobFilter(null)"><i class="material-icons">close</i></button>
+                    </md-chip>
+                </md-chips>
+            </ul>
+        </section>
 
     <div class="row" ng-if="!jobParams.jobs.length > 0">
         <div class="col-md-12 no-padding">
@@ -89,6 +66,17 @@
                 <span><b>Stage:</b> <span ng-bind="job.stage" /></span>
                 <span><b>Status:</b> <span ng-bind="job.status" /></span>
             </div>
+
+            <md-button class="toolbar-button md-secondary"
+            ng-show="job.parent"
+            ng-click="setParentJobFilter(job)"
+            aria-label="View subjobs"
+            uib-tooltip="View subjobs"
+            tooltip-placement="top"
+            tooltip-trigger="mouseenter"
+            tooltip-append-to-body="true">
+                <i class="material-icons">subdirectory_arrow_right</i>
+            </md-button>
 
             <md-button class="toolbar-button md-secondary"
                        aria-label="Job Info"

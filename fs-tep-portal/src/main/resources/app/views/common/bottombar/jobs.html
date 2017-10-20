@@ -31,6 +31,12 @@
                 </md-radio-group>
             </md-input-container>
 
+            <md-chips readonly="true" md-removable="true" ng-if="jobParams.parentId">
+                <md-chip>
+                    <div class="md-chip-content">Parent job ID: {{jobParams.parentId}}</div>
+                    <button class="md-chip-remove" ng-click="setParentJobFilter(null)"><i class="material-icons">close</i></button>
+                </md-chip>
+            </md-chips>
         </ul>
     </section>
 
@@ -57,6 +63,17 @@
             </div>
 
             <md-button class="toolbar-button md-secondary"
+            ng-show="job.parent"
+            ng-click="setParentJobFilter(job)"
+            aria-label="View subjobs"
+            uib-tooltip="View subjobs"
+            tooltip-placement="top"
+            tooltip-trigger="mouseenter"
+            tooltip-append-to-body="true">
+                <i class="material-icons">subdirectory_arrow_right</i>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
                     aria-label="Job Info"
                     uib-popover-template="'views/common/templates/jobinfo.tmpl.html'"
                     popover-placement="left"
@@ -64,7 +81,7 @@
                     popover-append-to-body="true">
                 <i class="material-icons">info_outline</i>
             </md-button>
-
+            
             <md-button class="toolbar-button md-secondary"
                        ng-show="hasGuiEndPoint(job)"
                        href="{{job._links.gui.href}}"
