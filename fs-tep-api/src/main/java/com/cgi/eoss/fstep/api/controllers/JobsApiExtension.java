@@ -137,7 +137,7 @@ public class JobsApiExtension {
         final CountDownLatch latch = new CountDownLatch(1);
         JobStopObserver responseObserver = new JobStopObserver(latch);
 
-        localServiceLauncher.asyncStopService(stopServiceParams, responseObserver);
+        localServiceLauncher.asyncStopJob(stopServiceParams, responseObserver);
 
         latch.await(1, TimeUnit.MINUTES);
         return ResponseEntity.noContent().build();

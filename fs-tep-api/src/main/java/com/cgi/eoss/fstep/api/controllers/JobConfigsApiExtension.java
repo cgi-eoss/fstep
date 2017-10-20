@@ -1,17 +1,8 @@
 package com.cgi.eoss.fstep.api.controllers;
 
-import com.cgi.eoss.fstep.security.FstepSecurityService;
-import com.cgi.eoss.fstep.model.Job;
-import com.cgi.eoss.fstep.model.JobConfig;
-import com.cgi.eoss.fstep.persistence.dao.JobDao;
-import com.cgi.eoss.fstep.rpc.FstepServiceParams;
-import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
-import com.cgi.eoss.fstep.rpc.GrpcUtil;
-import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
-import com.google.common.base.Strings;
-import io.grpc.stub.StreamObserver;
-import lombok.Getter;
-import lombok.extern.log4j.Log4j2;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.BasePathAwareController;
 import org.springframework.data.rest.webmvc.RepositoryRestController;
@@ -22,10 +13,18 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.persistence.dao.JobDao;
+import com.cgi.eoss.fstep.rpc.FstepServiceParams;
+import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
+import com.cgi.eoss.fstep.rpc.GrpcUtil;
+import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
+import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.google.common.base.Strings;
+import io.grpc.stub.StreamObserver;
+import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 
 /**
  * <p>A {@link RepositoryRestController} for interacting with {@link JobConfig}s. Offers additional functionality over
@@ -73,7 +72,7 @@ public class JobConfigsApiExtension {
 
         final CountDownLatch latch = new CountDownLatch(1);
         JobLaunchObserver responseObserver = new JobLaunchObserver(latch);
-        localServiceLauncher.asyncLaunchService(serviceParams, responseObserver);
+        localServiceLauncher.asyncSubmitJob(serviceParams, responseObserver);
 
         // Block until the latch counts down (i.e. one message from the server
         latch.await(1, TimeUnit.MINUTES);

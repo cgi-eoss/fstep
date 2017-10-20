@@ -172,7 +172,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     		Node newNode = nodeFactory.provisionNode(jobEnvironmentService.getBaseDir());
 		jobNodes.put(request.getJob().getId(), newNode);
 		jobsPerNode.put(newNode, jobsPerNode.getOrDefault(newNode, 0) + 1);	   
-    		prepareEnvironment(request, responseObserver);
+    		prepareInputs(request, responseObserver);
     }
     
 	@Override

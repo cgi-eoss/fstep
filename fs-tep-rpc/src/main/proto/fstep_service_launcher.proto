@@ -11,7 +11,12 @@ service FstepServiceLauncher {
     rpc LaunchService (FstepServiceParams) returns (stream FstepServiceResponse);
     rpc ListWorkers (ListWorkersParams) returns (WorkersList);
     rpc StopService (StopServiceParams) returns (StopServiceResponse);
+}
+
+service FstepJobLauncher {
+	rpc SubmitJob (FstepServiceParams) returns (stream FstepServiceResponse);
     rpc CancelJob (CancelJobParams) returns (CancelJobResponse);
+    rpc StopJob (StopServiceParams) returns (StopServiceResponse);
 }
 
 message FstepServiceParams {
