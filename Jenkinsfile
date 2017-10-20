@@ -22,7 +22,7 @@ pipeline {
     }
     stage('Build') {
       steps {
-        sh './gradlew --build-cache --parallel build buildDist'
+        sh './gradlew --build-cache build buildDist'
       }
     }
   }
