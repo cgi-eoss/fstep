@@ -1,6 +1,21 @@
 package com.cgi.eoss.fstep.catalogue.files;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Map;
+import java.util.UUID;
+import org.geojson.Feature;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.PathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.catalogue.CatalogueUri;
+import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoserverService;
 import com.cgi.eoss.fstep.catalogue.resto.RestoService;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
@@ -13,21 +28,6 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.MoreFiles;
 import lombok.extern.log4j.Log4j2;
 import okhttp3.HttpUrl;
-import org.geojson.Feature;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.io.PathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Component;
-
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.Map;
-import java.util.UUID;
 
 @Component
 @Log4j2
@@ -61,12 +61,22 @@ public class FilesystemOutputProductService implements OutputProductService {
         LOG.info("Ingesting output at {}", dest);
 
         String geoserverUrl = null;
-        try {
-            geoserverUrl = geoserver.ingest(jobId, dest, crs);
-        } catch (Exception e) {
-            LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+        
+        if (properties.containsKey("geoServerSpec")) {
+            GeoServerSpec geoServerSpec = (GeoServerSpec) properties.get("geoServerSpec");
+            try {
+                geoserverUrl = geoserver.ingest(dest, geoServerSpec);
+            } catch (Exception e) {
+                LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+            }
         }
-
+        else {
+            try {
+                geoserverUrl = geoserver.ingest(jobId, dest, crs);
+            } catch (Exception e) {
+                LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+            }
+        }
         URI uri = CatalogueUri.OUTPUT_PRODUCT.build(
                 ImmutableMap.of(
                         "jobId", jobId,

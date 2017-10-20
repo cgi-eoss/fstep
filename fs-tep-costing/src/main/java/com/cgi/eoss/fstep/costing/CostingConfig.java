@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 
 @Configuration
 @Import({
@@ -28,9 +29,10 @@ public class CostingConfig {
     public CostingService costingService(ExpressionParser costingExpressionParser,
                                          CostingExpressionDataService costingDataService,
                                          WalletDataService walletDataService,
+                                         DatabasketDataService databasketDataService,
                                          @Value("${fstep.costing.defaultJobCostExpression:1}") String defaultJobCostExpression,
                                          @Value("${fstep.costing.defaultDownloadCostExpression:1}") String defaultDownloadCostExpression) {
-        return new CostingServiceImpl(costingExpressionParser, costingDataService, walletDataService, defaultJobCostExpression, defaultDownloadCostExpression);
+        return new CostingServiceImpl(costingExpressionParser, costingDataService, walletDataService, databasketDataService, defaultJobCostExpression, defaultDownloadCostExpression);
     }
 
 }

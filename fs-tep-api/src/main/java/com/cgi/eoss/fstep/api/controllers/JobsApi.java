@@ -1,9 +1,6 @@
 package com.cgi.eoss.fstep.api.controllers;
 
-import com.cgi.eoss.fstep.model.Job;
-import com.cgi.eoss.fstep.model.Job.Status;
-import com.cgi.eoss.fstep.model.User;
-import com.cgi.eoss.fstep.model.projections.ShortJob;
+import java.util.Collection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -14,8 +11,10 @@ import org.springframework.data.rest.core.annotation.RestResource;
 import org.springframework.security.access.method.P;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
-
-import java.util.Collection;
+import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.model.Job.Status;
+import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.projections.ShortJob;
 
 @RepositoryRestResource(path = "jobs", itemResourceRel = "job", collectionResourceRel = "jobs", excerptProjection = ShortJob.class)
 public interface JobsApi extends BaseRepositoryApi<Job>, JobsApiCustom, PagingAndSortingRepository<Job, Long> {
@@ -64,4 +63,36 @@ public interface JobsApi extends BaseRepositoryApi<Job>, JobsApiCustom, PagingAn
     @RestResource(path="findByFilterAndNotOwner", rel="findByFilterAndNotOwner")
     @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.status in (:status) and not t.owner=:owner")
     Page<Job> findByFilterAndNotOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("owner") User user, Pageable pageable);
+
+    @Override
+    @RestResource(path="findByFilterAndIsNotSubjob", rel="findByFilterAndIsNotSubjob")
+    @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.status in (:status) and t.parentJob=null")
+    Page<Job> findByFilterAndIsNotSubjob(@Param("filter") String filter,  @Param("status") Collection<Status> statuses, Pageable pageable);
+
+    @Override
+    @RestResource(path="findByFilterAndIsNotSubjobAndOwner", rel="findByFilterAndIsNotSubjobAndOwner")
+    @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob=null and t.status in (:status) and t.owner=:owner")
+    Page<Job> findByFilterAndIsNotSubjobAndOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("owner") User user, Pageable pageable);
+
+    @Override
+    @RestResource(path="findByFilterAndIsNotSubjobAndNotOwner", rel="findByFilterAndIsNotSubjobAndNotOwner")
+    @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob=null and t.status in (:status) and not t.owner=:owner")
+    Page<Job> findByFilterAndIsNotSubjobAndNotOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("owner") User user, Pageable pageable);
+
+    @Override
+    @RestResource(path="findByFilterAndParent", rel="findByFilterAndParent")
+    @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob.id=:parentId and t.status in (:status)")
+    Page<Job> findByFilterAndParent(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("parentId") Long parentId, Pageable pageable);
+
+    @Override
+    @RestResource(path="findByFilterAndParentAndOwner", rel="findByFilterAndParentAndOwner")
+    @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob.id=:parentId and t.status in (:status) and t.owner=:owner")
+    Page<Job> findByFilterAndParentAndOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("parentId") Long parentId, @Param("owner") User user, Pageable pageable);
+
+    @Override
+    @RestResource(path="findByFilterAndParentAndNotOwner", rel="findByFilterAndParentAndNotOwner")
+    @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob.id=:parentId and t.status in (:status) and not t.owner=:owner")
+    Page<Job> findByFilterAndParentAndNotOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("parentId") Long parentId, @Param("owner") User user, Pageable pageable);
+
+
 }

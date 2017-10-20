@@ -1,12 +1,9 @@
 package com.cgi.eoss.fstep.model;
 
-import com.cgi.eoss.fstep.model.converters.StringMultimapYamlConverter;
-import com.google.common.collect.ComparisonChain;
-import com.google.common.collect.Multimap;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Convert;
 import javax.persistence.Entity;
@@ -22,18 +19,22 @@ import javax.persistence.JoinTable;
 import javax.persistence.Lob;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import com.cgi.eoss.fstep.model.converters.StringMultimapYamlConverter;
+import com.google.common.collect.ComparisonChain;
+import com.google.common.collect.Multimap;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 /**
  * <p>Representation of a single {@link JobConfig} execution.</p>
  */
 @Data
-@EqualsAndHashCode(exclude = {"id"})
+@EqualsAndHashCode(exclude = {"id", "subJobs"})
 @Table(name = "fstep_jobs",
         indexes = {@Index(name = "fstep_jobs_job_config_idx", columnList = "job_config"), @Index(name = "fstep_jobs_owner_idx", columnList = "owner")},
         uniqueConstraints = {@UniqueConstraint(columnNames = "ext_id")})
@@ -89,6 +90,13 @@ public class Job implements FstepEntityWithOwner<Job> {
     private Status status = Status.CREATED;
 
     /**
+     * <p>The id of the worker executing the job.</p>
+     */
+    @Column(name = "worker_id")
+    private String workerId;
+
+    
+    /**
      * <p>Current stage of execution. Maybe arbitrarily set by service implementations to inform the user of
      * progress.</p>
      */
@@ -121,6 +129,30 @@ public class Job implements FstepEntityWithOwner<Job> {
     )
     private Set<FstepFile> outputFiles = new HashSet<>();
 
+    /**
+     * <p>The subjobs produced from a job related to a parallel processor</p>
+     */
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "parentJob")
+    private Set<Job> subJobs = new HashSet<>();
+    
+    /**
+     * <p>The parent job of a subjob</p>
+     */
+    @ManyToOne
+    private Job parentJob;
+    
+    /**
+     * <p>Tells if a job is a parent job</p>
+     */
+    @Column(name = "is_parent")
+    private boolean isParent;
+    
+    
+    public Job(JobConfig config, String extId, User owner, Job parentJob) {
+        this(config, extId, owner);
+        this.parentJob = parentJob;
+    }
+    
     public Job(JobConfig config, String extId, User owner) {
         this.config = config;
         this.extId = extId;
@@ -129,6 +161,10 @@ public class Job implements FstepEntityWithOwner<Job> {
 
     public void addOutputFile(FstepFile outputFile) {
         outputFiles.add(outputFile);
+    }
+    
+    public void addSubJob(Job job) {
+        subJobs.add(job);
     }
 
     @Override

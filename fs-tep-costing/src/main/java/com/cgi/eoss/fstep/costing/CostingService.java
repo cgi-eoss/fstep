@@ -18,4 +18,6 @@ public interface CostingService {
 
     void chargeForDownload(Wallet wallet, FstepFile download);
 
+    void refundUser(Wallet wallet, Job job);
+
 }

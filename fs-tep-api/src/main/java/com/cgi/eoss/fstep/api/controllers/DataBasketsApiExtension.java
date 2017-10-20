@@ -52,6 +52,7 @@ public class DataBasketsApiExtension {
     @PostMapping("/{databasketId}/fromSearch")
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#databasket, 'write')")
     ResponseEntity fromSearch(@ModelAttribute("databasketId") Databasket databasket, HttpServletRequest request) {
+        //TODO this should interact with the search facade directly, instead of the search API. 
         try {
             LOG.debug("Populating databasket {} with search results", databasket.getId());
             SearchResults searchResults = searchApi.search(request);
