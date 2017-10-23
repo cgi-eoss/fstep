@@ -9,6 +9,7 @@ import org.springframework.hateoas.ResourceProcessor;
 import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.model.JobStep;
 import com.cgi.eoss.fstep.model.projections.DetailedJob;
 import com.cgi.eoss.fstep.model.projections.ShortJob;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
@@ -60,8 +61,8 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
         }
     }
 
-    private void addTerminateLink(Resource resource, Job.Status status) {
-        if (status == Job.Status.RUNNING) {
+    private void addTerminateLink(Resource resource, Job.Status status, String stage) {
+        if (status == Job.Status.RUNNING && JobStep.PROCESSING.equals(stage)) {
             // TODO Do this properly with a method reference
             resource.add(new Link(resource.getLink("self").getHref() + "/terminate").withRel("terminate"));
         }
@@ -84,7 +85,7 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addGuiLink(resource, entity.getStatus(), entity.getGuiUrl());
             addLogsLink(resource);
             addOutputLinks(resource, entity.getOutputs());
-            addTerminateLink(resource, entity.getStatus());
+            addTerminateLink(resource, entity.getStatus(), entity.getStage());
             addCancelLink(resource, entity.getStatus());
             
             return resource;
@@ -101,7 +102,7 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addGuiLink(resource, entity.getStatus(), entity.getGuiUrl());
             addLogsLink(resource);
             addOutputLinks(resource, entity.getOutputs());
-            addTerminateLink(resource, entity.getStatus());
+            addTerminateLink(resource, entity.getStatus(), entity.getStage());
             addCancelLink(resource, entity.getStatus());
             
             return resource;
@@ -117,7 +118,7 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
             addSelfLink(resource, entity);
             addGuiLink(resource, entity.getStatus(), entity.getGuiUrl());
             addLogsLink(resource);
-            addTerminateLink(resource, entity.getStatus());
+            addTerminateLink(resource, entity.getStatus(), entity.getStage());
             addCancelLink(resource, entity.getStatus());
             
             return resource;
