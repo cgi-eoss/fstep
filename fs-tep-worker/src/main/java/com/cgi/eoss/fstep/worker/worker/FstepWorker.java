@@ -47,6 +47,7 @@ import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileResponse;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.rpc.worker.PortBindings;
+import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
 import com.cgi.eoss.fstep.worker.docker.DockerClientFactory;
 import com.cgi.eoss.fstep.worker.docker.Log4jContainerCallback;
 import com.google.common.annotations.VisibleForTesting;
@@ -317,6 +318,32 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                     cleanUpJob(request.getId());
                 }
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+            }
+        }
+    }
+    
+    @Override
+    public void stopContainer(Job request, StreamObserver<StopContainerResponse> responseObserver) {
+        try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request)) {
+            Preconditions.checkArgument(jobClients.containsKey(request.getId()), "Job ID %s is not attached to a DockerClient", request.getId());
+            Preconditions.checkArgument(jobContainers.containsKey(request.getId()), "Job ID %s does not have a known container ID", request.getId());
+
+            DockerClient dockerClient = jobClients.get(request.getId());
+            String containerId = jobContainers.get(request.getId());
+
+            LOG.info("Stop requested for job {} running in container {}", request.getId(), containerId);
+
+            try {
+                stopContainer(dockerClient, containerId);
+
+                responseObserver.onNext(StopContainerResponse.newBuilder().build());
+                responseObserver.onCompleted();
+            } catch (Exception e) {
+                LOG.error("Failed to stop job: {}", request.getId(), e);
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+            } finally {
+                removeContainer(dockerClient, containerId);
+                cleanUpJob(request.getId());
             }
         }
     }
