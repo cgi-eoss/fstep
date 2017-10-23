@@ -10,7 +10,11 @@ public interface FstepQueueService {
     
     void sendObject(String queueName, Object object);
 
+    void sendObject(String queueName, Object object, int priority);
+
     void sendObject(String queueName, Map<String, Object> additionalHeaders, Object object);
+    
+    void sendObject(String queueName, Map<String, Object> additionalHeaders, Object object, int priority);
 
     public Object receiveObject(String queueName);
     
