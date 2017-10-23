@@ -2,47 +2,12 @@
 
    <section class="filter-list">
         <ul class="list">
-
-            <div class="row list-group filter-list-title">
-
-                <div class="col-xs-11" ng-click="toggleFilters()">
-                    <label class="md-accent">Filters</label>
-                </div>
-
-                <div class="col-xs-1 expander">
-                    <i class="material-icons"
-                       ng-show="!msgParams.displayFilters"
-                       ng-click="toggleFilters()"
-                       aria-label="Show Filters"
-                       uib-tooltip="Show Filters"
-                       tooltip-placement="top"
-                       tooltip-trigger="mouseenter"
-                       tooltip-append-to-body="true">
-                        expand_less
-                    </i>
-                    <i class="material-icons"
-                       ng-show="msgParams.displayFilters"
-                       ng-click="toggleFilters()"
-                       aria-label="Hide Filters"
-                       uib-tooltip="Hide Filters"
-                       tooltip-placement="top"
-                       tooltip-trigger="mouseenter"
-                       tooltip-append-to-body="true">
-                        expand_more
-                    </i>
-                </div>
-
-            </div>
-
-            <div class="col-md-12 col-lg-4 filter-checkboxes"
-                 ng-show="msgParams.displayFilters"
-                 ng-click="messageStatus.value = !messageStatus.value; filterMessages()"
-                 ng-repeat="messageStatus in msgParams.messageStatuses">
-                <md-checkbox ng-model="messageStatus.value"
-                             ng-click="messageStatus.value = !messageStatus.value; filterMessages()"
-                             aria-label="Message Filter"/>
-                <span>{{messageStatus.name}}</span>
-            </div>
+            <md-input-container class="md-input-has-value">
+                <label>Type</label>
+                <md-checkbox ng-repeat="messageStatus in msgParams.messageStatuses" ng-model="messageStatus.value"
+                             ng-change="filterMessages()"
+                             aria-label="Message Filter">{{messageStatus.name}}</md-checkbox>
+            </md-input-container>
 
         </ul>
     </section>

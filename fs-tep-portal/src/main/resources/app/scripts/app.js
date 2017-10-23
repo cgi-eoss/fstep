@@ -43,9 +43,11 @@ define([
     /* jshint -W117  */
     app.constant('fstepProperties', {
         'FSTEP_URL': fstepConfig.fstepUrl,
+        'FSTEP_PORTAL_URL': fstepConfig.fstepPortalUrl,
         'URL': fstepConfig.apiUrl,
         'URLv2': fstepConfig.apiUrlv2,
         'SSO_URL': fstepConfig.ssoUrl,
+        'ANALYST_URL': fstepConfig.analystUrl,
         'MAPBOX_URL': "https://api.mapbox.com/styles/v1/mapbox/streets-v8/tiles/{z}/{x}/{y}?access_token=" + fstepConfig.mapboxToken
     });
     /* jshint +W117 */
@@ -124,15 +126,9 @@ define([
     /* Custom angular-material color theme */
     app.config(['$mdThemingProvider', function ($mdThemingProvider) {
         $mdThemingProvider.theme('default')
-            .primaryPalette('light-green', {
-                'default': '800',
-                'hue-1': '300',
-                'hue-2': '900'
+            .primaryPalette('teal', {
             })
-            .accentPalette('pink', {
-                'default': 'A200',
-                'hue-1': 'A100',
-                'hue-2': 'A700'
+            .accentPalette('orange', {
             })
             .warnPalette('red')
             .backgroundPalette('grey');

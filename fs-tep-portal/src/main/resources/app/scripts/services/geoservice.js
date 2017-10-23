@@ -86,7 +86,7 @@ define(['../fstepmodules'], function (fstepmodules) {
                 }
             }
 
-            if (this.searchParameters.text && this.searchParameters.text != '') {
+            if (this.searchParameters.text && this.searchParameters.text !== '') {
                 params.name = this.searchParameters.text;
             }
 

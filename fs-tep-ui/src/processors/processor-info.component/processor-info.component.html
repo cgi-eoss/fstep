@@ -1,0 +1,18 @@
+<div class="popup" #container>
+    <div class="popup-axis">
+        <span class="icon">
+            <i class="fa fa-info-circle"></i>
+        </span>
+    </div>
+    <div class="popup-content">
+        <a (click)="closePopup()" class="delete"></a>
+        <div>{{position[0] | longitude:'dms' }} {{position[1] | latitude:'dms'}}</div>
+        <div>
+            <i *ngIf="data.status == 'loading'" class="fa fa-refresh fa-spin"></i>
+            <div *ngIf="data.status == 'ready'">
+                {{data.value}}
+            </div>
+            <a *ngIf="showTimeseriesButton" (click)="onTimeSeriesClick()"><span class="icon is-small"><i class="fa fa-line-chart"></i></span></a>
+        </div>
+    </div>
+</div>

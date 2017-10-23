@@ -1,0 +1,4 @@
+.mouse_coord {
+    display: inline-block;
+    min-width: 80px;
+}

@@ -1,0 +1,30 @@
+@import "../../../css/bulma-theme.sass";
+@import "~bulma/bulma.sass";
+@import 'flatpickr/dist/flatpickr.min.css';
+
+
+html {
+    overflow: hidden;
+}
+
+body {
+    font-family: roboto;
+    font-size: 14px;
+    overflow: hidden;
+}
+
+.main-content {
+    max-height: calc(100vh - 60px);
+}
+
+breadcrumb {
+    position: relative;
+    width: 100%;
+    background: rgba(232, 131, 0, 0.9);
+    display: block;
+    border-bottom: solid 1px;
+}
+
+.flatpickr-day.selected {
+    background-color: $brand-dark;
+}

@@ -1,0 +1,35 @@
+<nav class="navbar">
+    <div class="navbar-brand">
+        <a class="navbar-item" routerLink="/">
+            <img src="../../../assets/images/logo.png">
+        </a>
+        <div class="navbar-burger" data-target="navMenu" (click)="onMobileMenuClick()" [ngClass]="{'is-active': menuVisible}">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+    <div class="navbar-menu" id="navMenu" [ngClass]="{'is-active': menuVisible}">
+        <div class="navbar-start">
+            <a class="navbar-item is-tab" [ngClass]="{'is-active': activeTab == 'products'}" routerLink="/processor">
+                Products
+            </a>
+        </div>
+        <div class="navbar-end">
+            <div class="navbar-item has-dropdown is-hoverable is-right">
+                <a class="navbar-link">
+                    <span class="icon">
+                        <i class="fa fa-user"></i>
+                    </span>
+                </a>
+                <div class="navbar-dropdown">
+                    <div class="navbar-item">
+                        <p class="is-size-6-desktop">
+                            Logged as <strong class="has-text-info">{{username}}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>

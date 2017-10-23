@@ -1,0 +1,6 @@
+<div ng-show="status=='loading'" class="spinner-container">
+    <div class="spinner"></div>
+</div>
+<!--img ng-show="status=='loading'" ng-src="{{loading}}"></img-->
+<img ng-show="status=='error'" ng-src="{{errorSrc}}" alt="{{errorAlt}}"></img>
+<img class="target_image" ng-show="status=='success'" ng-src="{{source}}"></img>

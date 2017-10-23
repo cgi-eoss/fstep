@@ -8,7 +8,7 @@
 'use strict';
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('ResultsCtrl', [ '$scope', '$rootScope', '$anchorScroll', '$timeout', 'SearchService', 'TabService', 'CommonService', function($scope, $rootScope, $anchorScroll, $timeout, SearchService, TabService, CommonService) {
+    fstepmodules.controller('ResultsCtrl', [ '$scope', '$rootScope', '$anchorScroll', '$timeout', 'SearchService', 'TabService', 'CommonService', 'ResultLayerService', function($scope, $rootScope, $anchorScroll, $timeout, SearchService, TabService, CommonService, ResultLayerService) {
 
         $scope.searchParams = SearchService.params;
         $scope.spinner = SearchService.spinner;

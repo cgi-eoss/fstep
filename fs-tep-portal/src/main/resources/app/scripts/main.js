@@ -35,6 +35,7 @@ require.config({
         codeMirror: 'vendor/codemirror/lib/codemirror',
         uiCodeMirror: 'js/ui-codemirror',
         x2js: 'vendor/x2js/x2js',
+        shp: 'vendor/shpjs/shp',
 
         // FS-TEP modules
         fstepConfig: 'fstepConfig',
