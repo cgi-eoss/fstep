@@ -13,17 +13,17 @@ module.exports = {
             open: true,
             middleware: function (connect) {
                 return [
-          connect.static('.tmp'),
-          connect().use(
+                    connect.static('.tmp'),
+                    connect().use(
                         '/bower_components',
                         connect.static('./bower_components')
-          ),
-          connect().use(
+                    ),
+                    connect().use(
                         '<%= fstep.app %>/styles',
                         connect.static('./<%= fstep.app %>/styles')
-          ),
-          connect.static('app')
-        ];
+                    ),
+                    connect.static('app')
+                ];
             }
         }
     },
@@ -32,14 +32,14 @@ module.exports = {
             port: 9001,
             middleware: function (connect) {
                 return [
-          connect.static('.tmp'),
-          connect.static('test'),
-          connect().use(
+                    connect.static('.tmp'),
+                    connect.static('test'),
+                    connect().use(
                         '/bower_components',
                         connect.static('./bower_components')
-          ),
-          connect.static('app')
-        ];
+                    ),
+                    connect.static('app')
+                ];
             }
         }
     },

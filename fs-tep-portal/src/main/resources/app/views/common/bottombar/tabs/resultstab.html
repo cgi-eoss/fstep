@@ -103,10 +103,20 @@
                 <md-menu-item>
                     <md-button ng-disabled="resultParams.selectedResultItems.length < 1 || dbParams.selectedDatabasket == undefined"
                                ng-click="addToDatabasket(resultParams.selectedResultItems, true)"
-                               aria-label="Add to {{dbParams.selectedDatabasket.name}}">
+                               aria-label="Add seletect items to {{dbParams.selectedDatabasket.name}}">
                         <span>
                             <span class="material-icons">shopping_basket</span>
-                            <span class="menu-text">Add to {{selectedDatabasket.name}}</span>
+                            <span class="menu-text">Add seletect items to {{selectedDatabasket.name}}</span>
+                        </span>
+                    </md-button>
+                </md-menu-item>
+                <md-menu-item>
+                    <md-button ng-disabled="dbParams.selectedDatabasket == undefined || (!resultsParams.geoResults || resultsParams.geoResults.length < 1)"
+                               ng-click="addToDatabasketFromSearch()"
+                               aria-label="Add all search results to {{dbParams.selectedDatabasket.name}}">
+                        <span>
+                            <span class="material-icons">shopping_basket</span>
+                            <span class="menu-text">Add all search results to {{selectedDatabasket.name}}</span>
                         </span>
                     </md-button>
                 </md-menu-item>
@@ -208,10 +218,21 @@
     <md-button class="toolbar-button"
                ng-disabled="resultParams.selectedResultItems.length < 1 || dbParams.selectedDatabasket == undefined"
                ng-click="addToDatabasket(resultParams.selectedResultItems, true)"
-               aria-label="Add to Databasket"
-               uib-tooltip="Add to {{dbParams.selectedDatabasket.name}}"
+               aria-label="Add selected items to Databasket"
+               uib-tooltip="Add selected items to {{dbParams.selectedDatabasket.name}}"
                tooltip-trigger="mouseenter"
                tooltip-append-to-body="true">
         <i class="material-icons">shopping_basket</i>
+    </md-button>
+
+    <md-button class="toolbar-button"
+        ng-disabled="dbParams.selectedDatabasket == undefined || (!resultsParams.results.geoResults || resultsParams.results.geoResults.length < 1)"
+        ng-click="addToDatabasketFromSearch()"
+        aria-label="Add all search results to Databasket"
+        uib-tooltip="Add all search results to {{dbParams.selectedDatabasket.name}}"
+        tooltip-trigger="mouseenter"
+        tooltip-append-to-body="true">
+        <md-icon md-svg-src="images/cart_search.svg" class="s24" style="color:inherit"></md-icon>
+    <!--i class="material-icons">shopping_basket</i-->
     </md-button>
 </div>

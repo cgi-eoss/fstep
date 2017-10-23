@@ -46,6 +46,12 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             JobService.refreshSelectedJob('community');
         };
 
+        $scope.setParentJobFilter = function(job) {
+            $scope.jobParams.parentId = job ? job.id : null;
+            JobService.getJobsByFilter('community');
+        }
+
+
         /* Filters */
         $scope.toggleFilters = function () {
             $scope.jobParams.displayFilters = !$scope.jobParams.displayFilters;
