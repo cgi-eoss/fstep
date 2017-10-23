@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
@@ -14,7 +12,6 @@ import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExitCode;
 import com.cgi.eoss.fstep.rpc.worker.ExitParams;
 import com.cgi.eoss.fstep.rpc.worker.ExitWithTimeoutParams;
-import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.rpc.worker.JobDockerConfig;
 import com.cgi.eoss.fstep.rpc.worker.JobEnvironment;
@@ -23,8 +20,6 @@ import com.cgi.eoss.fstep.rpc.worker.JobEvent;
 import com.cgi.eoss.fstep.rpc.worker.JobEventType;
 import com.cgi.eoss.fstep.rpc.worker.JobInputs;
 import com.cgi.eoss.fstep.rpc.worker.JobSpec;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
@@ -39,7 +34,7 @@ public class FstepWorkerDispatcher {
 	
 	private FstepQueueService queueService;
 	
-	private DiscoveryClient discoveryClient;
+	private WorkerLocator workerLocator;
 	
 	private long capacityMissingInterval;
 	
@@ -54,16 +49,15 @@ public class FstepWorkerDispatcher {
 	//TODO move this to configuration
 	private static final long SCALE_DOWN_THRESHOLD_MS = 10 * 60L * 1000L;
 	
-	private static final String WORKER_SERVICE_ID = "fs-tep worker";
-	
 	private FstepWorker worker;
 	
 	private String workerId;
+
 	
 	@Autowired
-	public FstepWorkerDispatcher(FstepQueueService queueService, DiscoveryClient discoveryClient, FstepWorker worker, String workerId) {
+	public FstepWorkerDispatcher(FstepQueueService queueService, WorkerLocator workerLocator, FstepWorker worker, String workerId) {
 		this.queueService = queueService;
-		this.discoveryClient = discoveryClient;
+		this.workerLocator = workerLocator;
 		this.worker = worker;
 		this.workerId = workerId;
 		capacityMissingInterval =0L;
@@ -138,7 +132,7 @@ public class FstepWorkerDispatcher {
 	private void executeJob(JobSpec jobSpec, JobUpdateListener jobUpdateListener) {
 		
 		try {
-			FstepWorkerBlockingStub worker = getWorkerById(workerId);
+			FstepWorkerBlockingStub worker = workerLocator.getWorkerById(workerId);
 			jobUpdateListener.jobUpdate(JobEvent.newBuilder().setJobEventType(JobEventType.DATA_FETCHING_STARTED).build());
 			JobInputs jobInputs = JobInputs.newBuilder().setJob(jobSpec.getJob()).addAllInputs(jobSpec.getInputsList()).build();
 			JobEnvironment jobEnvironment = worker.prepareInputs(jobInputs);
@@ -178,23 +172,5 @@ public class FstepWorkerDispatcher {
 			
 		}
 	}
-
-	
-    private FstepWorkerGrpc.FstepWorkerBlockingStub getWorkerById(String workerId) {
-    		LOG.debug("Locating worker with id {}", workerId);
-            ServiceInstance worker = discoveryClient.getInstances(WORKER_SERVICE_ID).stream()
-                .filter(si -> si.getMetadata().get("workerId").equals(workerId))
-                .findFirst()
-                .orElseThrow(() -> new UnsupportedOperationException("Unable to find worker with id: " + workerId));
-
-        LOG.info("Located {} worker: {}:{}", workerId, worker.getHost(), worker.getMetadata().get("grpcPort"));
-
-        ManagedChannel managedChannel = ManagedChannelBuilder.forAddress(worker.getHost(), Integer.parseInt(worker.getMetadata().get("grpcPort")))
-                .usePlaintext(true)
-                .build();
-
-        return FstepWorkerGrpc.newBlockingStub(managedChannel);
-    }
-
 
 }

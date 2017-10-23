@@ -145,7 +145,7 @@ public class Job implements FstepEntityWithOwner<Job> {
      * <p>Tells if a job is a parent job</p>
      */
     @Column(name = "is_parent")
-    private boolean isParent;
+    private boolean parent;
     
     
     public Job(JobConfig config, String extId, User owner, Job parentJob) {

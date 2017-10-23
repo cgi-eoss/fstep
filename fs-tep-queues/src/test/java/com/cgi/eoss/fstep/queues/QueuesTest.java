@@ -44,4 +44,18 @@ public class QueuesTest {
         
     }
     
+    @Test
+    public void testMessagePriorities() {
+        String priority2message = "Test message priority 2";
+        String priority1message = "Test message priority 1";
+        queueService.sendObject(TEST_QUEUE, priority2message, 2);
+        queueService.sendObject(TEST_QUEUE, priority1message, 1);
+        String received_message = (String) queueService.receiveObject(TEST_QUEUE);
+        assertThat(received_message.equals(priority1message));
+        
+        
+        
+        
+    }
+    
 }

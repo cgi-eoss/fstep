@@ -112,6 +112,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 
     private static final String TIMEOUT_PARAM = "timeout";
 
+    private static final int PARALLEL_JOB_PRIORITY = 3;
+
+    private static final int SINGLE_JOB_PRIORITY = 2;
+
     private final WorkerFactory workerFactory;
     private final JobDataService jobDataService;
     private final DatabasketDataService databasketDataService;
@@ -190,7 +194,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 for (Job subJob : subJobs) {
                     chargeUser(subJob.getOwner(), subJob);
                     submitJob(subJob, GrpcUtil.toRpcJob(subJob),
-                            GrpcUtil.mapToParams(subJob.getConfig().getInputs()));
+                            GrpcUtil.mapToParams(subJob.getConfig().getInputs()), PARALLEL_JOB_PRIORITY);
                 }
 
             } 
@@ -206,7 +210,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                             "User does not have read access to all requested inputs");
                 }
                 responseObservers.put(job.getExtId(), responseObserver);
-                submitJob(job, rpcJob, rpcInputs);
+                submitJob(job, rpcJob, rpcInputs, SINGLE_JOB_PRIORITY);
             }
 
         } catch (Exception e) {
@@ -254,7 +258,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         }
     }
 
-    private void submitJob(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, List<JobParam> rpcInputs)
+    private void submitJob(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, List<JobParam> rpcInputs, int priority)
             throws IOException {
         FstepService service = job.getConfig().getService();
         JobSpec.Builder jobSpecBuilder = JobSpec.newBuilder()
@@ -271,7 +275,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         JobSpec jobSpec = jobSpecBuilder.build();
         HashMap<String, Object> messageHeaders = new HashMap<String, Object>();
         messageHeaders.put("jobId", job.getId());
-        queueService.sendObject(FstepQueueService.jobQueueName, messageHeaders, jobSpec);
+        queueService.sendObject(FstepQueueService.jobQueueName, messageHeaders, jobSpec, priority);
     }
 
     @Override

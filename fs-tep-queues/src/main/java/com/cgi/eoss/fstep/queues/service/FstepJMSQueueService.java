@@ -26,8 +26,19 @@ public class FstepJMSQueueService implements FstepQueueService {
     public void sendObject(String queueName, Object object) {
         jmsTemplate.convertAndSend(queueName, object);
     }
+    
+    @Override
+    public void sendObject(String queueName, Object object, int priority) {
+        jmsTemplate.convertAndSend(queueName, object, new MessagePostProcessor() {
+            
+            @Override
+            public Message postProcessMessage(Message message) throws JMSException {
+                message.setJMSPriority(priority);
+                return message;
+            }
+        });
+    }
    
-
     @Override
     public void sendObject(String queueName, Map<String, Object> additionalHeaders, Object object) {
         jmsTemplate.convertAndSend(queueName, object, new MessagePostProcessor() {
@@ -41,6 +52,25 @@ public class FstepJMSQueueService implements FstepQueueService {
                         e.printStackTrace();
                     }
                 });
+                return message;
+            }
+        });
+    }
+    
+    @Override
+    public void sendObject(String queueName, Map<String, Object> additionalHeaders, Object object, int priority) {
+        jmsTemplate.convertAndSend(queueName, object, new MessagePostProcessor() {
+
+            @Override
+            public javax.jms.Message postProcessMessage(javax.jms.Message message) throws JMSException {
+                additionalHeaders.forEach((k, v) -> {
+                    try {
+                        message.setObjectProperty(k, v);
+                    } catch (JMSException e) {
+                        e.printStackTrace();
+                    }
+                });
+                message.setJMSPriority(priority);
                 return message;
             }
         });

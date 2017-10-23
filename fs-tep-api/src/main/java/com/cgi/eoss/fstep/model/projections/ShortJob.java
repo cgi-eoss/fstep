@@ -1,17 +1,16 @@
 package com.cgi.eoss.fstep.model.projections;
 
-import com.cgi.eoss.fstep.security.FstepAccess;
-import com.cgi.eoss.fstep.model.Job;
+import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.rest.core.config.Projection;
 import org.springframework.hateoas.Identifiable;
-
-import java.time.LocalDateTime;
+import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.security.FstepAccess;
 
 /**
  * <p>Default JSON projection for embedded {@link Job}s. Embeds the owner as a ShortUser.</p>
  */
-@Projection(name = "shortFstepService", types = {Job.class})
+@Projection(name = "shortJob", types = {Job.class})
 public interface ShortJob extends Identifiable<Long> {
     String getExtId();
     ShortUser getOwner();
@@ -20,6 +19,7 @@ public interface ShortJob extends Identifiable<Long> {
     String getStage();
     LocalDateTime getStartTime();
     LocalDateTime getEndTime();
+    boolean isParent();
     @Value("#{target.config.service.name}")
     String getServiceName();
     @Value("#{@fstepSecurityService.getCurrentAccess(T(com.cgi.eoss.fstep.model.Job), target.id)}")
