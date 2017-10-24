@@ -62,7 +62,7 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
     }
 
     private void addTerminateLink(Resource resource, Job.Status status, String stage) {
-        if (status == Job.Status.RUNNING && JobStep.PROCESSING.equals(stage)) {
+        if (status == Job.Status.RUNNING && JobStep.PROCESSING.getText().equals(stage)) {
             // TODO Do this properly with a method reference
             resource.add(new Link(resource.getLink("self").getHref() + "/terminate").withRel("terminate"));
         }
