@@ -27,7 +27,7 @@ CMD ["/sbin/my_init"]
 ##    REPOSITORIES AND DEPENDENCIES    ##
 #########################################
 RUN echo 'deb http://qgis.org/debian trusty main' > /etc/apt/sources.list.d/qgis.list
-RUN curl -sL http://qgis.org/downloads/qgis-2016.gpg.key | apt-key add -
+RUN curl -sL http://qgis.org/downloads/qgis-2017.gpg.key | apt-key add -
 
 # Install packages needed for app
 

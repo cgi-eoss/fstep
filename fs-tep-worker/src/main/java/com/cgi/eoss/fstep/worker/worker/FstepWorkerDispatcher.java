@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExitCode;
@@ -72,8 +73,8 @@ public class FstepWorkerDispatcher {
 			JobSpec nextJobSpec = (JobSpec)  queueService.receiveObjectWithTimeout(FstepQueueService.jobQueueName, 100);
 			if (nextJobSpec != null) {
 				queueEmptyInterval = 0L;
-				worker.reserveNodeForJob(nextJobSpec.getJob());
-				Thread t = new Thread(new JobExecutor(worker, nextJobSpec, queueService));
+				Node node = worker.reserveNodeForJob(nextJobSpec.getJob());
+				Thread t = new Thread(new JobExecutor(worker, node, nextJobSpec, queueService));
 	            t.start();
 			}
 			else {
@@ -106,16 +107,16 @@ public class FstepWorkerDispatcher {
 
 		Map<String, Object> messageHeaders;
 		private final FstepWorker worker;
+		private final Node node;
 		private final JobSpec jobSpec;
 		private final FstepQueueService queueService;
-		
 		
 		@Override
 		public void run() {
 			messageHeaders = new HashMap<>();
 			messageHeaders.put("workerId", workerId);
 			messageHeaders.put("jobId", jobSpec.getJob().getIntJobId());
-			executeJob(jobSpec, this);
+			executeJob(worker, node, jobSpec, this);
 			
 		}
 
@@ -129,13 +130,13 @@ public class FstepWorkerDispatcher {
 	
 	
 	// Entry point after Job is dequeued
-	private void executeJob(JobSpec jobSpec, JobUpdateListener jobUpdateListener) {
+	private void executeJob(FstepWorker worker, Node node, JobSpec jobSpec, JobUpdateListener jobUpdateListener) {
 		
 		try {
-			FstepWorkerBlockingStub worker = workerLocator.getWorkerById(workerId);
+			FstepWorkerBlockingStub rpcWorker = workerLocator.getWorkerById(workerId);
 			jobUpdateListener.jobUpdate(JobEvent.newBuilder().setJobEventType(JobEventType.DATA_FETCHING_STARTED).build());
 			JobInputs jobInputs = JobInputs.newBuilder().setJob(jobSpec.getJob()).addAllInputs(jobSpec.getInputsList()).build();
-			JobEnvironment jobEnvironment = worker.prepareInputs(jobInputs);
+			JobEnvironment jobEnvironment = rpcWorker.prepareInputs(jobInputs);
 			jobUpdateListener.jobUpdate(JobEvent.newBuilder().setJobEventType(JobEventType.DATA_FETCHING_COMPLETED).build());
 			
 			List<String> ports = new ArrayList<String>();
@@ -154,20 +155,22 @@ public class FstepWorkerDispatcher {
 			.addAllBinds(binds)
 			.addAllPorts(ports)
 			.build();
-			worker.launchContainer(request);
+			rpcWorker.launchContainer(request);
 			jobUpdateListener.jobUpdate(JobEvent.newBuilder().setJobEventType(JobEventType.PROCESSING_STARTED).build());
             int exitCode;
 			if (jobSpec.getHasTimeout()) {
 				ExitWithTimeoutParams exitRequest = ExitWithTimeoutParams.newBuilder().setJob(jobSpec.getJob()).setTimeout(jobSpec.getTimeoutValue()).build();
-				ContainerExitCode containerExitCode = worker.waitForContainerExitWithTimeout(exitRequest);
+				ContainerExitCode containerExitCode = rpcWorker.waitForContainerExitWithTimeout(exitRequest);
 				exitCode = containerExitCode.getExitCode();
 			} else {
 				ExitParams exitRequest = ExitParams.newBuilder().setJob(jobSpec.getJob()).build();
-				ContainerExitCode containerExitCode = worker.waitForContainerExit(exitRequest);
+				ContainerExitCode containerExitCode = rpcWorker.waitForContainerExit(exitRequest);
 				exitCode = containerExitCode.getExitCode();
 			}
+			worker.releaseNodeForJob(node, jobSpec.getJob());
 			jobUpdateListener.jobUpdate(ContainerExit.newBuilder().setExitCode(exitCode).setJobEnvironment(jobEnvironment).build());
 		} catch (Exception e) {
+		    worker.releaseNodeForJob(node, jobSpec.getJob());
 			jobUpdateListener.jobUpdate(JobError.newBuilder().setErrorDescription(e.getMessage()).build());
 			
 		}
