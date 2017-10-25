@@ -156,24 +156,27 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     }
 
     
-    public boolean reserveNodeForJob(Job job){
+    public Node reserveNodeForJob(Job job){
     		Node availableNode = findAvailableNode();
     		if (availableNode != null) {
     			jobNodes.put(job.getId(), availableNode);
     			jobsPerNode.put(availableNode, jobsPerNode.getOrDefault(availableNode, 0) + 1);
-    			return true;
+    			return availableNode;
     		}
     		else {
-    			return false;
+    			return null;
     		}
+    }
+    
+    public void releaseNodeForJob(Node node, Job job){
+        jobsPerNode.put(node, jobsPerNode.get(node) - 1);
     }
     
     @Override
     public void prepareEnvironment(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
     		Node newNode = nodeFactory.provisionNode(jobEnvironmentService.getBaseDir());
 		jobNodes.put(request.getJob().getId(), newNode);
-		jobsPerNode.put(newNode, jobsPerNode.getOrDefault(newNode, 0) + 1);	   
-    		prepareInputs(request, responseObserver);
+		prepareInputs(request, responseObserver);
     }
     
 	@Override
@@ -467,8 +470,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     private void cleanUpJob(String jobId) {
         jobContainers.remove(jobId);
         jobClients.remove(jobId);
-        Node node = jobNodes.remove(jobId);
-        jobsPerNode.put(node, jobsPerNode.get(node) - 1);
+        jobNodes.remove(jobId);
         Set<URI> finishedJobInputs = ImmutableSet.copyOf(jobInputs.removeAll(jobId));
         LOG.debug("Finished job URIs: {}", finishedJobInputs);
         Set<URI> unusedUris = Sets.difference(finishedJobInputs, ImmutableSet.copyOf(jobInputs.values()));
