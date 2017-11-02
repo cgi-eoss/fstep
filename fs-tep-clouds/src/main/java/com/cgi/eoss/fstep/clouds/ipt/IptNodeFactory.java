@@ -7,6 +7,7 @@ import static org.awaitility.Duration.TWO_MINUTES;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -69,21 +70,22 @@ public class IptNodeFactory implements NodeFactory {
                 .map(server -> Node.builder()
                 .id(server.getId())
                 .name(server.getName())
+                .tag(server.getMetadata().get("tag"))
                 .dockerEngineUrl("tcp://" + server.getAccessIPv4() + ":" + DEFAULT_DOCKER_PORT)
                 .build()).collect(Collectors.toSet());
     }
 
     @Override
-    public Node provisionNode(Path environmentBaseDir) {
+    public Node provisionNode(String tag, Path environmentBaseDir) {
         OSClientV3 osClient = osClientBuilder.authenticate();
         if (getCurrentNodes().size() >= maxPoolSize) {
             throw new NodeProvisioningException("Cannot provision node - pool exhausted. Used: " + getCurrentNodes().size() + " Max: " + maxPoolSize);
         }
-        return provisionNode(osClient, environmentBaseDir, provisioningConfig.getDefaultNodeFlavor());
+        return provisionNode(osClient, tag, environmentBaseDir, provisioningConfig.getDefaultNodeFlavor());
     }
 
     // TODO Expose this overload for workers to provision service-specific flavours
-    private Node provisionNode(OSClientV3 osClient, Path environmentBaseDir, String flavorName) {
+    private Node provisionNode(OSClientV3 osClient, String tag, Path environmentBaseDir, String flavorName) {
         LOG.info("Provisioning IPT node with flavor '{}'", flavorName);
         Server server = null;
         FloatingIP floatingIp = null;
@@ -91,16 +93,19 @@ public class IptNodeFactory implements NodeFactory {
             // Generate a random keypair for provisioning
             String keypairName = UUID.randomUUID().toString();
             Keypair keypair = osClient.compute().keypairs().create(keypairName, null);
-
             Flavor flavor = osClient.compute().flavors().list().stream()
                     .filter(f -> f.getName().equals(flavorName))
                     .findFirst().orElseThrow(() -> new NodeProvisioningException("Could not find flavor: " + flavorName));
 
+            HashMap<String, String> metadata = new HashMap<String, String>();
+            metadata.put("tag", tag);
             ServerCreate sc = Builders.server()
                     .name(SERVER_NAME_PREFIX + UUID.randomUUID().toString())
                     .flavor(flavor)
                     .image(provisioningConfig.getNodeImageId())
+                    .addMetadata(metadata)
                     .keypairName(keypairName)
+                    .networks(Arrays.asList(new String[] {provisioningConfig.getNetworkId()}))
                     .addSecurityGroup(provisioningConfig.getSecurityGroupName())
                     .build();
 
@@ -119,6 +124,7 @@ public class IptNodeFactory implements NodeFactory {
             Node node = Node.builder()
                     .id(server.getId())
                     .name(server.getName())
+                    .tag(tag)
                     .dockerEngineUrl("tcp://" + server.getAccessIPv4() + ":" + DEFAULT_DOCKER_PORT)
                     .build();
             currentNodes.add(node);
@@ -225,6 +231,11 @@ public class IptNodeFactory implements NodeFactory {
                 .maxPoolSize(maxPoolSize)
                 .used(currentNodes.size())
                 .build();
+    }
+    
+    @Override
+    public Set<Node> getCurrentNodes(String tag) {
+       return currentNodes.stream().filter(node -> node.getTag().equals("tag")).collect(Collectors.toSet());
     }
 
 }

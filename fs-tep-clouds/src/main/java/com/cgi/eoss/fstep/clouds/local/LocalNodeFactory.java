@@ -1,15 +1,15 @@
 package com.cgi.eoss.fstep.clouds.local;
 
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.clouds.service.NodePoolStatus;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
-
-import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
 
 /**
  * <p>This service may be used to access Docker 'nodes' in the LOCAL context, i.e. a single Docker Engine running at a
@@ -31,12 +31,13 @@ public class LocalNodeFactory implements NodeFactory {
     }
 
     @Override
-    public Node provisionNode(Path environmentBaseDir) {
+    public Node provisionNode(String tag, Path environmentBaseDir) {
         // TODO Check against maxPoolSize
         LOG.info("Provisioning LOCAL node");
         Node node = Node.builder()
                 .id(UUID.randomUUID().toString())
                 .name("LOCAL node")
+                .tag(tag)
                 .dockerEngineUrl(dockerHostUrl)
                 .build();
         currentNodes.add(node);
@@ -55,6 +56,11 @@ public class LocalNodeFactory implements NodeFactory {
                 .maxPoolSize(maxPoolSize)
                 .used(currentNodes.size())
                 .build();
+    }
+
+    @Override
+    public Set<Node> getCurrentNodes(String tag) {
+       return currentNodes.stream().filter(node -> node.getTag().equals("tag")).collect(Collectors.toSet());
     }
 
 }
