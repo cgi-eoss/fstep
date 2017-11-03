@@ -107,6 +107,8 @@ public class GeoserverServiceImpl implements GeoserverService {
         try {
             RESTCoverageStore restCoverageStore = publishExternalGeoTIFFToMosaic(workspace, datastoreName, path.toFile());
             LOG.info("Ingested GeoTIFF to geoserver with id: {}:{}", workspace, layerName);
+            LOG.info("Reloading GeoServer configuration");
+            publisher.reload();
             return restCoverageStore.getURL();
         } catch (FileNotFoundException e) {
             LOG.error("Geoserver was unable to publish file: {}", path, e);
@@ -176,7 +178,8 @@ public class GeoserverServiceImpl implements GeoserverService {
     private RESTCoverageStore publishExternalGeoTIFFToMosaic(String workspace, String storeName, File geotiff) throws FileNotFoundException, IllegalArgumentException {
         if (workspace == null || storeName == null || geotiff == null)
             throw new IllegalArgumentException("Unable to run: null parameter");
-        return mosaicUpdater.addGeoTiffToExternalMosaic(workspace, storeName, geotiff);
+        RESTCoverageStore response = mosaicUpdater.addGeoTiffToExternalMosaic(workspace, storeName, geotiff);
+        return response;
     }
 
 }
