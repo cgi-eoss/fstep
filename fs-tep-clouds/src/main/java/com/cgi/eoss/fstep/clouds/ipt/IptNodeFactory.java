@@ -235,7 +235,7 @@ public class IptNodeFactory implements NodeFactory {
     
     @Override
     public Set<Node> getCurrentNodes(String tag) {
-       return currentNodes.stream().filter(node -> node.getTag().equals("tag")).collect(Collectors.toSet());
+       return currentNodes.stream().filter(node -> node.getTag().equals(tag)).collect(Collectors.toSet());
     }
 
 }
