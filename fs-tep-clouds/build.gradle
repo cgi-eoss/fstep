@@ -20,6 +20,7 @@ dependencies {
     compile 'com.google.guava:guava:17.0'
     compile 'com.hierynomus:sshj'
     compile 'org.awaitility:awaitility'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.9.1'
     compile 'org.pacesys:openstack4j-core'
     compile 'org.pacesys.openstack4j.connectors:openstack4j-okhttp'
     compile 'org.springframework.boot:spring-boot'
