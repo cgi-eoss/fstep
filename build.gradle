@@ -147,6 +147,7 @@ allprojects {
                 entry 'spring-boot-starter-cache'
                 entry 'spring-boot-starter-data-rest'
                 entry 'spring-boot-starter-log4j2'
+                entry 'spring-boot-starter-jdbc'
                 entry 'spring-boot-starter-test'
                 entry 'spring-boot-starter-undertow'
                 entry 'spring-boot-starter-activemq'
