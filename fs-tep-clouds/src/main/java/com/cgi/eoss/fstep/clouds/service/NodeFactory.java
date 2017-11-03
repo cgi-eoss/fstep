@@ -18,7 +18,7 @@ public interface NodeFactory {
      * @param environmentBaseDir The base path containing job environments, to be made available to the returned node.
      * @return A Node appropriate for the configured implementation.
      */
-    Node provisionNode(Path environmentBaseDir);
+    Node provisionNode(String tag, Path environmentBaseDir);
 
     /**
      * <p>Tear down the given node, releasing its resources.</p>
@@ -28,7 +28,7 @@ public interface NodeFactory {
     /**
      * <p>Return the current set of provisioned nodes managed by this factory.</p>
      */
-    Set<Node> getCurrentNodes();
+    Set<Node> getCurrentNodes(String tag);
 
     /**
      * <p>Get current available and in-use node statistics.</p>

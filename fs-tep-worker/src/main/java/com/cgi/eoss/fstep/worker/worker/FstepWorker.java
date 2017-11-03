@@ -24,8 +24,8 @@ import org.apache.logging.log4j.CloseableThreadContext;
 import org.jooq.lambda.Unchecked;
 import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import com.cgi.eoss.fstep.clouds.service.Node;
-import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.logging.Logging;
@@ -83,14 +83,10 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
 
     private static final int FILE_STREAM_CHUNK_BYTES = 8192;
   
-    private final NodeFactory nodeFactory;
+    private FstepWorkerNodeManager nodeManager;
     private final JobEnvironmentService jobEnvironmentService;
     private final ServiceInputOutputManager inputOutputManager;
     
-    private final Map<Node, Integer> jobsPerNode = new HashMap<>();
-    
-    // Track which Node is used for each job
-    private final Map<String, Node> jobNodes = new HashMap<>();
     // Track which DockerClient is used for each job
     private final Map<String, DockerClient> jobClients = new HashMap<>();
     // Track which container ID is used for each job
@@ -98,84 +94,29 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     // Track which input URIs are used for each job
     private final Multimap<String, URI> jobInputs = MultimapBuilder.hashKeys().hashSetValues().build();
 
-    @Autowired
-  	private int maxJobsPerNode;
-  	
-    @Autowired
     private int minWorkerNodes;
     
-    @Autowired
-  	private int maxWorkerNodes;
     
     @Autowired
-    public FstepWorker(NodeFactory nodeFactory, JobEnvironmentService jobEnvironmentService, ServiceInputOutputManager inputOutputManager) {
-        this.nodeFactory = nodeFactory;
+    public FstepWorker(FstepWorkerNodeManager nodeManager, JobEnvironmentService jobEnvironmentService, ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes) {
+        this.nodeManager = nodeManager;
         this.jobEnvironmentService = jobEnvironmentService;
         this.inputOutputManager = inputOutputManager;
+        this.minWorkerNodes = minWorkerNodes;
     }
-    
-     public boolean hasCapacity() {
-    	 	return findAvailableNode() != null;
-    	}
-    
-    private Node findAvailableNode() {
-		for (Node node: nodeFactory.getCurrentNodes()) {
-			if (jobsPerNode.getOrDefault(node, 0) < maxJobsPerNode) {
-				return node;
-			}
-		}
-		return null;
-	}
     
     @PostConstruct
     public void allocateMinNodes() {
-    		int currentNodes = nodeFactory.getCurrentNodes().size();
-    		
-    		for (int i = 0; i < minWorkerNodes - currentNodes; i++) {
-    			nodeFactory.provisionNode(jobEnvironmentService.getBaseDir());
-    		}
+        int currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag).size();
+        if (currentNodes < minWorkerNodes) {
+            nodeManager.provisionNodes(minWorkerNodes - currentNodes, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir());
+        }
     }
-    
-    public void scaleDown(){
-    		Set<Node> currentNodes = nodeFactory.getCurrentNodes();
-    		if (currentNodes.size() <= minWorkerNodes) {
-    			return;
-    		}
-    		for (Node node: currentNodes) {
-    			if (jobsPerNode.get(node) == 0) {
-    				nodeFactory.destroyNode(node);
-    			}
-    		}
-    }
-    
-    public void scaleUp(){
-    	if (nodeFactory.getCurrentNodes().size() >= maxWorkerNodes) {
-			return;
-		}
-    		nodeFactory.provisionNode(jobEnvironmentService.getBaseDir());
-    }
-
-    
-    public Node reserveNodeForJob(Job job){
-    		Node availableNode = findAvailableNode();
-    		if (availableNode != null) {
-    			jobNodes.put(job.getId(), availableNode);
-    			jobsPerNode.put(availableNode, jobsPerNode.getOrDefault(availableNode, 0) + 1);
-    			return availableNode;
-    		}
-    		else {
-    			return null;
-    		}
-    }
-    
-    public void releaseNodeForJob(Node node, Job job){
-        jobsPerNode.put(node, jobsPerNode.get(node) - 1);
-    }
+ 
     
     @Override
     public void prepareEnvironment(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
-    		Node newNode = nodeFactory.provisionNode(jobEnvironmentService.getBaseDir());
-		jobNodes.put(request.getJob().getId(), newNode);
+    		nodeManager.provisionNodeForJob(jobEnvironmentService.getBaseDir(), request.getJob().getId());
 		prepareInputs(request, responseObserver);
     }
     
@@ -183,9 +124,8 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     public void prepareInputs(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
             try {
-                Node node = jobNodes.get(request.getJob().getId());
+                Node node = nodeManager.getJobNode(request.getJob().getId());
                 DockerClient dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl());
-                
                 jobClients.put(request.getJob().getId(), dockerClient);
             } catch (Exception e) {
                 try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
@@ -470,7 +410,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     private void cleanUpJob(String jobId) {
         jobContainers.remove(jobId);
         jobClients.remove(jobId);
-        jobNodes.remove(jobId);
+        nodeManager.releaseJobNode(jobId);
         Set<URI> finishedJobInputs = ImmutableSet.copyOf(jobInputs.removeAll(jobId));
         LOG.debug("Finished job URIs: {}", finishedJobInputs);
         Set<URI> unusedUris = Sets.difference(finishedJobInputs, ImmutableSet.copyOf(jobInputs.values()));

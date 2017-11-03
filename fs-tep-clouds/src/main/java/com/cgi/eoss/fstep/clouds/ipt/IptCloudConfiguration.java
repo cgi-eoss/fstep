@@ -1,6 +1,5 @@
 package com.cgi.eoss.fstep.clouds.ipt;
 
-import net.schmizz.sshj.SSHClient;
 import org.openstack4j.api.client.IOSClientBuilder;
 import org.openstack4j.core.transport.Config;
 import org.openstack4j.model.common.Identifier;
@@ -9,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import net.schmizz.sshj.SSHClient;
 
 @Configuration
 @ConditionalOnProperty(value = "fstep.clouds.ipt.enabled", havingValue = "true")
@@ -49,6 +49,9 @@ public class IptCloudConfiguration {
 
     @Value("${fstep.clouds.ipt.node.sshUsername:eouser}")
     private String sshUsername;
+    
+    @Value("${fstep.clouds.ipt.node.networkId}")
+    private String networkId;
 
     @Value("${fstep.clouds.ipt.node.nfsHost}")
     private String nfsHost;
@@ -78,6 +81,7 @@ public class IptCloudConfiguration {
                         .nodeImageId(nodeImageId)
                         .sshUser(sshUsername)
                         .securityGroupName(securityGroupName)
+                        .networkId(networkId)
                         .nfsHost(nfsHost)
                         .build()
         );

@@ -1,5 +1,33 @@
 package com.cgi.eoss.fstep.wps;
 
+import static java.util.stream.Collectors.toSet;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.jooq.lambda.Seq;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.clouds.local.LocalNodeFactory;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
@@ -20,6 +48,7 @@ import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.cgi.eoss.fstep.worker.worker.FstepWorker;
+import com.cgi.eoss.fstep.worker.worker.FstepWorkerNodeManager;
 import com.cgi.eoss.fstep.worker.worker.JobEnvironmentService;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -30,42 +59,12 @@ import com.google.common.io.MoreFiles;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import org.jooq.lambda.Seq;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
 import shadow.dockerjava.com.github.dockerjava.core.DefaultDockerClientConfig;
 import shadow.dockerjava.com.github.dockerjava.core.DockerClientBuilder;
 import shadow.dockerjava.com.github.dockerjava.core.DockerClientConfig;
 import shadow.dockerjava.com.github.dockerjava.core.RemoteApiVersion;
 import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
-
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import static java.util.stream.Collectors.toSet;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assume.assumeTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * <p>Integration test for launching WPS services.</p> <p><strong>This uses a real Docker engine to build and run a
@@ -140,7 +139,7 @@ public class FstepServicesClientIT {
                 .build();
         DockerClient dockerClient = DockerClientBuilder.getInstance(dockerClientConfig).build();
         NodeFactory nodeFactory = new LocalNodeFactory(-1, "unix:///var/run/docker.sock");
-
+        FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(nodeFactory, Integer.MAX_VALUE);
         InProcessServerBuilder inProcessServerBuilder = InProcessServerBuilder.forName(RPC_SERVER_NAME).directExecutor();
         InProcessChannelBuilder channelBuilder = InProcessChannelBuilder.forName(RPC_SERVER_NAME).directExecutor();
 
@@ -148,7 +147,7 @@ public class FstepServicesClientIT {
         FstepSecurityService securityService = mock(FstepSecurityService.class);
 
         FstepServiceLauncher fstepServiceLauncher = new FstepServiceLauncher(workerFactory, jobDataService, guiService, catalogueService, costingService, securityService);
-        FstepWorker fstepWorker = new FstepWorker(nodeFactory, jobEnvironmentService, ioManager);
+        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 0);
 
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
 
