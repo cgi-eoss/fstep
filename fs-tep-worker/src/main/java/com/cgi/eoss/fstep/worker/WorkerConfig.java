@@ -7,6 +7,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
 import org.springframework.context.annotation.Bean;
@@ -14,8 +17,12 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import com.cgi.eoss.fstep.clouds.CloudsConfig;
+import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManagerImpl;
 import com.cgi.eoss.fstep.io.download.CachingSymlinkDownloaderFacade;
@@ -23,6 +30,10 @@ import com.cgi.eoss.fstep.io.download.Downloader;
 import com.cgi.eoss.fstep.io.download.DownloaderFacade;
 import com.cgi.eoss.fstep.queues.QueuesConfig;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
+import com.cgi.eoss.fstep.worker.metrics.QueueMetric;
+import com.cgi.eoss.fstep.worker.metrics.QueueMetricsRepository;
+import com.cgi.eoss.fstep.worker.worker.FstepWorkerNodeManager;
+import com.cgi.eoss.fstep.worker.worker.JobEnvironmentService;
 import com.cgi.eoss.fstep.worker.worker.WorkerLocator;
 import com.google.common.base.Strings;
 import okhttp3.OkHttpClient;
@@ -34,10 +45,15 @@ import okhttp3.OkHttpClient;
 )
 @Import({
 		QueuesConfig.class,
-        CloudsConfig.class
+        CloudsConfig.class,
+        HibernateJpaAutoConfiguration.class,
+        DataSourceAutoConfiguration.class
 })
 @EnableEurekaClient
 @EnableScheduling
+@EnableJpaRepositories(basePackageClasses = QueueMetricsRepository.class)
+@EntityScan(basePackageClasses = QueueMetric.class)
+
 public class WorkerConfig {
 
     @Bean
@@ -123,5 +139,20 @@ public class WorkerConfig {
                                        @Value("${fstep.worker.eurekaServiceId:fs-tep worker}") String workerServiceId) {
         return new WorkerLocator(discoveryClient, workerServiceId);
     }
+    
+    @Bean
+    public FstepWorkerNodeManager workerNodeManager(NodeFactory nodeFactory, JobEnvironmentService jobEnvironmentService,
+            @Qualifier("maxJobsPerNode") Integer maxJobsPerNode) {
+        FstepWorkerNodeManager workerNodeManager = new FstepWorkerNodeManager(nodeFactory, maxJobsPerNode);
+        return workerNodeManager;
+    }
+    
+    @Bean
+    public TaskScheduler taskScheduler() {
+        final ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(10);
+        return scheduler;
+    }
+
 
 }

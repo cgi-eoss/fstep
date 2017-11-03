@@ -45,22 +45,28 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-databind:2.9.1'
     compile 'org.springframework.boot:spring-boot-autoconfigure'
     compile 'org.springframework.boot:spring-boot-starter-actuator'
+    compileOnly 'org.springframework.boot:spring-boot-starter-jdbc'
     compile 'org.springframework.boot:spring-boot-starter-log4j2'
     compile 'org.springframework.boot:spring-boot-starter-undertow'
     compile 'org.springframework.cloud:spring-cloud-starter-eureka'
-
-    testCompile project(':fs-tep-catalogue')
+	compile 'org.springframework.data:spring-data-jpa'
+	compile 'org.hibernate:hibernate-core'
+    compile 'org.hibernate:hibernate-entitymanager'
+    
+	testCompile project(':fs-tep-catalogue')
     testCompile project(':fs-tep-persistence')
 
     testCompile 'com.google.jimfs:jimfs'
     testCompile 'com.squareup.okhttp3:mockwebserver'
     testCompile 'junit:junit'
     testCompile 'org.hamcrest:hamcrest-junit'
-    testCompile 'org.hsqldb:hsqldb'
     testCompile 'org.mockftpserver:MockFtpServer'
     testCompile 'org.mockito:mockito-core'
     testCompile 'org.springframework:spring-test'
     testCompile 'org.springframework.boot:spring-boot-test'
+    
+    runtime 'org.hsqldb:hsqldb'
+    testRuntime 'org.hsqldb:hsqldb'
 }
 
 springBoot {
