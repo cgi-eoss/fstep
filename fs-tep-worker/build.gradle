@@ -45,7 +45,7 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-databind:2.9.1'
     compile 'org.springframework.boot:spring-boot-autoconfigure'
     compile 'org.springframework.boot:spring-boot-starter-actuator'
-    compileOnly 'org.springframework.boot:spring-boot-starter-jdbc'
+    compile 'org.springframework.boot:spring-boot-starter-jdbc'
     compile 'org.springframework.boot:spring-boot-starter-log4j2'
     compile 'org.springframework.boot:spring-boot-starter-undertow'
     compile 'org.springframework.cloud:spring-cloud-starter-eureka'
