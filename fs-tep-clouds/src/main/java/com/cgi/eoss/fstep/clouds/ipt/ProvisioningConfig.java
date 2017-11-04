@@ -13,4 +13,5 @@ final class ProvisioningConfig {
     private final String floatingIpPool;
     private final String networkId;
     private final String nfsHost;
+    public boolean provisionFloatingIp;
 }

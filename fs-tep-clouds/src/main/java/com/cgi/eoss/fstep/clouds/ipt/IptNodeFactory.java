@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -19,12 +20,15 @@ import org.openstack4j.api.Builders;
 import org.openstack4j.api.OSClient.OSClientV3;
 import org.openstack4j.api.client.IOSClientBuilder;
 import org.openstack4j.model.common.ActionResponse;
+import org.openstack4j.model.compute.Address;
+import org.openstack4j.model.compute.Addresses;
 import org.openstack4j.model.compute.Flavor;
 import org.openstack4j.model.compute.FloatingIP;
 import org.openstack4j.model.compute.Keypair;
 import org.openstack4j.model.compute.Server;
 import org.openstack4j.model.compute.ServerCreate;
 import org.openstack4j.model.compute.ServerUpdateOptions;
+import org.openstack4j.model.network.Network;
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.clouds.service.NodePoolStatus;
@@ -112,11 +116,23 @@ public class IptNodeFactory implements NodeFactory {
             LOG.info("Provisioning IPT image '{}' to server '{}'", provisioningConfig.getNodeImageId(), sc.getName());
             server = osClient.compute().servers().bootAndWaitActive(sc, SERVER_STARTUP_TIMEOUT_MILLIS);
 
-            floatingIp = getFloatingIp(osClient);
-            osClient.compute().floatingIps().addFloatingIP(server, floatingIp.getFloatingIpAddress());
-            LOG.info("Allocated floating IP to server: {} to {}", floatingIp.getFloatingIpAddress(), server.getId());
-            server = osClient.compute().servers().update(server.getId(), ServerUpdateOptions.create().accessIPv4(floatingIp.getFloatingIpAddress()));
-
+            if (provisioningConfig.provisionFloatingIp) {
+                floatingIp = getFloatingIp(osClient);
+                osClient.compute().floatingIps().addFloatingIP(server, floatingIp.getFloatingIpAddress());
+                LOG.info("Allocated floating IP to server: {} to {}", floatingIp.getFloatingIpAddress(), server.getId());
+                server = osClient.compute().servers().update(server.getId(), ServerUpdateOptions.create().accessIPv4(floatingIp.getFloatingIpAddress()));
+            }
+            else {
+                Addresses addresses = server.getAddresses();
+                Map<String, List<? extends Address>> addressesMap = addresses.getAddresses();
+                Network network = osClient.networking().network().get(provisioningConfig.getNetworkId());
+                List<? extends Address> networkAddresses = addressesMap.get(network.getName());
+                Address networkAddress= networkAddresses.get(0);
+                server = osClient.compute().servers().update(server.getId(), ServerUpdateOptions.create().accessIPv4(networkAddress.getAddr()));
+            }
+            
+            String serverIP = server.getAccessIPv4();
+            LOG.debug("Server access IP: {}", serverIP);
             try (SSHSession ssh = openSshSession(keypair, server)) {
                 prepareServer(ssh, environmentBaseDir);
             }
