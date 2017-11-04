@@ -41,6 +41,9 @@ public class IptCloudConfiguration {
     @Value("${fstep.clouds.ipt.node.imageId}")
     private String nodeImageId;
 
+    @Value("${fstep.clouds.ipt.node.provisionFloatingIp:true}")
+    private boolean provisionFloatingIp;
+    
     @Value("${fstep.clouds.ipt.node.floatingIpPool:external-network}")
     private String floatingIpPool;
 
@@ -83,6 +86,7 @@ public class IptCloudConfiguration {
                         .securityGroupName(securityGroupName)
                         .networkId(networkId)
                         .nfsHost(nfsHost)
+                        .provisionFloatingIp(provisionFloatingIp)
                         .build()
         );
     }
