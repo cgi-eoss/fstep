@@ -18,7 +18,7 @@ public interface NodeFactory {
      * @param environmentBaseDir The base path containing job environments, to be made available to the returned node.
      * @return A Node appropriate for the configured implementation.
      */
-    Node provisionNode(String tag, Path environmentBaseDir);
+    Node provisionNode(String tag, Path environmentBaseDir, Path dataBaseDir);
 
     /**
      * <p>Tear down the given node, releasing its resources.</p>
