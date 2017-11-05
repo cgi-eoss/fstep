@@ -21,12 +21,15 @@ public class FstepWorkerNodeManager {
 
     private int maxJobsPerNode;
 
+    private Path dataBaseDir;
+
     public static final String pooledWorkerTag = "pooled-worker-node";
     
     public static final String dedicatedWorkerTag = "dedicated-worker-node";
     
-    public FstepWorkerNodeManager(NodeFactory nodeFactory, int maxJobsPerNode) {
+    public FstepWorkerNodeManager(NodeFactory nodeFactory, Path dataBaseDir, int maxJobsPerNode) {
         this.nodeFactory = nodeFactory;
+        this.dataBaseDir = dataBaseDir;
         this.maxJobsPerNode = maxJobsPerNode;
     }
 
@@ -64,8 +67,8 @@ public class FstepWorkerNodeManager {
     }
     
     @Deprecated
-    public Node provisionNodeForJob(Path dir, String jobId) {
-        Node node = nodeFactory.provisionNode(dedicatedWorkerTag, dir);
+    public Node provisionNodeForJob(Path jobDir, String jobId) {
+        Node node = nodeFactory.provisionNode(dedicatedWorkerTag, jobDir, dataBaseDir);
         jobNodes.put(jobId, node);
         return node;
     }
@@ -83,7 +86,7 @@ public class FstepWorkerNodeManager {
     
     public void provisionNodes(int count, String tag, Path environmentBaseDir){
         for (int i = 0; i < count; i++) {
-            nodeFactory.provisionNode(tag, environmentBaseDir);
+            nodeFactory.provisionNode(tag, environmentBaseDir, dataBaseDir);
         }
     }
     

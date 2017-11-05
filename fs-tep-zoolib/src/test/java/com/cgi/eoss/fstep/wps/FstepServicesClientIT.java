@@ -89,6 +89,7 @@ public class FstepServicesClientIT {
     private CostingService costingService;
 
     private Path workspace;
+    private Path dataDir;
     private Path ingestedOutputsDir;
 
     private FstepServicesClient fstepServicesClient;
@@ -115,7 +116,9 @@ public class FstepServicesClientIT {
         }));
         ingestedOutputsDir = workspace.resolve("ingestedOutputsDir");
         Files.createDirectories(ingestedOutputsDir);
-
+        dataDir = workspace.resolve("dataDir");
+        Files.createDirectories(dataDir);
+        
         when(catalogueService.provisionNewOutputProduct(any(), any())).thenAnswer(invocation -> {
             Path outputPath = ingestedOutputsDir.resolve(((OutputProductMetadata) invocation.getArgument(0)).getJobId()).resolve((String) invocation.getArgument(1));
             Files.createDirectories(outputPath.getParent());
@@ -139,7 +142,7 @@ public class FstepServicesClientIT {
                 .build();
         DockerClient dockerClient = DockerClientBuilder.getInstance(dockerClientConfig).build();
         NodeFactory nodeFactory = new LocalNodeFactory(-1, "unix:///var/run/docker.sock");
-        FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(nodeFactory, Integer.MAX_VALUE);
+        FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(nodeFactory, dataDir, Integer.MAX_VALUE);
         InProcessServerBuilder inProcessServerBuilder = InProcessServerBuilder.forName(RPC_SERVER_NAME).directExecutor();
         InProcessChannelBuilder channelBuilder = InProcessChannelBuilder.forName(RPC_SERVER_NAME).directExecutor();
 
