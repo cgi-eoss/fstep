@@ -80,16 +80,16 @@ public class IptNodeFactory implements NodeFactory {
     }
 
     @Override
-    public Node provisionNode(String tag, Path environmentBaseDir) {
+    public Node provisionNode(String tag, Path environmentBaseDir, Path dataBaseDir) {
         OSClientV3 osClient = osClientBuilder.authenticate();
         if (getCurrentNodes().size() >= maxPoolSize) {
             throw new NodeProvisioningException("Cannot provision node - pool exhausted. Used: " + getCurrentNodes().size() + " Max: " + maxPoolSize);
         }
-        return provisionNode(osClient, tag, environmentBaseDir, provisioningConfig.getDefaultNodeFlavor());
+        return provisionNode(osClient, tag, environmentBaseDir, dataBaseDir, provisioningConfig.getDefaultNodeFlavor());
     }
 
     // TODO Expose this overload for workers to provision service-specific flavours
-    private Node provisionNode(OSClientV3 osClient, String tag, Path environmentBaseDir, String flavorName) {
+    private Node provisionNode(OSClientV3 osClient, String tag, Path environmentBaseDir, Path dataBaseDir, String flavorName) {
         LOG.info("Provisioning IPT node with flavor '{}'", flavorName);
         Server server = null;
         FloatingIP floatingIp = null;
@@ -134,7 +134,7 @@ public class IptNodeFactory implements NodeFactory {
             String serverIP = server.getAccessIPv4();
             LOG.debug("Server access IP: {}", serverIP);
             try (SSHSession ssh = openSshSession(keypair, server)) {
-                prepareServer(ssh, environmentBaseDir);
+                prepareServer(ssh, environmentBaseDir, dataBaseDir);
             }
 
             Node node = Node.builder()
@@ -177,15 +177,17 @@ public class IptNodeFactory implements NodeFactory {
         return floatingIP;
     }
 
-    private void prepareServer(SSHSession ssh, Path environmentBaseDir) throws IOException {
+    private void prepareServer(SSHSession ssh, Path environmentBaseDir, Path dataBaseDir) throws IOException {
         try {
             LOG.debug("IPT node reports hostname: {}", ssh.exec("hostname").getOutput());
 
             String baseDir = environmentBaseDir.toString();
+            String dataBaseDirStr = dataBaseDir.toString();
             LOG.info("Mounting job environment base directory: {}", baseDir);
             ssh.exec("sudo mkdir -p " + baseDir);
+            ssh.exec("sudo mkdir -p " + dataBaseDirStr);
             ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + baseDir + " " + baseDir);
-
+            ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + dataBaseDirStr + " " + dataBaseDirStr);
             // TODO Use/create a certificate authority for secure docker communication
             LOG.info("Launching dockerd listening on tcp://0.0.0.0:{}", DEFAULT_DOCKER_PORT);
             with().pollInterval(FIVE_HUNDRED_MILLISECONDS)

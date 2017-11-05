@@ -31,7 +31,7 @@ public class LocalNodeFactory implements NodeFactory {
     }
 
     @Override
-    public Node provisionNode(String tag, Path environmentBaseDir) {
+    public Node provisionNode(String tag, Path environmentBaseDir, Path dataBaseDir) {
         // TODO Check against maxPoolSize
         LOG.info("Provisioning LOCAL node");
         Node node = Node.builder()
