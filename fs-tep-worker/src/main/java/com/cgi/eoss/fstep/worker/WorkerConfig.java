@@ -141,9 +141,9 @@ public class WorkerConfig {
     }
     
     @Bean
-    public FstepWorkerNodeManager workerNodeManager(NodeFactory nodeFactory, JobEnvironmentService jobEnvironmentService,
+    public FstepWorkerNodeManager workerNodeManager(NodeFactory nodeFactory, @Qualifier("cacheRoot") Path dataBaseDir, JobEnvironmentService jobEnvironmentService,
             @Qualifier("maxJobsPerNode") Integer maxJobsPerNode) {
-        FstepWorkerNodeManager workerNodeManager = new FstepWorkerNodeManager(nodeFactory, maxJobsPerNode);
+        FstepWorkerNodeManager workerNodeManager = new FstepWorkerNodeManager(nodeFactory, dataBaseDir, maxJobsPerNode);
         return workerNodeManager;
     }
     
