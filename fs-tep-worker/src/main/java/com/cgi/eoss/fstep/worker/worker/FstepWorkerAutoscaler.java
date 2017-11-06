@@ -54,7 +54,7 @@ public class FstepWorkerAutoscaler {
             @Qualifier("minWorkerNodes") int minWorkerNodes, 
             @Qualifier("maxWorkerNodes") int maxWorkerNodes, 
             @Qualifier("maxJobsPerNode") int maxJobsPerNode,
-            @Qualifier("minSecondsBetweenScalingActions") int minSecondsBetweenScalingActions
+            @Qualifier("minSecondsBetweenScalingActions") long minSecondsBetweenScalingActions
             ) {
         this.nodeManager = nodeManager;
         this.queueService = queueService;
