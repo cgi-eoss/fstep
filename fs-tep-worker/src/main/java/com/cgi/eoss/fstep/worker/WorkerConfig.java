@@ -95,6 +95,11 @@ public class WorkerConfig {
     public Integer maxWorkerNodes(@Value("${fstep.worker.maxWorkerNodes:1}") int maxWorkerNodes) {
         return maxWorkerNodes;
     }
+    
+    @Bean
+    public Long minSecondsBetweenScalingActions(@Value("${fstep.worker.minSecondsBetweenScalingActions:600}") long minSecondsBetweenScalingActions) {
+        return minSecondsBetweenScalingActions;
+    }
 
     @Bean
     public String workerId(@Value("${eureka.instance.metadataMap.workerId:workerId}") String workerId) {

@@ -24,7 +24,7 @@ public class QueueMetricsService {
         saveMetric(now, queueLength);
     }
     
-    public void saveMetric(long epoch, long queueLength) {
+    private void saveMetric(long epoch, long queueLength) {
         QueueMetric qm = new QueueMetric(epoch, queueLength);
         queueMetricsRepository.save(qm);
         
