@@ -1,12 +1,12 @@
 package com.cgi.eoss.fstep.orchestrator.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 /**
  * <p>Service for more specific interaction with graphical application-type FS-TEP services.</p>
@@ -35,8 +35,11 @@ public class FstepGuiServiceManager {
                 .orElseThrow(() -> new ServiceExecutionException("Could not find GUI port on docker container for job: " + rpcJob.getId()));
 
         Binding binding = portBinding.getBinding();
-
-        return guiUrlPattern.replaceAll("__PORT__", String.valueOf(binding.getPort()));
+        String guiUrl = guiUrlPattern;
+        if (guiUrl.contains("__HOST__")) {
+            guiUrl = guiUrl.replaceAll("__HOST__", String.valueOf(binding.getIp()));
+        }
+        return guiUrl.replaceAll("__PORT__", String.valueOf(binding.getPort()));
     }
 
 }
