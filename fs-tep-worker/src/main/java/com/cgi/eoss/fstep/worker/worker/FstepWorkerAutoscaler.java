@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.worker.worker;
 
+import java.time.Instant;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,9 +32,9 @@ public class FstepWorkerAutoscaler {
     // TODO move this to configuration
     private static final long QUEUE_CHECK_INTERVAL_MS = 5L * 1000L;
 
-    private static final long AUTOSCALER_INTERVAL_MS = 5L * 60L * 1000L;
+    private static final long AUTOSCALER_INTERVAL_MS = 1L * 60L * 1000L;
     
-    private static final long STATISTICS_WINDOW = 2 * AUTOSCALER_INTERVAL_MS;
+    private static final long STATISTICS_WINDOW_MS = 5L * 60L * 1000L;
 
     private int minWorkerNodes;
 
@@ -43,10 +44,18 @@ public class FstepWorkerAutoscaler {
 
     private QueueMetricsService queueMetricsService;
 
+    private long lastAutoscalingActionTime;
+
+    private long minSecondsBetweenScalingActions;
 
     @Autowired
     public FstepWorkerAutoscaler(FstepWorkerNodeManager nodeManager, FstepQueueService queueService, QueueMetricsService queueMetricsService,
-            JobEnvironmentService jobEnvironmentService, @Qualifier("minWorkerNodes") int minWorkerNodes, @Qualifier("maxWorkerNodes") int maxWorkerNodes,  @Qualifier("maxJobsPerNode") int maxJobsPerNode) {
+            JobEnvironmentService jobEnvironmentService, 
+            @Qualifier("minWorkerNodes") int minWorkerNodes, 
+            @Qualifier("maxWorkerNodes") int maxWorkerNodes, 
+            @Qualifier("maxJobsPerNode") int maxJobsPerNode,
+            @Qualifier("minSecondsBetweenScalingActions") int minSecondsBetweenScalingActions
+            ) {
         this.nodeManager = nodeManager;
         this.queueService = queueService;
         this.queueMetricsService = queueMetricsService;
@@ -54,24 +63,29 @@ public class FstepWorkerAutoscaler {
         this.minWorkerNodes = minWorkerNodes;
         this.maxWorkerNodes = maxWorkerNodes;
         this.maxJobsPerNode = maxJobsPerNode;
+        this.minSecondsBetweenScalingActions = minSecondsBetweenScalingActions;
     }
 
     @Scheduled(fixedRate = QUEUE_CHECK_INTERVAL_MS, initialDelay = 10000L)
     public void getCurrentQueueLength() {
         long queueLength = queueService.getQueueLength(FstepQueueService.jobQueueName);
-        queueMetricsService.updateMetric(queueLength, STATISTICS_WINDOW);
+        queueMetricsService.updateMetric(queueLength, STATISTICS_WINDOW_MS/1000L);
     }
 
     @Scheduled(fixedRate = AUTOSCALER_INTERVAL_MS, initialDelay = 10000L)
     public void decide() {
+        long nowEpoch = Instant.now().getEpochSecond();
+        if(lastAutoscalingActionTime != 0L && (nowEpoch - lastAutoscalingActionTime) < minSecondsBetweenScalingActions) {
+            return;
+        }
         // We check that currentNodes are already equal or greather than minWorkerNodes to be sure that allocation of
         // minNodes has already happened
         Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
         if (currentNodes.size() < minWorkerNodes) {
             return;
         }
-        QueueAverage queueAverage = queueMetricsService.getMetrics(STATISTICS_WINDOW);
-        double coverageFactor = 1.0 * QUEUE_CHECK_INTERVAL_MS / STATISTICS_WINDOW;
+        QueueAverage queueAverage = queueMetricsService.getMetrics(STATISTICS_WINDOW_MS/1000L);
+        double coverageFactor = 1.0 * QUEUE_CHECK_INTERVAL_MS / STATISTICS_WINDOW_MS;
         double coverage = queueAverage.getCount() * coverageFactor;
         if (coverage > 0.75) {
             LOG.info("Avg queue length is {}", queueAverage.getAverageLength());
@@ -89,8 +103,10 @@ public class FstepWorkerAutoscaler {
         LOG.info("Scaling to {} nodes", target);
         Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
         if (target > currentNodes.size()) {
+            lastAutoscalingActionTime = Instant.now().getEpochSecond();
             scaleUp(target - currentNodes.size());
         } else if (target < currentNodes.size()) {
+            lastAutoscalingActionTime = Instant.now().getEpochSecond();
             scaleDown(currentNodes.size() - target);
         }
         else {
