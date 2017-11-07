@@ -10,7 +10,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = {QueuesConfig.class, QueuesTestConfig.class})
+@ContextConfiguration(classes = {QueuesConfig.class})
 @TestPropertySource("classpath:test-queues.properties")
 public class QueuesTest {
 
@@ -41,20 +41,6 @@ public class QueuesTest {
         queueLength = queueService.getQueueLength(TEST_QUEUE);
         
         assertThat(queueLength == 0);
-        
-    }
-    
-    @Test
-    public void testMessagePriorities() {
-        String priority2message = "Test message priority 2";
-        String priority1message = "Test message priority 1";
-        queueService.sendObject(TEST_QUEUE, priority2message, 2);
-        queueService.sendObject(TEST_QUEUE, priority1message, 1);
-        String received_message = (String) queueService.receiveObject(TEST_QUEUE);
-        assertThat(received_message.equals(priority1message));
-        
-        
-        
         
     }
     

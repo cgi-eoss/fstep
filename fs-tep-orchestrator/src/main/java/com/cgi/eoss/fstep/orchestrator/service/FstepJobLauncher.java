@@ -112,9 +112,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 
     private static final String TIMEOUT_PARAM = "timeout";
 
-    private static final int PARALLEL_JOB_PRIORITY = 3;
-
-    private static final int SINGLE_JOB_PRIORITY = 2;
+    private static final int SINGLE_JOB_PRIORITY = 9;
 
     private final WorkerFactory workerFactory;
     private final JobDataService jobDataService;
@@ -191,10 +189,12 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 List<Job> subJobs = createSubJobs(job, userId, service, newInputs, inputs);
 
                 checkCost(job.getOwner(), job.getConfig());
+                int i = 0;
                 for (Job subJob : subJobs) {
                     chargeUser(subJob.getOwner(), subJob);
                     submitJob(subJob, GrpcUtil.toRpcJob(subJob),
-                            GrpcUtil.mapToParams(subJob.getConfig().getInputs()), PARALLEL_JOB_PRIORITY);
+                            GrpcUtil.mapToParams(subJob.getConfig().getInputs()), getJobPriority(i));
+                    i++;
                 }
 
             } 
@@ -227,6 +227,25 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     }
 
  
+    private int getJobPriority(int messageNumber) {
+        if (messageNumber >= 0 && messageNumber < 10) {
+            return 6;
+        }
+        else if (messageNumber >= 10 && messageNumber < 30) {
+            return 5;
+        }
+        else if (messageNumber >= 30 && messageNumber < 70) {
+            return 4;
+        }
+        else if (messageNumber >= 70 && messageNumber < 150) {
+            return 3;
+        }
+        else if (messageNumber >= 150 && messageNumber < 310) {
+            return 2;
+        }
+        return 1;
+    }
+
     private void checkCost(User user, JobConfig jobConfig) {
         int estimatedCost = costingService.estimateJobCost(jobConfig);
         if (estimatedCost > user.getWallet().getBalance()) {

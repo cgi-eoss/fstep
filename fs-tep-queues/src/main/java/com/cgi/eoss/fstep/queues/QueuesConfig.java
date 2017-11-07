@@ -2,6 +2,9 @@ package com.cgi.eoss.fstep.queues;
 
 import java.net.URI;
 import java.util.Arrays;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerPlugin;
 import org.apache.activemq.broker.BrokerService;
@@ -77,7 +80,12 @@ public class QueuesConfig {
 
     @Bean
     public JmsTemplate jmsTemplate() {
-      return new JmsTemplate(new SingleConnectionFactory(activeMQConnectionFactory()));
+      return new JmsTemplate(new SingleConnectionFactory(activeMQConnectionFactory())) {
+          @Override
+        protected void doSend(MessageProducer producer, Message message) throws JMSException {
+            producer.send(message, getDeliveryMode(), message.getJMSPriority(), getTimeToLive());
+        }
+      };
     }
    
     
