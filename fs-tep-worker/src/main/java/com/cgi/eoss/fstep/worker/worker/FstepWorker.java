@@ -244,12 +244,21 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                 Map<ExposedPort, Ports.Binding[]> exposedPortMap = inspectContainerResponse.getNetworkSettings().getPorts().getBindings();
 
                 LOG.debug("Returning port map: {}", exposedPortMap);
+                
+                String nodeIpAddress = null;
+                Node jobNode = nodeManager.getJobNode(request.getId());
+                if (jobNode != null && jobNode.getIpAddress() != null) {
+                    nodeIpAddress = jobNode.getIpAddress();
+                }
+                
+                final String ipAddress = nodeIpAddress;
+                
                 PortBindings.Builder bindingsBuilder = PortBindings.newBuilder();
                 exposedPortMap.entrySet().stream()
                         .filter(e -> e.getValue() != null)
                         .map(e -> PortBinding.newBuilder()
                                 .setPortDef(e.getKey().toString())
-                                .setBinding(Binding.newBuilder().setIp(e.getValue()[0].getHostIp()).setPort(Integer.parseInt(e.getValue()[0].getHostPortSpec())).build())
+                                .setBinding(Binding.newBuilder().setIp((ipAddress != null)?ipAddress:e.getValue()[0].getHostIp()).setPort(Integer.parseInt(e.getValue()[0].getHostPortSpec())).build())
                                 .build())
                         .forEach(bindingsBuilder::addBindings);
 
