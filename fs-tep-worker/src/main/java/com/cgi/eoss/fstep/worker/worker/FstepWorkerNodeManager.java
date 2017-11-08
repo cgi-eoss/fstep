@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.worker.worker;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -91,8 +92,8 @@ public class FstepWorkerNodeManager {
     }
     
     @Synchronized
-    public int destroyNodes(int count, String tag, Path environmentBaseDir){
-        Set<Node> scaleDownNodes = findNFreeWorkerNodes(count, tag);
+    public int destroyNodes(int count, String tag, Path environmentBaseDir, long minimumUptimeSeconds){
+        Set<Node> scaleDownNodes = findNFreeWorkerNodes(count, tag, minimumUptimeSeconds);
         int destroyableNodes = scaleDownNodes.size();
         for (Node scaleDownNode : scaleDownNodes) {
             nodeFactory.destroyNode(scaleDownNode);
@@ -100,11 +101,12 @@ public class FstepWorkerNodeManager {
         return destroyableNodes;
     }
     
-    private Set<Node> findNFreeWorkerNodes(int n, String tag) {
+    private Set<Node> findNFreeWorkerNodes(int n, String tag, long minimumUptimeSeconds) {
         Set<Node> scaleDownNodes = new HashSet<Node>();
         Set<Node> currentNodes = nodeFactory.getCurrentNodes(tag);
+        long currentEpochSecond = Instant.now().getEpochSecond();
         for (Node node : currentNodes) {
-            if (jobsPerNode.get(node) == 0) {
+            if (jobsPerNode.get(node) == 0 && (currentEpochSecond - node.getCreationEpochSecond() > minimumUptimeSeconds) ) {
                 scaleDownNodes.add(node);
                 if (scaleDownNodes.size() == n) {
                     return scaleDownNodes;

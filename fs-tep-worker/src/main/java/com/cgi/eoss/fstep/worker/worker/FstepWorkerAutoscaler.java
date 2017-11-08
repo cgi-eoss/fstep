@@ -48,13 +48,16 @@ public class FstepWorkerAutoscaler {
 
     private long minSecondsBetweenScalingActions;
 
+    private long minimumMachineUptimeSeconds;
+
     @Autowired
     public FstepWorkerAutoscaler(FstepWorkerNodeManager nodeManager, FstepQueueService queueService, QueueMetricsService queueMetricsService,
             JobEnvironmentService jobEnvironmentService, 
             @Qualifier("minWorkerNodes") int minWorkerNodes, 
             @Qualifier("maxWorkerNodes") int maxWorkerNodes, 
             @Qualifier("maxJobsPerNode") int maxJobsPerNode,
-            @Qualifier("minSecondsBetweenScalingActions") long minSecondsBetweenScalingActions
+            @Qualifier("minSecondsBetweenScalingActions") long minSecondsBetweenScalingActions,
+            @Qualifier("minimumMachineUptimeSeconds") long minimumMachineUptimeSeconds
             ) {
         this.nodeManager = nodeManager;
         this.queueService = queueService;
@@ -64,6 +67,7 @@ public class FstepWorkerAutoscaler {
         this.maxWorkerNodes = maxWorkerNodes;
         this.maxJobsPerNode = maxJobsPerNode;
         this.minSecondsBetweenScalingActions = minSecondsBetweenScalingActions;
+        this.minimumMachineUptimeSeconds = minimumMachineUptimeSeconds;
     }
 
     @Scheduled(fixedRate = QUEUE_CHECK_INTERVAL_MS, initialDelay = 10000L)
@@ -129,7 +133,7 @@ public class FstepWorkerAutoscaler {
         int scaleDownTarget = Math.max(currentNodes.size() - numToScaleDown, minWorkerNodes);
         int adjustedScaleDownTarget = currentNodes.size() - scaleDownTarget;
         LOG.info("Scaling down {} nodes. Min worker nodes are {}", adjustedScaleDownTarget, minWorkerNodes);
-        int actualScaleDown = nodeManager.destroyNodes(adjustedScaleDownTarget, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir());
+        int actualScaleDown = nodeManager.destroyNodes(adjustedScaleDownTarget, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir(), minimumMachineUptimeSeconds);
         LOG.info("Scaled down {} nodes of requested {}", actualScaleDown, adjustedScaleDownTarget);
         
     }

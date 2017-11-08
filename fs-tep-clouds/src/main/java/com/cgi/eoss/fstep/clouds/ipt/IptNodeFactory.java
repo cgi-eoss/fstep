@@ -75,6 +75,7 @@ public class IptNodeFactory implements NodeFactory {
                 .id(server.getId())
                 .name(server.getName())
                 .tag(server.getMetadata().get("tag"))
+                .creationEpochSecond(server.getCreated().toInstant().getEpochSecond())
                 .ipAddress(server.getAccessIPv4())
                 .dockerEngineUrl("tcp://" + server.getAccessIPv4() + ":" + DEFAULT_DOCKER_PORT)
                 .build()).collect(Collectors.toSet());
@@ -143,6 +144,7 @@ public class IptNodeFactory implements NodeFactory {
                     .name(server.getName())
                     .tag(tag)
                     .ipAddress(serverIP)
+                    .creationEpochSecond(server.getCreated().toInstant().getEpochSecond())
                     .dockerEngineUrl("tcp://" + server.getAccessIPv4() + ":" + DEFAULT_DOCKER_PORT)
                     .build();
             currentNodes.add(node);
