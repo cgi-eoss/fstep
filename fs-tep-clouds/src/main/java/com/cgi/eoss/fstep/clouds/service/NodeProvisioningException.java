@@ -1,6 +1,6 @@
 package com.cgi.eoss.fstep.clouds.service;
 
-public class NodeProvisioningException extends RuntimeException {
+public class NodeProvisioningException extends Exception {
     public NodeProvisioningException(Throwable cause) {
         super(cause);
     }

@@ -2,8 +2,9 @@ package com.cgi.eoss.fstep.clouds.ipt;
 
 import static org.awaitility.Awaitility.with;
 import static org.awaitility.Duration.FIVE_HUNDRED_MILLISECONDS;
+import static org.awaitility.Duration.FIVE_MINUTES;
 import static org.awaitility.Duration.FIVE_SECONDS;
-import static org.awaitility.Duration.TWO_MINUTES;
+import static org.awaitility.Duration.TWO_SECONDS;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -75,13 +76,14 @@ public class IptNodeFactory implements NodeFactory {
                 .id(server.getId())
                 .name(server.getName())
                 .tag(server.getMetadata().get("tag"))
+                .creationEpochSecond(server.getCreated().toInstant().getEpochSecond())
                 .ipAddress(server.getAccessIPv4())
                 .dockerEngineUrl("tcp://" + server.getAccessIPv4() + ":" + DEFAULT_DOCKER_PORT)
                 .build()).collect(Collectors.toSet());
     }
 
     @Override
-    public Node provisionNode(String tag, Path environmentBaseDir, Path dataBaseDir) {
+    public Node provisionNode(String tag, Path environmentBaseDir, Path dataBaseDir) throws NodeProvisioningException{
         OSClientV3 osClient = osClientBuilder.authenticate();
         if (getCurrentNodes().size() >= maxPoolSize) {
             throw new NodeProvisioningException("Cannot provision node - pool exhausted. Used: " + getCurrentNodes().size() + " Max: " + maxPoolSize);
@@ -90,7 +92,7 @@ public class IptNodeFactory implements NodeFactory {
     }
 
     // TODO Expose this overload for workers to provision service-specific flavours
-    private Node provisionNode(OSClientV3 osClient, String tag, Path environmentBaseDir, Path dataBaseDir, String flavorName) {
+    private Node provisionNode(OSClientV3 osClient, String tag, Path environmentBaseDir, Path dataBaseDir, String flavorName) throws NodeProvisioningException{
         LOG.info("Provisioning IPT node with flavor '{}'", flavorName);
         Server server = null;
         FloatingIP floatingIp = null;
@@ -143,6 +145,7 @@ public class IptNodeFactory implements NodeFactory {
                     .name(server.getName())
                     .tag(tag)
                     .ipAddress(serverIP)
+                    .creationEpochSecond(server.getCreated().toInstant().getEpochSecond())
                     .dockerEngineUrl("tcp://" + server.getAccessIPv4() + ":" + DEFAULT_DOCKER_PORT)
                     .build();
             currentNodes.add(node);
@@ -212,8 +215,8 @@ public class IptNodeFactory implements NodeFactory {
 
     private SSHSession openSshSession(Keypair keypair, Server server) throws IOException {
         // Wait until port 22 is open on the server...
-        with().pollInterval(FIVE_HUNDRED_MILLISECONDS)
-                .and().atMost(TWO_MINUTES)
+        with().pollInterval(TWO_SECONDS)
+                .and().atMost(FIVE_MINUTES)
                 .await("SSH socket open")
                 .until(() -> {
                     try (SSHSession ssh = new SSHSession(server.getAccessIPv4(), provisioningConfig.getSshUser(), keypair.getPrivateKey(), keypair.getPublicKey())) {

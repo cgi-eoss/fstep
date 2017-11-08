@@ -26,6 +26,7 @@ import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import com.cgi.eoss.fstep.clouds.service.Node;
+import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.logging.Logging;
@@ -109,14 +110,22 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     public void allocateMinNodes() {
         int currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag).size();
         if (currentNodes < minWorkerNodes) {
-            nodeManager.provisionNodes(minWorkerNodes - currentNodes, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir());
+            try {
+                nodeManager.provisionNodes(minWorkerNodes - currentNodes, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir());
+            } catch (NodeProvisioningException e) {
+                LOG.error("Failed initial node provisioning: {}", e.getMessage());
+            }
         }
     }
  
     
     @Override
     public void prepareEnvironment(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
-    		nodeManager.provisionNodeForJob(jobEnvironmentService.getBaseDir(), request.getJob().getId());
+    		try {
+                nodeManager.provisionNodeForJob(jobEnvironmentService.getBaseDir(), request.getJob().getId());
+            } catch (NodeProvisioningException e) {
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+            }
 		prepareInputs(request, responseObserver);
     }
     

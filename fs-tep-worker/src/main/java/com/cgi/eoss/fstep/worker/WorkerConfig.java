@@ -100,6 +100,11 @@ public class WorkerConfig {
     public Long minSecondsBetweenScalingActions(@Value("${fstep.worker.minSecondsBetweenScalingActions:600}") long minSecondsBetweenScalingActions) {
         return minSecondsBetweenScalingActions;
     }
+    
+    @Bean
+    public Long minimumMachineUptimeSeconds(@Value("${fstep.worker.minimumMachineUptimeSeconds:3000}") long minimumMachineUptimeSeconds) {
+        return minimumMachineUptimeSeconds;
+    }
 
     @Bean
     public String workerId(@Value("${eureka.instance.metadataMap.workerId:workerId}") String workerId) {
