@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
+import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import lombok.Synchronized;
 
 public class FstepWorkerNodeManager {
@@ -68,7 +69,7 @@ public class FstepWorkerNodeManager {
     }
     
     @Deprecated
-    public Node provisionNodeForJob(Path jobDir, String jobId) {
+    public Node provisionNodeForJob(Path jobDir, String jobId) throws NodeProvisioningException{
         Node node = nodeFactory.provisionNode(dedicatedWorkerTag, jobDir, dataBaseDir);
         jobNodes.put(jobId, node);
         return node;
@@ -85,7 +86,7 @@ public class FstepWorkerNodeManager {
         }
     }
     
-    public void provisionNodes(int count, String tag, Path environmentBaseDir){
+    public void provisionNodes(int count, String tag, Path environmentBaseDir) throws NodeProvisioningException{
         for (int i = 0; i < count; i++) {
             nodeFactory.provisionNode(tag, environmentBaseDir, dataBaseDir);
         }

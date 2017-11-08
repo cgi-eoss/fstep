@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import com.cgi.eoss.fstep.clouds.service.Node;
+import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.worker.metrics.QueueAverage;
 import com.cgi.eoss.fstep.worker.metrics.QueueMetricsService;
@@ -34,7 +35,7 @@ public class FstepWorkerAutoscaler {
 
     private static final long AUTOSCALER_INTERVAL_MS = 1L * 60L * 1000L;
     
-    private static final long STATISTICS_WINDOW_MS = 5L * 60L * 1000L;
+    private static final long STATISTICS_WINDOW_MS = 2L * 60L * 1000L;
 
     private int minWorkerNodes;
 
@@ -95,7 +96,7 @@ public class FstepWorkerAutoscaler {
             LOG.info("Avg queue length is {}", queueAverage.getAverageLength());
             int averageLengthRounded = (int) Math.round(queueAverage.getAverageLength());
             double scaleTarget = 1.0 * averageLengthRounded  / maxJobsPerNode;
-            scaleTo((int) Math.round(scaleTarget));
+            scaleTo((int) Math.ceil(scaleTarget));
         }
         else {
             LOG.info("Metrics coverage of {} not enough to take scaling decision", coverage);
@@ -107,8 +108,14 @@ public class FstepWorkerAutoscaler {
         LOG.info("Scaling to {} nodes", target);
         Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
         if (target > currentNodes.size()) {
-            lastAutoscalingActionTime = Instant.now().getEpochSecond();
-            scaleUp(target - currentNodes.size());
+            long previousAutoScalingActionTime = lastAutoscalingActionTime;
+            try {
+                lastAutoscalingActionTime = Instant.now().getEpochSecond();
+                scaleUp(target - currentNodes.size());
+            } catch (NodeProvisioningException e) {
+                LOG.debug("Autoscaling failed because of node provisioning exception");
+                lastAutoscalingActionTime = previousAutoScalingActionTime;
+            }
         } else if (target < currentNodes.size()) {
             lastAutoscalingActionTime = Instant.now().getEpochSecond();
             scaleDown(currentNodes.size() - target);
@@ -118,7 +125,7 @@ public class FstepWorkerAutoscaler {
         }
     }
 
-    public void scaleUp(int numToScaleUp) {
+    public void scaleUp(int numToScaleUp) throws NodeProvisioningException {
         LOG.info("Evaluating scale up of additional {} nodes", numToScaleUp);
         Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
         int scaleUpTarget = Math.min(currentNodes.size() + numToScaleUp, maxWorkerNodes);
