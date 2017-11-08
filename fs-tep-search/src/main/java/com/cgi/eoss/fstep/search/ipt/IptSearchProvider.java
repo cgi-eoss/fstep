@@ -1,5 +1,18 @@
 package com.cgi.eoss.fstep.search.ipt;
 
+import java.io.IOException;
+import java.net.URI;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.geojson.Feature;
+import org.springframework.core.io.Resource;
+import org.springframework.hateoas.Link;
 import com.cgi.eoss.fstep.catalogue.external.ExternalProductDataService;
 import com.cgi.eoss.fstep.search.api.SearchParameters;
 import com.cgi.eoss.fstep.search.api.SearchResults;
@@ -20,20 +33,6 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.logging.HttpLoggingInterceptor;
-import org.geojson.Feature;
-import org.springframework.core.io.Resource;
-import org.springframework.hateoas.Link;
-
-import java.io.IOException;
-import java.net.URI;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Log4j2
 public class IptSearchProvider extends RestoSearchProvider {
@@ -66,10 +65,13 @@ public class IptSearchProvider extends RestoSearchProvider {
             .put("s1ProductType", "productType")
             .put("productDateStart", "startDate")
             .put("productDateEnd", "completionDate")
+            .put("maxCloudCover", "cloudCover")
+            .put("identifier", "productIdentifier")
             .build();
     private static final Map<String, Function<String, String>> PARAMETER_VALUE_MAPPING = ImmutableMap.<String, Function<String, String>>builder()
-            .put("productIdentifier", v -> "%" + v + "%")
+            .put("identifier", v -> "%" + v + "%")
             .put("s2ProcessingLevel", v -> "LEVEL"+ v)
+            .put("maxCloudCover", v -> "[0,"+ v +"]")
             .build();
 
     private final int priority;

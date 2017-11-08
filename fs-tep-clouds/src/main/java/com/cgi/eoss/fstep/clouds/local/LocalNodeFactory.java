@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.clouds.local;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -38,6 +39,7 @@ public class LocalNodeFactory implements NodeFactory {
                 .id(UUID.randomUUID().toString())
                 .name("LOCAL node")
                 .tag(tag)
+                .creationEpochSecond(Instant.now().getEpochSecond())
                 .dockerEngineUrl(dockerHostUrl)
                 .build();
         currentNodes.add(node);

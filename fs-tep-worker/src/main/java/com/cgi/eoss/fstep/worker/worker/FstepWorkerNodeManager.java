@@ -1,12 +1,14 @@
 package com.cgi.eoss.fstep.worker.worker;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
+import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import lombok.Synchronized;
 
 public class FstepWorkerNodeManager {
@@ -67,7 +69,7 @@ public class FstepWorkerNodeManager {
     }
     
     @Deprecated
-    public Node provisionNodeForJob(Path jobDir, String jobId) {
+    public Node provisionNodeForJob(Path jobDir, String jobId) throws NodeProvisioningException{
         Node node = nodeFactory.provisionNode(dedicatedWorkerTag, jobDir, dataBaseDir);
         jobNodes.put(jobId, node);
         return node;
@@ -84,15 +86,15 @@ public class FstepWorkerNodeManager {
         }
     }
     
-    public void provisionNodes(int count, String tag, Path environmentBaseDir){
+    public void provisionNodes(int count, String tag, Path environmentBaseDir) throws NodeProvisioningException{
         for (int i = 0; i < count; i++) {
             nodeFactory.provisionNode(tag, environmentBaseDir, dataBaseDir);
         }
     }
     
     @Synchronized
-    public int destroyNodes(int count, String tag, Path environmentBaseDir){
-        Set<Node> scaleDownNodes = findNFreeWorkerNodes(count, tag);
+    public int destroyNodes(int count, String tag, Path environmentBaseDir, long minimumUptimeSeconds){
+        Set<Node> scaleDownNodes = findNFreeWorkerNodes(count, tag, minimumUptimeSeconds);
         int destroyableNodes = scaleDownNodes.size();
         for (Node scaleDownNode : scaleDownNodes) {
             nodeFactory.destroyNode(scaleDownNode);
@@ -100,11 +102,12 @@ public class FstepWorkerNodeManager {
         return destroyableNodes;
     }
     
-    private Set<Node> findNFreeWorkerNodes(int n, String tag) {
+    private Set<Node> findNFreeWorkerNodes(int n, String tag, long minimumUptimeSeconds) {
         Set<Node> scaleDownNodes = new HashSet<Node>();
         Set<Node> currentNodes = nodeFactory.getCurrentNodes(tag);
+        long currentEpochSecond = Instant.now().getEpochSecond();
         for (Node node : currentNodes) {
-            if (jobsPerNode.get(node) == 0) {
+            if (jobsPerNode.get(node) == 0 && (currentEpochSecond - node.getCreationEpochSecond() > minimumUptimeSeconds) ) {
                 scaleDownNodes.add(node);
                 if (scaleDownNodes.size() == n) {
                     return scaleDownNodes;
