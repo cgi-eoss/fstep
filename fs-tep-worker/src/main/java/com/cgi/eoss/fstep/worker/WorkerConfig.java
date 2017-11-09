@@ -102,8 +102,8 @@ public class WorkerConfig {
     }
     
     @Bean
-    public Long minimumMachineUptimeSeconds(@Value("${fstep.worker.minimumMachineUptimeSeconds:3000}") long minimumMachineUptimeSeconds) {
-        return minimumMachineUptimeSeconds;
+    public Long minimumHourFractionUptimeSeconds(@Value("${fstep.worker.minimumHourFractionUptimeSeconds:3000}") long minimumHourFractionUptimeSeconds) {
+        return minimumHourFractionUptimeSeconds;
     }
 
     @Bean

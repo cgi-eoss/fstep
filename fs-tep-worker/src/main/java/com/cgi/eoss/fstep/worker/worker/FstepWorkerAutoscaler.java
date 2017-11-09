@@ -49,7 +49,9 @@ public class FstepWorkerAutoscaler {
 
     private long minSecondsBetweenScalingActions;
 
-    private long minimumMachineUptimeSeconds;
+    private long minimumHourFractionUptimeSeconds;
+
+    private boolean autoscalingOngoing;
 
     @Autowired
     public FstepWorkerAutoscaler(FstepWorkerNodeManager nodeManager, FstepQueueService queueService, QueueMetricsService queueMetricsService,
@@ -58,7 +60,7 @@ public class FstepWorkerAutoscaler {
             @Qualifier("maxWorkerNodes") int maxWorkerNodes, 
             @Qualifier("maxJobsPerNode") int maxJobsPerNode,
             @Qualifier("minSecondsBetweenScalingActions") long minSecondsBetweenScalingActions,
-            @Qualifier("minimumMachineUptimeSeconds") long minimumMachineUptimeSeconds
+            @Qualifier("minimumHourFractionUptimeSeconds") long minimumHourFractionUptimeSeconds
             ) {
         this.nodeManager = nodeManager;
         this.queueService = queueService;
@@ -68,7 +70,7 @@ public class FstepWorkerAutoscaler {
         this.maxWorkerNodes = maxWorkerNodes;
         this.maxJobsPerNode = maxJobsPerNode;
         this.minSecondsBetweenScalingActions = minSecondsBetweenScalingActions;
-        this.minimumMachineUptimeSeconds = minimumMachineUptimeSeconds;
+        this.minimumHourFractionUptimeSeconds = minimumHourFractionUptimeSeconds;
     }
 
     @Scheduled(fixedRate = QUEUE_CHECK_INTERVAL_MS, initialDelay = 10000L)
@@ -80,9 +82,10 @@ public class FstepWorkerAutoscaler {
     @Scheduled(fixedRate = AUTOSCALER_INTERVAL_MS, initialDelay = 10000L)
     public void decide() {
         long nowEpoch = Instant.now().getEpochSecond();
-        if(lastAutoscalingActionTime != 0L && (nowEpoch - lastAutoscalingActionTime) < minSecondsBetweenScalingActions) {
+        if(autoscalingOngoing || lastAutoscalingActionTime != 0L && (nowEpoch - lastAutoscalingActionTime) < minSecondsBetweenScalingActions) {
             return;
         }
+        autoscalingOngoing = true;
         // We check that currentNodes are already equal or greather than minWorkerNodes to be sure that allocation of
         // minNodes has already happened
         Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
@@ -94,55 +97,56 @@ public class FstepWorkerAutoscaler {
         double coverage = queueAverage.getCount() * coverageFactor;
         if (coverage > 0.75) {
             LOG.info("Avg queue length is {}", queueAverage.getAverageLength());
-            int averageLengthRounded = (int) Math.round(queueAverage.getAverageLength());
+            int averageLengthRounded = (int) Math.ceil(queueAverage.getAverageLength());
             double scaleTarget = 1.0 * averageLengthRounded  / maxJobsPerNode;
-            scaleTo((int) Math.ceil(scaleTarget));
+            scaleTo((int) Math.round(scaleTarget));
         }
         else {
             LOG.info("Metrics coverage of {} not enough to take scaling decision", coverage);
         }
+        autoscalingOngoing = false;
     }
    
-
     public void scaleTo(int target) {
         LOG.info("Scaling to {} nodes", target);
         Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
         if (target > currentNodes.size()) {
             long previousAutoScalingActionTime = lastAutoscalingActionTime;
             try {
-                lastAutoscalingActionTime = Instant.now().getEpochSecond();
                 scaleUp(target - currentNodes.size());
+                lastAutoscalingActionTime = Instant.now().getEpochSecond();
             } catch (NodeProvisioningException e) {
                 LOG.debug("Autoscaling failed because of node provisioning exception");
                 lastAutoscalingActionTime = previousAutoScalingActionTime;
             }
         } else if (target < currentNodes.size()) {
-            lastAutoscalingActionTime = Instant.now().getEpochSecond();
             scaleDown(currentNodes.size() - target);
+            lastAutoscalingActionTime = Instant.now().getEpochSecond();
         }
         else {
             LOG.debug("No action needed as current nodes are equal to the target", target);
         }
     }
 
-    public void scaleUp(int numToScaleUp) throws NodeProvisioningException {
+    public int scaleUp(int numToScaleUp) throws NodeProvisioningException {
         LOG.info("Evaluating scale up of additional {} nodes", numToScaleUp);
         Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
         int scaleUpTarget = Math.min(currentNodes.size() + numToScaleUp, maxWorkerNodes);
         int actualScaleUp = scaleUpTarget - currentNodes.size();
         LOG.info("Scaling up additional {} nodes. Max worker nodes are {}", actualScaleUp, maxWorkerNodes);
         nodeManager.provisionNodes(actualScaleUp, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir());
+        return actualScaleUp;
     }
 
-    public void scaleDown(int numToScaleDown) {
+    public int scaleDown(int numToScaleDown) {
         LOG.info("Evaluating scale down of {} nodes", numToScaleDown);
         Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
         int scaleDownTarget = Math.max(currentNodes.size() - numToScaleDown, minWorkerNodes);
         int adjustedScaleDownTarget = currentNodes.size() - scaleDownTarget;
         LOG.info("Scaling down {} nodes. Min worker nodes are {}", adjustedScaleDownTarget, minWorkerNodes);
-        int actualScaleDown = nodeManager.destroyNodes(adjustedScaleDownTarget, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir(), minimumMachineUptimeSeconds);
+        int actualScaleDown = nodeManager.destroyNodes(adjustedScaleDownTarget, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir(), minimumHourFractionUptimeSeconds);
         LOG.info("Scaled down {} nodes of requested {}", actualScaleDown, adjustedScaleDownTarget);
-        
+        return actualScaleDown;
     }
 
 }
