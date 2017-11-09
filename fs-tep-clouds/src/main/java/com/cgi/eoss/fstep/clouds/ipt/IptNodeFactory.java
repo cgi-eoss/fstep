@@ -96,9 +96,10 @@ public class IptNodeFactory implements NodeFactory {
         LOG.info("Provisioning IPT node with flavor '{}'", flavorName);
         Server server = null;
         FloatingIP floatingIp = null;
+        String keypairName = null;
         try {
             // Generate a random keypair for provisioning
-            String keypairName = UUID.randomUUID().toString();
+            keypairName = UUID.randomUUID().toString();
             Keypair keypair = osClient.compute().keypairs().create(keypairName, null);
             Flavor flavor = osClient.compute().flavors().list().stream()
                     .filter(f -> f.getName().equals(flavorName))
@@ -161,6 +162,8 @@ public class IptNodeFactory implements NodeFactory {
             if (floatingIp != null) {
                 osClient.compute().floatingIps().deallocateIP(floatingIp.getId());
             }
+            //Remove the keypair
+            osClient.compute().keypairs().delete(keypairName);
             throw new NodeProvisioningException(e);
         }
     }
@@ -236,6 +239,7 @@ public class IptNodeFactory implements NodeFactory {
 
         LOG.info("Destroying IPT node: {} ({})", node.getId(), node.getName());
         Server server = osClient.compute().servers().get(node.getId());
+        String keyname = server.getKeyName();
         ActionResponse response = osClient.compute().servers().delete(server.getId());
         if (response.isSuccess()) {
             LOG.info("Destroyed IPT node: {}", node.getId());
@@ -246,6 +250,9 @@ public class IptNodeFactory implements NodeFactory {
         // Check for floating IP
         Optional<? extends FloatingIP> floatingIP = osClient.compute().floatingIps().list().stream().filter(ip -> ip.getFloatingIpAddress().equals(server.getAccessIPv4())).findFirst();
         floatingIP.ifPresent(ip -> osClient.compute().floatingIps().deallocateIP(ip.getId()));
+        //Remove the keypair
+        osClient.compute().keypairs().delete(keyname);
+        
     }
 
     @Override
