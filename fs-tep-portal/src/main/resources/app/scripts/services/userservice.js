@@ -176,7 +176,9 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 var membersArray = [];
 
                 for (var item in groupUsers) {
-                    membersArray.push(groupUsers[item]._links.self.href);
+                    if (groupUsers[item]._links) {
+                        membersArray.push(groupUsers[item]._links.self.href);
+                    }
                 }
 
                 /* Append user to new members array */

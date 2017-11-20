@@ -123,18 +123,20 @@
                 </div>
             </div>
 
+            <md-button id="searchButton"
+                        class="icon-button md-icon-button md-fab md-mini btn-success"
+                        ng-if="searchParams.catalogue"
+                        type="submit"
+                        form="searchForm"
+                        ng-disabled="searchForm.$invalid"
+                        aria-label="Search"
+                        ng-click="displayTab(bottomNavTabs.RESULTS, false);">
+                <i class="material-icons">search</i>
+            </md-button>
+
         </form>
 
-        <md-button id="searchButton"
-                   class="icon-button md-icon-button md-fab md-mini btn-success"
-                   ng-if="searchParams.catalogue"
-                   type="submit"
-                   form="searchForm"
-                   ng-disabled="searchForm.$invalid"
-                   aria-label="Search"
-                   ng-click="displayTab(bottomNavTabs.RESULTS, false);">
-            <i class="material-icons">search</i>
-        </md-button>
+
 
     </div>
 </div>
