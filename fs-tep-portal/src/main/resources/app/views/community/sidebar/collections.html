@@ -1,0 +1,88 @@
+<md-toolbar md-scroll-shrink class="sidebar-subheader">
+    <div class="md-toolbar-tools">
+        <div class="col-xs-12">
+            <span>Collections</span>
+        </div>
+    </div>
+</md-toolbar>
+
+<section id="sidebar-list">
+
+    <section class="filter-list">
+            <ul class="list">
+
+                <md-input-container>
+                    <label>Filter</label>
+                    <input ng-model="collectionParams.searchText" type="text" placeholder="Search" ng-keyup="filter()" aria-label="Collection Search Filter">
+                </md-input-container>
+
+
+                <md-input-container class="md-input-has-value">
+                    <label>Ownership</label>
+                    <md-radio-group ng-model="collectionParams.selectedOwnershipFilter" ng-change="filter()">
+                        <md-radio-button ng-repeat="ownershipFilter in collectionOwnershipFilters" ng-value="ownershipFilter">
+                            {{ownershipFilter.name}}
+                        </md-radio-button>
+                    </md-radio-group>
+                </md-input-container>
+            </ul>
+        </section>
+
+    <div class="row" ng-if="!collectionParams.collections.length > 0">
+        <div class="col-md-12 no-padding">
+            <div class="note">No Collection found.</div>
+        </div>
+    </div>
+
+    <div class="item-list list" ng-if="collectionParams.collections.length > 0">
+        <md-list-item class="md-3-line"
+                      ng-repeat="(key, collection) in collectionParams.collections"
+                      ng-click="selectCollection(collection)"
+                      ng-class="{active: collection.id == collectionParams.selectedCollection.id}">
+
+            <div class="md-list-item-text" layout="column">
+                <h3 class="selectable" ng-bind="collection.name" />
+                <span><b>Owner:</b> <span ng-bind="collection.owner.name" /></span>
+                <span><b>Data type:</b> <span ng-bind="collection.productsType" /></span>
+            </div>
+
+            <md-button class="toolbar-button md-secondary"
+                       aria-label="Collection Info"
+                       uib-popover-template="'views/common/templates/collectioninfo.tmpl.html'"
+                       popover-placement="right"
+                       popover-trigger="'mouseenter'"
+                       popover-append-to-body="true">
+                <i class="material-icons">info_outline</i>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
+                        ng-click="editItemDialog($event, collection)"
+                        has-permission="WRITE" permission-source="{{collection}}"
+                        aria-label="Edit"
+                        uib-tooltip="Edit"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">create</i>
+            </md-button>
+
+        </md-list-item>
+
+        <div id="paging" fstep-paging="{{collectionParams.pagingData}}"></div>
+
+    </div>
+
+</section>
+
+<section id="create-collection">
+    <md-button id="create-collection-button"
+               class="icon-button md-icon-button md-fab md-mini"
+               ng-click="createItemDialog($event)"
+               aria-label="Create New {{item}}"
+               uib-tooltip="Create New {{item}}"
+               tooltip-placement="top"
+               tooltip-trigger="mouseenter"
+               tooltip-append-to-body="true">
+        <i class="material-icons">add</i>
+    </md-button>
+</section>

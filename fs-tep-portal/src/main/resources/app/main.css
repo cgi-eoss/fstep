@@ -2293,6 +2293,13 @@
 #search-panel .search-input-button i {
   font-size: 1rem;
 }
+#search-panel .md-subheader-title md-checkbox {
+  margin-bottom: 0;
+}
+#search-panel .md-subheader-title md-checkbox .md-container.md-ink-ripple {
+  transform: scale(0.8);
+  top: -4px;
+}
 
 #services .item-list .service-type {
   background-color: #E69824;
