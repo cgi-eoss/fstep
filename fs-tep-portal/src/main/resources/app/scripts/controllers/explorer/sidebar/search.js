@@ -13,8 +13,11 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         $scope.searchParams = {};
         $scope.selectedCatalog = {};
-        
+
         $scope.allowedValues = {};
+
+        $scope.enabledFields = {};
+
 
         SearchService.getSearchParameters().then(function(data){
             $scope.catalogues = data;
@@ -41,13 +44,16 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                         }
                     }
                 } else if(field.type === 'daterange') {
+
+                    $scope.searchParams[index] = {};
+
                     var startPeriod = new Date();
                     startPeriod.setMonth(startPeriod.getMonth() + parseInt(field.defaultValue[0]));
-                    $scope.searchParams[index + 'Start'] = startPeriod;
+                    $scope.searchParams[index].start = startPeriod;
 
                     var endPeriod = new Date();
                     endPeriod.setMonth(endPeriod.getMonth() + parseInt(field.defaultValue[1]));
-                    $scope.searchParams[index + 'End'] = endPeriod;
+                    $scope.searchParams[index].end = endPeriod;
                 }
             }
         };
@@ -100,14 +106,27 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 // Remove values for fields no longer displayed
                 if(!$scope.displayField($scope.catalogues[field], $scope.catalogues[field].type)) {
                     delete $scope.searchParams[field];
+                    delete $scope.enabledFields[field];
                 }
+
+                $scope.catalogues[field].optional
+                $scope.enabledFields[field] = $scope.catalogues[field].optional ? ($scope.enabledFields[field] || false): true;
 
                 if ($scope.catalogues[field].type === 'select') {
                     // Get list of allowed values
                     var allowedValues = getAllowedFields($scope.catalogues[field]);
-                    $scope.allowedValues[$scope.catalogues[field].title] = allowedValues;
+                    $scope.allowedValues[field] = allowedValues;
                     // Clear any fields set with an invalid value
                     removeInvalidValues(field, allowedValues);
+                }
+            }
+        };
+
+        $scope.getSelectValueDescription = function(field, value) {
+            var values = $scope.allowedValues[field];
+            for (var i=0; i < values.length; ++i) {
+                if (values[i].value == value) {
+                    return values[i].description;
                 }
             }
         };
@@ -138,6 +157,8 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             return displayValues;
         }
 
+
+
         function removeInvalidValues(field, allowedValues) {
             if ($scope.catalogues[field]) {
                 var match = false;
@@ -155,7 +176,19 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         }
 
         $scope.search = function() {
-            SearchService.submit($scope.searchParams).then(function (searchResults) {
+            var params = {}
+            for (var field in $scope.searchParams) {
+                if ($scope.enabledFields[field]) {
+                    if ($scope.catalogues[field].type == 'daterange') {
+                        params[field + 'Start'] = moment($scope.searchParams[field].start).format('YYYY-MM-DD[T00:00:00Z]');
+                        params[field + 'End'] = moment($scope.searchParams[field].end).format('YYYY-MM-DD[T23:59:59Z]');
+                    }
+                    else {
+                        params[field] = $scope.searchParams[field];
+                    }
+                }
+            }
+            SearchService.submit(params).then(function (searchResults) {
                 $rootScope.$broadcast('update.geoResults', searchResults);
             }).catch(function () {
                 $rootScope.$broadcast('update.geoResults');

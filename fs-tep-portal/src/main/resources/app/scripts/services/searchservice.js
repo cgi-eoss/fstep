@@ -85,14 +85,9 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             this.spinner.loading = true;
             var deferred = $q.defer();
 
-            var params = angular.extend({}, searchParameters, {
-                productDateStart: moment(searchParameters.productDateStart).format('YYYY-MM-DD[T00:00:00Z]'),
-                productDateEnd: moment(searchParameters.productDateEnd).format('YYYY-MM-DD[T23:59:59Z]')
-            });
-
             halAPI.from(rootUri + '/search')
                 .newRequest()
-                .withRequestOptions({ qs: params })
+                .withRequestOptions({ qs: searchParameters })
                 .getResource()
                 .result
                 .then(
