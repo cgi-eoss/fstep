@@ -7,39 +7,6 @@ import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.IntStream;
-import javax.jms.JMSException;
-import javax.jms.ObjectMessage;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.CloseableThreadContext;
-import org.jooq.lambda.Unchecked;
-import org.lognet.springboot.grpc.GRpcService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jms.annotation.JmsListener;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Service;
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
@@ -95,7 +62,40 @@ import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.SetMultimap;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.Serializable;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.IntStream;
+import javax.jms.JMSException;
+import javax.jms.ObjectMessage;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.CloseableThreadContext;
+import org.jooq.lambda.Unchecked;
+import org.lognet.springboot.grpc.GRpcService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.annotation.JmsListener;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
 
 /**
  * <p>
@@ -173,7 +173,19 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     throw new ServiceExecutionException(
                             "User does not have read access to all requested inputs");
                 }
-
+                
+                if (!checkAccessToOutputCollection(job.getOwner(), rpcInputs)) {
+                    try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                        LOG.error("User {} does not have read access to all requested output collections",
+                                userId);
+                    }
+                    throw new ServiceExecutionException(
+                            "User does not have read access to all requested output collections");
+                }
+                
+                //TODO: Check that the user can use the geoserver spec
+                
+                
                 Collection<String> parallelInput = inputs.get("parallelInputs");
                 List<String> newInputs = explodeParallelInput(parallelInput);
 
@@ -226,7 +238,6 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         }
     }
 
- 
     private int getJobPriority(int messageNumber) {
         if (messageNumber >= 0 && messageNumber < 10) {
             return 6;
@@ -267,6 +278,18 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private boolean checkInputList(User user, List<String> inputsList) {
         return inputsList.stream().filter(e -> this.isValidUri(e)).map(URI::create).collect(toSet())
                 .stream().allMatch(uri -> catalogueService.canUserRead(user, uri));
+    }
+        
+    private boolean checkAccessToOutputCollection(User user, List<JobParam> rpcInputs) {
+        Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
+        Map<String, String> collectionSpecs;
+        try {
+            collectionSpecs = getCollectionSpecs(inputs);
+            return collectionSpecs.values().stream()
+                    .allMatch(collectionId -> catalogueService.canUserWrite(user, collectionId));
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     private boolean isValidUri(String test) {
@@ -510,6 +533,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     }
 
     private void onJobError(Job job, String description) {
+        LOG.info("Error in Job {}: {}",
+                job.getExtId(), description);
         job.setStatus(Job.Status.ERROR);
         job.setEndTime(LocalDateTime.now());
         jobDataService.save(job);
@@ -644,6 +669,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             Map<String, String> outputsByRelativePath) throws IOException {
         Map<String, FstepFile> outputFiles = new HashMap<>(outputsByRelativePath.size());
         Map<String, GeoServerSpec> geoServerSpecs = getGeoServerSpecs(inputs); 
+        Map<String, String> collectionSpecs = getCollectionSpecs(inputs); 
         
         for (Map.Entry<String, String> output : outputsByRelativePath.entrySet()) {
             String outputId = output.getKey();
@@ -671,12 +697,19 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     .put("jobStartTime",
                             job.getStartTime().atOffset(ZoneOffset.UTC).toString())
                     .put("jobEndTime", job.getEndTime().atOffset(ZoneOffset.UTC).toString())
-                    .put("filename", fileMeta.getFilename()).build());
-            
+                    .put("filename", fileMeta.getFilename())
+                    .build());
+                    
             GeoServerSpec geoServerSpecForOutput = geoServerSpecs.get(outputId);
             if (geoServerSpecForOutput != null) {
                 properties.put("geoServerSpec", geoServerSpecForOutput);
             }
+            
+            String collectionSpecForOutput = collectionSpecs.get(outputId);
+            if (collectionSpecForOutput == null) {
+                collectionSpecForOutput = catalogueService.getDefaultOutputProductCollection();
+            }
+            
             
             OutputProductMetadata outputProduct = outputProductMetadataBuilder.properties(properties).build();
             
@@ -696,24 +729,35 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     Optional.ofNullable(outputProduct.getCrs()).orElse(getOutputCrs(outputPath)));
             outputProduct.setGeometry(Optional.ofNullable(outputProduct.getGeometry())
                     .orElse(getOutputGeometry(outputPath)));
-            //TODO This triggers geoserver - change
             outputFiles.put(outputId,
-                    catalogueService.ingestOutputProduct(outputProduct, outputPath));
+                    catalogueService.ingestOutputProduct(collectionSpecForOutput, outputProduct, outputPath));
         }
 
         return outputFiles;
     }
-
+    
     private Map<String, GeoServerSpec> getGeoServerSpecs(Multimap<String, String> inputs) throws JsonParseException, JsonMappingException, IOException {
         String geoServerSpecsStr = Iterables.getOnlyElement(inputs.get("geoServerSpec"), null);
         Map<String, GeoServerSpec> geoServerSpecs = new HashMap<String, GeoServerSpec>();
-        if (geoServerSpecsStr != null) {
+        if (geoServerSpecsStr != null && geoServerSpecsStr.length() > 0) {
             ObjectMapper mapper = new ObjectMapper();
                 TypeFactory typeFactory = mapper.getTypeFactory();
                 MapType mapType = typeFactory.constructMapType(HashMap.class, String.class, GeoServerSpec.class);
                 geoServerSpecs.putAll(mapper.readValue(geoServerSpecsStr, mapType));
         }
         return geoServerSpecs;
+    }
+    
+    private Map<String, String> getCollectionSpecs(Multimap<String, String> inputs) throws JsonParseException, JsonMappingException, IOException {
+        String collectionsStr = Iterables.getOnlyElement(inputs.get("collection"), null);
+        Map<String, String> collectionSpecs = new HashMap<String, String>();
+        if (collectionsStr != null && collectionsStr.length() > 0) {
+            ObjectMapper mapper = new ObjectMapper();
+                TypeFactory typeFactory = mapper.getTypeFactory();
+                MapType mapType = typeFactory.constructMapType(HashMap.class, String.class, String.class);
+                collectionSpecs.putAll(mapper.readValue(collectionsStr, mapType));
+        }
+        return collectionSpecs;
     }
 
     private String getOutputCrs(Path outputPath) {

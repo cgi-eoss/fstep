@@ -1,18 +1,5 @@
 package com.cgi.eoss.fstep.search.ipt;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.geojson.Feature;
-import org.springframework.core.io.Resource;
-import org.springframework.hateoas.Link;
 import com.cgi.eoss.fstep.catalogue.external.ExternalProductDataService;
 import com.cgi.eoss.fstep.search.api.SearchParameters;
 import com.cgi.eoss.fstep.search.api.SearchResults;
@@ -33,6 +20,22 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.logging.HttpLoggingInterceptor;
+import org.apache.commons.lang.StringUtils;
+import org.geojson.Feature;
+import org.springframework.core.io.Resource;
+import org.springframework.hateoas.Link;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Log4j2
 public class IptSearchProvider extends RestoSearchProvider {
@@ -178,7 +181,7 @@ public class IptSearchProvider extends RestoSearchProvider {
         Set<Link> featureLinks = new HashSet<>();
         featureLinks.add(new Link(fstepUri.toASCIIString(), "fstep"));
 
-        Long filesize = Optional.ofNullable((Map<String, Map<String, Object>>) feature.getProperty("services"))
+        Long filesize = Optional.ofNullable((Map<String, Map<String, Object>>) extraParams.get("services"))
                 .map(services -> Optional.ofNullable(services.get("download")).map(dl -> ((Number) dl.get("size")).longValue()).orElse(0L))
                 .orElse(0L);
 
@@ -192,14 +195,15 @@ public class IptSearchProvider extends RestoSearchProvider {
         // Set "interesting" parameters which clients might want in an easily-accessible form
         // Some are not present depending on the result type, so we have to safely traverse the dynamic properties map
         // These are added to extraParams so that the FstepFile/Resto schema is predictable
-        extraParams.put("fstepStartTime", feature.getProperty("startDate"));
-        extraParams.put("fstepEndTime", feature.getProperty("completionDate"));
-
-        Optional.ofNullable(feature.getProperty("cloudCover"))
+        Optional.ofNullable(extraParams.get("startDate"))
+        .ifPresent(startDate -> extraParams.put("fstepStartTime", startDate));
+        Optional.ofNullable(extraParams.get("completionDate"))
+        .ifPresent(completionDate -> extraParams.put("fstepEndTime", completionDate));
+        Optional.ofNullable(extraParams.get("cloudCover"))
                 .ifPresent(cloudCoverage -> extraParams.put("fstepCloudCoverage", cloudCoverage));
-        Optional.ofNullable(feature.getProperty("orbitDirection"))
+        Optional.ofNullable(extraParams.get("orbitDirection"))
                 .ifPresent(orbitDirection -> extraParams.put("fstepOrbitDirection", orbitDirection));
-        Optional.ofNullable(feature.getProperty("productType"))
+        Optional.ofNullable(extraParams.get("productType"))
                 .ifPresent(productType -> extraParams.put("fstepProductType", productType));
 
         feature.setProperty("extraParams", extraParams);
@@ -221,5 +225,19 @@ public class IptSearchProvider extends RestoSearchProvider {
                 l -> ImmutableMap.of("href", l.getHref())
         )));
     }
+    
+    @Override
+    public boolean supportsDynamicParameter(String parameter) {
+        return false;
+    }
+    
+    @Override
+    public List<Map<String, Object>> getDynamicParameterValues(String parameter){
+        return Collections.EMPTY_LIST;
+    }
 
+    @Override
+    public String getDynamicParameterDefaultValue(String parameter){
+        return StringUtils.EMPTY;
+    }
 }

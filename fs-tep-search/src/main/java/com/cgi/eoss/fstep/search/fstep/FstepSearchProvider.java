@@ -2,7 +2,9 @@ package com.cgi.eoss.fstep.search.fstep;
 
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.catalogue.resto.RestoService;
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.persistence.service.CollectionDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.search.api.SearchParameters;
 import com.cgi.eoss.fstep.search.api.SearchResults;
@@ -17,20 +19,20 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.logging.HttpLoggingInterceptor;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.hateoas.Link;
-
 import java.io.IOException;
 import java.net.URI;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.stream.Collectors; 
 
 @Log4j2
 public class FstepSearchProvider extends RestoSearchProvider {
@@ -40,8 +42,8 @@ public class FstepSearchProvider extends RestoSearchProvider {
     private final RestoService restoService;
     private final FstepFileDataService fstepFileDataService;
     private final FstepSecurityService securityService;
-
-    public FstepSearchProvider(int priority, FstepSearchProperties searchProperties, OkHttpClient httpClient, ObjectMapper objectMapper, CatalogueService catalogueService, RestoService restoService, FstepFileDataService fstepFileDataService, FstepSecurityService securityService) {
+    private final CollectionDataService collectionDataService;
+    public FstepSearchProvider(int priority, FstepSearchProperties searchProperties, OkHttpClient httpClient, ObjectMapper objectMapper, CatalogueService catalogueService, RestoService restoService, FstepFileDataService fstepFileDataService, FstepSecurityService securityService, CollectionDataService collectionDataService) {
         super(searchProperties.getBaseUrl(),
                 httpClient.newBuilder()
                         .addInterceptor(chain -> {
@@ -58,6 +60,7 @@ public class FstepSearchProvider extends RestoSearchProvider {
         this.restoService = restoService;
         this.fstepFileDataService = fstepFileDataService;
         this.securityService = securityService;
+        this.collectionDataService = collectionDataService;
     }
 
     @Override
@@ -72,7 +75,12 @@ public class FstepSearchProvider extends RestoSearchProvider {
         parameters.getValue("identifier").ifPresent(s -> queryParameters.put("productIdentifier", "%" + s + "%"));
         parameters.getValue("aoi").ifPresent(s -> queryParameters.put("geometry", s));
         parameters.getValue("owner").ifPresent(s -> queryParameters.put("owner", s));
-
+        parameters.getValue("productDateStart").ifPresent(s -> queryParameters.put("startDate", s));
+        parameters.getValue("productDateEnd").ifPresent(s -> queryParameters.put("completionDate", s));
+        parameters.getValue("jobDateStart").ifPresent(s -> queryParameters.put("jobStartDate", s));
+        parameters.getValue("jobDateEnd").ifPresent(s -> queryParameters.put("jobEndDate", s));
+        parameters.getValue("publicationDateStart").ifPresent(s -> queryParameters.put("publishedAfter", s));
+        parameters.getValue("publicationDateEnd").ifPresent(s -> queryParameters.put("publishedBefore", s));
         return queryParameters;
     }
 
@@ -107,7 +115,13 @@ public class FstepSearchProvider extends RestoSearchProvider {
             case "REF_DATA":
                 return restoService.getReferenceDataCollection();
             case "FSTEP_PRODUCTS":
-                return restoService.getOutputProductsCollection();
+                Optional<String> collection = parameters.getValue("collection");
+                if (collection.isPresent()){
+                    return collection.get();
+                }
+                else {
+                    return restoService.getOutputProductsCollection();
+                }
             default:
                 throw new IllegalArgumentException("Could not identify Resto collection for repo type: " + parameters.getValue("catalogue"));
         }
@@ -158,17 +172,12 @@ public class FstepSearchProvider extends RestoSearchProvider {
 
 
             Map<String, Object> extraParams = Optional.ofNullable((Map<String, Object>) f.getProperties().get("extraParams")).orElse(new HashMap<>());
-
-            if (results.getParameters().getValue("catalogue", "").equals("REF_DATA")) {
-                // Reference data timestamp is just the publish time
-                extraParams.put("fstepStartTime", ZonedDateTime.parse(f.getProperty("published")).with(ZoneOffset.UTC).toLocalDateTime());
-                extraParams.put("fstepEndTime", ZonedDateTime.parse(f.getProperty("published")).with(ZoneOffset.UTC).toLocalDateTime());
-            } else if (results.getParameters().getValue("catalogue", "").equals("FSTEP_PRODUCTS")) {
-                // FS-TEP products should have jobStart/EndDate
-                extraParams.put("fstepStartTime", ZonedDateTime.parse(f.getProperty("jobStartDate")).with(ZoneOffset.UTC).toLocalDateTime());
-                extraParams.put("fstepEndTime", ZonedDateTime.parse(f.getProperty("jobEndDate")).with(ZoneOffset.UTC).toLocalDateTime());
-            }
-
+            
+            Optional.ofNullable(extraParams.get("startDate"))
+            .ifPresent(startDate -> extraParams.put("fstepStartTime", startDate));
+            Optional.ofNullable(extraParams.get("completionDate"))
+            .ifPresent(completionDate -> extraParams.put("fstepEndTime", completionDate));
+            
             f.getProperties().put("extraParams", extraParams);
 
             // FS-TEP links are "_links", resto links are "links"
@@ -178,6 +187,46 @@ public class FstepSearchProvider extends RestoSearchProvider {
             )));
         });
         return results;
+    }
+    
+    @Override
+    public boolean supportsDynamicParameter(String parameter) {
+        return "collection".equals(parameter);
+    }
+    
+    @Override
+    public List<Map<String, Object>> getDynamicParameterValues(String parameter){
+        if (parameter.equals("collection")) {
+            //Populate the collection list
+            return collectionDataService.getAll().stream()
+            .filter(collection -> securityService.isReadableByCurrentUser(Collection.class, collection.getId()))
+            .map(collection -> new HashMap<String, Object>() {{
+                put("title", collection.getName());
+                put("value", collection.getIdentifier());
+                put("description", collection.getDescription());
+                }})
+            .collect(Collectors.toList());
+        }
+        return Collections.EMPTY_LIST;
+    }
+    
+    @Override
+    public String getDynamicParameterDefaultValue(String parameter){
+        if (parameter.equals("collection")) {
+            List<Collection> readableCollections = collectionDataService.getAll().stream()
+            .filter(collection -> securityService.isReadableByCurrentUser(Collection.class, collection.getId()))
+            .collect(Collectors.toList());
+            Collection defaultCollection = readableCollections.stream()
+            .filter(c -> c.getIdentifier().equals(catalogueService.getDefaultOutputProductCollection()))
+            .findFirst().orElse(readableCollections.get(0));
+            if (defaultCollection != null) {
+                return defaultCollection.getIdentifier();
+            }
+            return StringUtils.EMPTY;
+          
+        }
+        
+        return null;
     }
 
 }

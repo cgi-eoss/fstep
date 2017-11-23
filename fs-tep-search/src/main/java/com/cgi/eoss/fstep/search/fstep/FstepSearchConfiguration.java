@@ -2,6 +2,7 @@ package com.cgi.eoss.fstep.search.fstep;
 
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.catalogue.resto.RestoService;
+import com.cgi.eoss.fstep.persistence.service.CollectionDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +25,7 @@ public class FstepSearchConfiguration {
     private String password;
 
     @Bean
-    public FstepSearchProvider fstepSearchProvider(OkHttpClient httpClient, ObjectMapper objectMapper, CatalogueService catalogueService, RestoService restoService, FstepFileDataService fstepFileDataService, FstepSecurityService securityService) {
+    public FstepSearchProvider fstepSearchProvider(OkHttpClient httpClient, ObjectMapper objectMapper, CatalogueService catalogueService, RestoService restoService, FstepFileDataService fstepFileDataService, FstepSecurityService securityService, CollectionDataService collectionDataService) {
         return new FstepSearchProvider(0,
                 FstepSearchProperties.builder()
                         .baseUrl(HttpUrl.parse(baseUrl))
@@ -36,7 +37,8 @@ public class FstepSearchConfiguration {
                 catalogueService,
                 restoService,
                 fstepFileDataService,
-                securityService);
+                securityService,
+                collectionDataService);
     }
 
 }

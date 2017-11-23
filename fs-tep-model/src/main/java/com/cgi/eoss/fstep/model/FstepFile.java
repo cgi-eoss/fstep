@@ -96,6 +96,15 @@ public class FstepFile implements FstepEntityWithOwner<FstepFile> {
     @JoinColumn(name = "datasource")
     @JsonIgnore
     private DataSource dataSource;
+    
+    /**
+     * <p>The optional FS-TEP collection to which this file is associated.</p>
+     */
+    
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "collection_id")
+    @JsonIgnore
+    private Collection collection;
 
     /**
      * <p>Construct a new FstepFile instance with the minimum mandatory (and unique) parameters.</p>
