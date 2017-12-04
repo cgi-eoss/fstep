@@ -9,6 +9,8 @@ import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.WalletTransaction;
 import com.google.common.collect.ImmutableSet;
+import javax.annotation.PostConstruct;
+import javax.persistence.EntityManagerFactory;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
@@ -23,9 +25,6 @@ import org.springframework.security.acls.model.MutableAcl;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-import javax.persistence.EntityManagerFactory;
 import java.util.Set;
 
 @Component
@@ -106,7 +105,10 @@ public class AddOwnerAclListener implements PostInsertEventListener {
             if (FstepFile.class.equals(entityClass) && ((FstepFile) entity).getType() == FstepFile.Type.OUTPUT_PRODUCT) {
                 // Fs-tep output products should have the collection as parent ACL
                 LOG.debug("Adding PARENT ACL for new OUTPUT_PRODUCT FstepFile with ID {}", entity.getId());
-                acl.setParent(fstepSecurityService.getAcl(new ObjectIdentityImpl(Collection.class, ((FstepFile) entity).getCollection().getId())));
+                FstepFile fstepFile = (FstepFile) entity;
+                if (fstepFile.getCollection() != null) {
+                    acl.setParent(fstepSecurityService.getAcl(new ObjectIdentityImpl(Collection.class, fstepFile.getCollection().getId())));
+                }
             }
 
             fstepSecurityService.saveAcl(acl);
