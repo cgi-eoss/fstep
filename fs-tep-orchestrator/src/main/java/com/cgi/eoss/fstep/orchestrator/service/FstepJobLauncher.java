@@ -21,9 +21,11 @@ import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.JobStep;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.UserMount;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.rpc.CancelJobParams;
 import com.cgi.eoss.fstep.rpc.CancelJobResponse;
@@ -62,6 +64,18 @@ import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.SetMultimap;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import javax.jms.JMSException;
+import javax.jms.ObjectMessage;
+import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.CloseableThreadContext;
+import org.jooq.lambda.Unchecked;
+import org.lognet.springboot.grpc.GRpcService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.annotation.JmsListener;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -84,18 +98,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
-import javax.jms.JMSException;
-import javax.jms.ObjectMessage;
-import lombok.extern.log4j.Log4j2;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.CloseableThreadContext;
-import org.jooq.lambda.Unchecked;
-import org.lognet.springboot.grpc.GRpcService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jms.annotation.JmsListener;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Service;
 
 /**
  * <p>
@@ -121,7 +123,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private final CatalogueService catalogueService;
     private final CostingService costingService;
     private final FstepSecurityService securityService;
-    private FstepQueueService queueService;
+    private final FstepQueueService queueService;
+    private final UserMountDataService userMountDataService;
     
     private Map<String, StreamObserver<FstepServiceResponse>> responseObservers = new HashMap<>();
 
@@ -129,7 +132,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     public FstepJobLauncher(WorkerFactory workerFactory, JobDataService jobDataService,
             DatabasketDataService databasketDataService, FstepGuiServiceManager guiService,
             CatalogueService catalogueService, CostingService costingService,
-            FstepSecurityService securityService, FstepQueueService queueService) {
+            FstepSecurityService securityService, FstepQueueService queueService, 
+            UserMountDataService userMountDataService) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.databasketDataService = databasketDataService;
@@ -138,6 +142,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         this.costingService = costingService;
         this.securityService = securityService;
         this.queueService = queueService;
+        this.userMountDataService = userMountDataService;
     }
 
     @Override
@@ -314,6 +319,16 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             int timeout = Integer.parseInt(Iterables.getOnlyElement(inputs.get(TIMEOUT_PARAM)));
             jobSpecBuilder = jobSpecBuilder.setHasTimeout(true).setTimeoutValue(timeout);
         }
+        
+        Map<Long, String> additionalMounts = job.getConfig().getService().getAdditionalMounts();
+        
+        for (Long userMountId : additionalMounts.keySet()) {
+            UserMount userMount = userMountDataService.getById(userMountId);
+            String targetPath = additionalMounts.get(userMountId);
+            String bind = userMount.getMountPath() + ":" + targetPath + ":" + userMount.getType().toString().toLowerCase();
+            jobSpecBuilder.addUserBinds(bind);
+        }
+        
         JobSpec jobSpec = jobSpecBuilder.build();
         HashMap<String, Object> messageHeaders = new HashMap<String, Object>();
         messageHeaders.put("jobId", job.getId());

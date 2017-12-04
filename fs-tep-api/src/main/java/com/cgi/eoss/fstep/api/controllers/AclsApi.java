@@ -9,14 +9,13 @@ import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.Project;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.UserEndpoint;
+import com.cgi.eoss.fstep.model.UserMount;
 import com.cgi.eoss.fstep.persistence.service.GroupDataService;
 import com.cgi.eoss.fstep.security.FstepPermission;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import java.util.List;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -39,6 +38,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /**
  * <p>A {@link RestController} for updating and modifying ACLs. There is no direct model mapping, so this is not a
@@ -110,6 +112,38 @@ public class AclsApi {
         return FstepAccessControlList.builder()
                 .entityId(collection.getId())
                 .permissions(getFstepPermissions(new ObjectIdentityImpl(Collection.class, collection.getId())))
+                .build();
+    }
+    
+    @PostMapping("/userMount/{userMountId}")
+    @PreAuthorize("hasAnyRole('ADMIN') or hasPermission(#userMount, 'administration')")
+    public void setUserMountAcl(@ModelAttribute("userMountId") UserMount userMount, @RequestBody FstepAccessControlList acl) {
+        Preconditions.checkArgument(userMount.getId().equals(acl.getEntityId()), "ACL subject entity ID mismatch: URL %s vs BODY %s", userMount.getId(), acl.getEntityId());
+        setAcl(new ObjectIdentityImpl(UserMount.class, userMount.getId()), userMount.getOwner(), acl.getPermissions());
+    }
+    
+    @GetMapping("/userMount/{userMountId}")
+    @PreAuthorize("hasAnyRole('ADMIN') or hasPermission(#userMount, 'administration')")
+    public FstepAccessControlList getUserMountAcls(@ModelAttribute("userMountId") UserMount userMount) {
+        return FstepAccessControlList.builder()
+                .entityId(userMount.getId())
+                .permissions(getFstepPermissions(new ObjectIdentityImpl(UserMount.class, userMount.getId())))
+                .build();
+    }
+    
+    @PostMapping("/userEndpoint/{userEndpointId}")
+    @PreAuthorize("hasAnyRole('ADMIN') or hasPermission(#userEndpoint, 'administration')")
+    public void setUserEndpointAcl(@ModelAttribute("userEndpointId") UserEndpoint userEndpoint, @RequestBody FstepAccessControlList acl) {
+        Preconditions.checkArgument(userEndpoint.getId().equals(acl.getEntityId()), "ACL subject entity ID mismatch: URL %s vs BODY %s", userEndpoint.getId(), acl.getEntityId());
+        setAcl(new ObjectIdentityImpl(UserEndpoint.class, userEndpoint.getId()), userEndpoint.getOwner(), acl.getPermissions());
+    }
+    
+    @GetMapping("/userEndpoint/{userEndpointId}")
+    @PreAuthorize("hasAnyRole('ADMIN') or hasPermission(#userEndpoint, 'administration')")
+    public FstepAccessControlList getUserEndpointAcls(@ModelAttribute("userEndpointId") UserEndpoint userEndpoint) {
+        return FstepAccessControlList.builder()
+                .entityId(userEndpoint.getId())
+                .permissions(getFstepPermissions(new ObjectIdentityImpl(UserEndpoint.class, userEndpoint.getId())))
                 .build();
     }
 

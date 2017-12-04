@@ -1,13 +1,5 @@
 package com.cgi.eoss.fstep.worker.worker;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExitCode;
@@ -23,6 +15,14 @@ import com.cgi.eoss.fstep.rpc.worker.JobInputs;
 import com.cgi.eoss.fstep.rpc.worker.JobSpec;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -119,7 +119,7 @@ public class FstepWorkerDispatcher {
                     + "/home/worker/workDir/FSTEP-WPS-INPUT.properties:ro");
             binds.add(jobEnvironment.getInputDir() + ":" + "/home/worker/workDir/inDir:ro");
             binds.add(jobEnvironment.getOutputDir() + ":" + "/home/worker/workDir/outDir:rw");
-
+            binds.addAll(jobSpec.getUserBindsList());
             JobDockerConfig request =
                     JobDockerConfig.newBuilder().setJob(jobSpec.getJob()).setServiceName(jobSpec.getService().getName())
                             .setDockerImage(jobSpec.getService().getDockerImageTag()).addAllBinds(binds).addAllPorts(ports).build();
