@@ -173,10 +173,10 @@ orbitDirection:
   defaultValue: 'ASCENDING'
   allowed:
     values:
-      - value: 'ASCENDING'
-        title: 'ascending'
-      - value: 'DESCENDING'
-        title: 'descending'
+      - value: 'ascending'
+        title: 'Ascending'
+      - value: 'descending'
+        title: 'Descending'
   onlyIf:
     'mission':
       - 'sentinel1'
