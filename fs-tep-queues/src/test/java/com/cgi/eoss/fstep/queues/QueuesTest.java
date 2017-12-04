@@ -1,13 +1,13 @@
 package com.cgi.eoss.fstep.queues;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertTrue;
+import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = {QueuesConfig.class})
@@ -20,6 +20,16 @@ public class QueuesTest {
     private FstepQueueService queueService;
     
     @Test
+    public void testSendWithPriority() {
+        String firstMessage = "First message";
+        String secondMessage = "Second message";
+        queueService.sendObject(TEST_QUEUE, firstMessage, 1);
+        queueService.sendObject(TEST_QUEUE, secondMessage, 5);
+        String received_message = (String) queueService.receiveObject(TEST_QUEUE);
+        assertTrue(received_message.equals(secondMessage));
+    }
+    
+    @Test
     public void testQueueLength() {
         String sentMessage = "Test message";
         
@@ -27,20 +37,21 @@ public class QueuesTest {
         queueService.receiveObject(TEST_QUEUE);
         long queueLength = queueService.getQueueLength(TEST_QUEUE);
         
-        assertThat(queueLength == 0);
+        assertTrue(queueLength == 0);
         
         queueService.sendObject(TEST_QUEUE, sentMessage);
         
         queueLength = queueService.getQueueLength(TEST_QUEUE);
-        assertThat(queueLength == 1);
+        
+        assertTrue(queueLength == 1);
         
         String received_message = (String) queueService.receiveObject(TEST_QUEUE);
         
-        assertThat(received_message.equals(sentMessage));
+        assertTrue(received_message.equals(sentMessage));
         
         queueLength = queueService.getQueueLength(TEST_QUEUE);
         
-        assertThat(queueLength == 0);
+        assertTrue(queueLength == 0);
         
     }
     
