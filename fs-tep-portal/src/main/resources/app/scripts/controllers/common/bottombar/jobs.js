@@ -49,7 +49,8 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                     //rerun single batch processing subjob
                     if (config._embedded.service.type == "PARALLEL_PROCESSOR" && !config.inputs.parallelInputs) {
                         if (config.inputs.input) {
-                            config.inputs.parallelInputs = [config.inputs.input];
+                            config.inputs.parallelInputs = config.inputs.input;
+                            delete config.inputs.input;
                         }
                     }
                     $rootScope.$broadcast('update.selectedService', config._embedded.service, config.inputs, config.label);
