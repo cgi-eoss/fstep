@@ -375,6 +375,14 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                        .result
                        .then(
             function (document) {
+                document.additionalMounts = document.additionalMounts || {};
+
+                let mounts = [];
+                for (var id in document.additionalMounts) {
+                    mounts.push({mountId: id, target: document.additionalMounts[id]});
+                }
+                document.additionalMounts = mounts;
+
                 deferred.resolve(document);
             }, function (error) {
                 MessageService.addError('Could not get details for Service ' + service.name, error);
@@ -473,6 +481,13 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 serviceDescriptor: selectedService.serviceDescriptor,
                 type: selectedService.type
             };
+
+            var additionalMounts = {};
+            for (var i = 0; i < selectedService.additionalMounts.length; ++i) {
+                additionalMounts[selectedService.additionalMounts[i].mountId] = selectedService.additionalMounts[i].target;
+            }
+
+            editService.additionalMounts = additionalMounts;
 
             return $q(function(resolve, reject) {
                 halAPI.from(rootUri + '/services/' + selectedService.id)

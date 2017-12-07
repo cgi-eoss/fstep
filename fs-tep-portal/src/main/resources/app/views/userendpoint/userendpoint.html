@@ -1,0 +1,9 @@
+<div class="page" ng-controller="UserEndpointCtrl">
+
+    <div id="navbar-container" ng-include src="'views/navbar.html'"/>
+
+    <article id="userendpoint-container" class="page-container row">
+        <iframe ng-if="endpoint" ng-src="{{endpoint.url}}" height="100%" width="100%"></iframe>
+    </article>
+
+</div>

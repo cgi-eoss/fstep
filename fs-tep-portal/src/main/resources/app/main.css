@@ -1853,6 +1853,21 @@
   vertical-align: top;
   width: auto;
 }
+#developer-container .right-container #service-form #mount-editor {
+  margin: 10px;
+}
+#developer-container .right-container #service-form #mount-editor table td,
+#developer-container .right-container #service-form #mount-editor table th {
+  padding: 0 10px;
+}
+#developer-container .right-container #service-form #mount-editor table td md-input-container,
+#developer-container .right-container #service-form #mount-editor table th md-input-container {
+  margin: 15px 0;
+}
+#developer-container .right-container #service-form #mount-editor table td input,
+#developer-container .right-container #service-form #mount-editor table th input {
+  min-width: 400px;
+}
 #developer-container .right-container #service-form .add-button,
 #developer-container .right-container #service-form .remove-button,
 #developer-container .right-container #service-form .type-button {

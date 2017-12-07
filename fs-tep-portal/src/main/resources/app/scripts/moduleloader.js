@@ -42,6 +42,8 @@ define([
     './controllers/explorer/sidebar/services',
     './controllers/explorer/sidebar/workspace',
 
+    './controllers/userendpoint/userendpoint',
+
     './controllers/helpdesk/helpdesk',
 
     //services
@@ -61,6 +63,8 @@ define([
     './services/userservice',
     './services/walletservice',
     './services/userprefservice',
+    './services/usermountsservice',
+    './services/userendpointservice',
     './services/aoiservice',
     './services/map/mapservice',
     './services/map/aoilayerservice',
