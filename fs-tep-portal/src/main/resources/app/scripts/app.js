@@ -117,6 +117,10 @@ define([
                     }]
                 }
             })
+            .when('/userendpoint/:app', {
+                templateUrl: 'views/userendpoint/userendpoint.html',
+                controller: 'UserEndpointCtrl'
+            })
             .otherwise({
                 redirectTo: '/'
             });

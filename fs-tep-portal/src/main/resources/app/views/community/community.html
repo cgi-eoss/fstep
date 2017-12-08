@@ -20,6 +20,8 @@
                          ng-controller="CommunityGroupsCtrl" ng-include src="'views/community/sidebar/groups.html'" onload="finishLoading('groups')"/>
                     <div class="panel-container" ng-if="navInfo.activeSideNav === communityTabs.PROJECTS"
                          ng-controller="CommunityProjectsCtrl" ng-include src="'views/community/sidebar/projects.html'" onload="finishLoading('projects')"/>
+                    <div class="panel-container" ng-if="navInfo.activeSideNav === communityTabs.COLLECTIONS"
+                         ng-controller="CommunityCollectionsCtrl" ng-include src="'views/community/sidebar/collections.html'" onload="finishLoading('collections')"/>
                     <div class="panel-container" ng-if="navInfo.activeSideNav === communityTabs.DATABASKETS"
                          ng-controller="CommunityDatabasketsCtrl" ng-include src="'views/community/sidebar/databaskets.html'" onload="finishLoading('databaskets')"/>
                     <div class="panel-container" ng-if="navInfo.activeSideNav === communityTabs.JOBS"
@@ -41,6 +43,11 @@
                  ng-include ng-controller="CommunityManageProjectCtrl"
                  src="'views/community/manage/project.html'"
                  ng-if="projectParams.selectedProject && navInfo.activeSideNav === communityTabs.PROJECTS" />
+
+        <section id="project-manage-container" class="community-item-container"
+                 ng-include ng-controller="CommunityManageCollectiontCtrl"
+                 src="'views/community/manage/collection.html'"
+                 ng-if="collectionParams.selectedCollection && navInfo.activeSideNav === communityTabs.COLLECTIONS" />
 
         <section id="databasket-manage-container" class="community-item-container"
                  ng-include ng-controller="CommunityManageDatabasketCtrl"

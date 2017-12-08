@@ -14,7 +14,7 @@ define(['../fstepmodules'], function (fstepmodules) {
 
         var bottomNavTabs = { RESULTS: 0, DATABASKETS: 1, JOBS: 2, MESSAGES: 3 };
 
-        var communityTabs = { GROUPS: 0, PROJECTS: 1, DATABASKETS: 2, JOBS: 3, SERVICES: 4, FILES: 5};
+        var communityTabs = { GROUPS: 0, PROJECTS: 1, DATABASKETS: 2, JOBS: 3, SERVICES: 4, FILES: 5, COLLECTIONS: 6};
 
         var explorerSideNavs = { SEARCH: 0, SERVICES: 1, WORKSPACE: 2 };
 

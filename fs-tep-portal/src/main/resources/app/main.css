@@ -111,7 +111,6 @@
   margin-right: 36px;
 }
 #bottombar #bottombar-tabs md-tabs md-tabs-wrapper md-tab-data {
-  display: table;
   float: right;
   left: initial;
   opacity: 1;
@@ -1646,6 +1645,8 @@
   background-color: rgba(180, 180, 180, 0.95);
   display: -ms-flexbox;
   display: flex;
+  -ms-flex-direction: column;
+      flex-direction: column;
   height: 100%;
   -ms-flex-pack: center;
       justify-content: center;
@@ -1660,7 +1661,7 @@
   border-top: 12px solid #54ace0;
   border-radius: 50%;
   height: 80px;
-  margin: auto;
+  margin: 0 auto;
   width: 80px;
   z-index: 10;
 }
@@ -1851,6 +1852,21 @@
   position: inherit;
   vertical-align: top;
   width: auto;
+}
+#developer-container .right-container #service-form #mount-editor {
+  margin: 10px;
+}
+#developer-container .right-container #service-form #mount-editor table td,
+#developer-container .right-container #service-form #mount-editor table th {
+  padding: 0 10px;
+}
+#developer-container .right-container #service-form #mount-editor table td md-input-container,
+#developer-container .right-container #service-form #mount-editor table th md-input-container {
+  margin: 15px 0;
+}
+#developer-container .right-container #service-form #mount-editor table td input,
+#developer-container .right-container #service-form #mount-editor table th input {
+  min-width: 400px;
 }
 #developer-container .right-container #service-form .add-button,
 #developer-container .right-container #service-form .remove-button,
@@ -2291,6 +2307,13 @@
 }
 #search-panel .search-input-button i {
   font-size: 1rem;
+}
+#search-panel .md-subheader-title md-checkbox {
+  margin-bottom: 0;
+}
+#search-panel .md-subheader-title md-checkbox .md-container.md-ink-ripple {
+  transform: scale(0.8);
+  top: -4px;
 }
 
 #services .item-list .service-type {

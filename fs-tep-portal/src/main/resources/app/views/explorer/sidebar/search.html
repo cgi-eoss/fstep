@@ -58,8 +58,11 @@
                         </div>
                         <div class="row" ng-init="value = setDefaultValue(field, index)">
                             <div class="col-xs-12">
-                                <md-select ng-model="searchParams[index]" aria-label="Select a mission" ng-change="getValues()">
-                                    <md-option ng-repeat="value in allowedValues[field.title]" ng-value="value.value">
+                                <md-select ng-model="searchParams[index]" aria-label="Select a mission" ng-change="getValues()" uib-tooltip="{{getSelectValueDescription(index, searchParams[index])}}"
+                                tooltip-placement="top-left"
+                                tooltip-trigger="mouseenter"
+                                tooltip-append-to-body="true">
+                                    <md-option ng-repeat="value in allowedValues[index]" ng-value="value.value">
                                         <span>{{value.title}}</span>
                                     </md-option>
                                 </md-select>
@@ -106,16 +109,19 @@
                     <section ng-if="displayField(field, 'daterange')">
                         <div class="row">
                             <div class="col-xs-12">
-                                <md-subheader class="md-accent md-subheader-title">{{field.title}}</md-subheader>
+                                <md-subheader class="md-accent md-subheader-title">
+                                    <md-checkbox ng-model="enabledFields[index]" aria-label="Checkbox 1" ng-if="field.optional">{{field.title}}</md-checkbox>
+                                    <span ng-if="!field.optional">{{field.title}}</span>
+                                </md-subheader>
                             </div>
                         </div>
-                        <div class="row" ng-init="setDefaultValue(field, index)">
+                        <div class="row" ng-init="setDefaultValue(field, index)" ng-if="enabledFields[index]">
                             <div class="col-md-12 col-lg-6 no-padding date-container">
-                                <md-datepicker ng-required="true" ng-model="searchParams[index + 'Start']" md-placeholder="Start date" />
+                                <md-datepicker ng-required="true" ng-model="searchParams[index].start" md-placeholder="Start date" />
                             </div>
 
                             <div class="col-md-12 col-lg-6 no-padding date-container">
-                                <md-datepicker ng-required="true" ng-model="searchParams[index + 'End']" md-placeholder="End date" />
+                                <md-datepicker ng-required="true" ng-model="searchParams[index].end" md-placeholder="End date" />
                             </div>
                         </div>
                     </section>
@@ -123,18 +129,20 @@
                 </div>
             </div>
 
+            <md-button id="searchButton"
+                        class="icon-button md-icon-button md-fab md-mini btn-success"
+                        ng-if="searchParams.catalogue"
+                        type="submit"
+                        form="searchForm"
+                        ng-disabled="searchForm.$invalid"
+                        aria-label="Search"
+                        ng-click="displayTab(bottomNavTabs.RESULTS, false);">
+                <i class="material-icons">search</i>
+            </md-button>
+
         </form>
 
-        <md-button id="searchButton"
-                   class="icon-button md-icon-button md-fab md-mini btn-success"
-                   ng-if="searchParams.catalogue"
-                   type="submit"
-                   form="searchForm"
-                   ng-disabled="searchForm.$invalid"
-                   aria-label="Search"
-                   ng-click="displayTab(bottomNavTabs.RESULTS, false);">
-            <i class="material-icons">search</i>
-        </md-button>
+
 
     </div>
 </div>
