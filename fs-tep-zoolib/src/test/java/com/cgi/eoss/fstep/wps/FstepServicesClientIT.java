@@ -125,8 +125,8 @@ public class FstepServicesClientIT {
             return outputPath;
         });
         when(catalogueService.ingestOutputProduct(any(), any(), any())).thenAnswer(invocation -> {
-            OutputProductMetadata outputProductMetadata = (OutputProductMetadata) invocation.getArgument(0);
-            Path outputPath = (Path) invocation.getArgument(1);
+            OutputProductMetadata outputProductMetadata = (OutputProductMetadata) invocation.getArgument(1);
+            Path outputPath = (Path) invocation.getArgument(2);
             FstepFile fstepFile = new FstepFile(URI.create("fstep://outputs/" + ingestedOutputsDir.relativize(outputPath)), UUID.randomUUID());
             fstepFile.setFilename(ingestedOutputsDir.relativize(outputPath).toString());
             return fstepFile;
