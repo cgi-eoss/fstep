@@ -56,6 +56,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
@@ -152,6 +153,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         String zooId = request.getJobId();
         String userId = request.getUserId();
         String serviceId = request.getServiceId();
+        String parentId = request.getJobParent();
         String jobConfigLabel = request.getJobConfigLabel();
         List<JobParam> rpcInputs = request.getInputsList();
         Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
@@ -162,7 +164,21 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 CloseableThreadContext.push("FS-TEP Service Orchestrator").put("userId", userId)
                         .put("serviceId", serviceId).put("zooId", zooId)) {
             // TODO Allow re-use of existing JobConfig
-            job = jobDataService.buildNew(zooId, userId, serviceId, jobConfigLabel, inputs);
+            
+            if (!Strings.isNullOrEmpty(parentId)) {
+                //this is a request to attach a subjob to an existing parent
+                job = jobDataService.reload(Long.valueOf(parentId));
+                FstepService service = job.getConfig().getService();
+                if (service.getType() != FstepService.Type.PARALLEL_PROCESSOR) {
+                    throw new ServiceExecutionException(
+                            "Trying to attach a new subjob to a non parallel job");
+                }
+            }
+           
+            else {
+                job = jobDataService.buildNew(zooId, userId, serviceId, jobConfigLabel, inputs);
+            } 
+
             rpcJob = GrpcUtil.toRpcJob(job);
             // Post back the job metadata for async responses
             responseObserver.onNext(FstepServiceResponse.newBuilder().setJob(rpcJob).build());
@@ -194,6 +210,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 
                 Collection<String> parallelInput = inputs.get("parallelInputs");
                 List<String> newInputs = explodeParallelInput(parallelInput);
+                checkCost(job.getOwner(), job.getConfig(), newInputs);
 
                 if (!checkInputList(job.getOwner(), newInputs)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
@@ -203,10 +220,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     throw new ServiceExecutionException(
                             "User does not have read access to all requested inputs");
                 }
+                jobDataService.save(job);
                 responseObservers.put(job.getExtId(), responseObserver);
                 List<Job> subJobs = createSubJobs(job, userId, service, newInputs, inputs);
 
-                checkCost(job.getOwner(), job.getConfig());
                 int i = 0;
                 for (Job subJob : subJobs) {
                     chargeUser(subJob.getOwner(), subJob);
@@ -233,12 +250,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 
         } catch (Exception e) {
             if (job != null) {
-                job.setStatus(Job.Status.ERROR);
-                job.setEndTime(LocalDateTime.now());
-                jobDataService.save(job);
+                endJobWithError(job);
             }
 
-            LOG.error("Failed to run processor - {}; notifying gRPC client", e.getMessage());
+            LOG.error("Failed to run processor. Notifying gRPC client", e);
             responseObserver.onError(new StatusRuntimeException(
                     io.grpc.Status.fromCode(io.grpc.Status.Code.ABORTED).withCause(e)));
         }
@@ -270,7 +285,16 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
         }
     }
-
+    
+    private void checkCost(User user, JobConfig config, List<String> newInputs) {
+        int singleJobCost = costingService.estimateSingleRunJobCost(config);
+        int estimatedCost = newInputs.size() * singleJobCost;
+        if (estimatedCost > user.getWallet().getBalance()) {
+            throw new ServiceExecutionException(
+                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
+        }
+    }
+    
     private boolean checkInputs(User user, List<JobParam> inputsList) {
         Multimap<String, String> inputs = GrpcUtil.paramsListToMap(inputsList);
 
@@ -460,7 +484,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         try {
             update = objectMessage.getObject();
         } catch (JMSException e) {
-            onJobError(job, e.getMessage());
+            onJobError(job, e);
         }
         if (update instanceof JobEvent) {
             JobEvent jobEvent = (JobEvent) update;
@@ -481,7 +505,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 onContainerExit(job, workerId, containerExit.getJobEnvironment(),
                         containerExit.getExitCode());
             } catch (Exception e) {
-                onJobError(job, e.getMessage());
+                onJobError(job, e);
             }
         }
     }
@@ -549,13 +573,22 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     }
 
     private void onJobError(Job job, String description) {
-        LOG.info("Error in Job {}: {}",
+        LOG.error("Error in Job {}: {}",
                 job.getExtId(), description);
+        endJobWithError(job);
+    }
+
+    private void onJobError(Job job, Throwable t) {
+        LOG.error("Error in Job " + job.getExtId(), t);
+        endJobWithError(job);
+    }
+    
+    private void endJobWithError(Job job) {
         job.setStatus(Job.Status.ERROR);
         job.setEndTime(LocalDateTime.now());
         jobDataService.save(job);
     }
-
+    
     private void ingestOutput(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
             FstepWorkerBlockingStub worker, JobEnvironment jobEnvironment)
             throws IOException, Exception {

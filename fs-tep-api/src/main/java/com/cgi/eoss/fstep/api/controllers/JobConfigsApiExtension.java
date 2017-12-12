@@ -65,6 +65,10 @@ public class JobConfigsApiExtension {
         if (!Strings.isNullOrEmpty(jobConfig.getLabel())) {
             serviceParamsBuilder.setJobConfigLabel(jobConfig.getLabel());
         }
+        
+        if ((jobConfig.getParent() != null)) {
+            serviceParamsBuilder.setJobParent(String.valueOf(jobConfig.getParent().getId()));
+        }
 
         FstepServiceParams serviceParams = serviceParamsBuilder.build();
 

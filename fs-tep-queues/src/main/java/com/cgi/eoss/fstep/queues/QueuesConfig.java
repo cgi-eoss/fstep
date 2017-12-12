@@ -22,7 +22,8 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Import;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
-import org.springframework.jms.connection.SingleConnectionFactory;
+import org.springframework.jms.connection.CachingConnectionFactory;
+import org.apache.activemq.pool.PooledConnectionFactory;
 import org.springframework.jms.core.JmsTemplate;
 import java.net.URI;
 import java.util.Arrays;
@@ -94,7 +95,7 @@ public class QueuesConfig {
 
     @Bean
     public JmsTemplate jmsTemplate() {
-      return new JmsTemplate(new SingleConnectionFactory(activeMQConnectionFactory())) {
+      return new JmsTemplate(new PooledConnectionFactory(activeMQConnectionFactory())) {
           @Override
         protected void doSend(MessageProducer producer, Message message) throws JMSException {
             producer.send(message, getDeliveryMode(), message.getJMSPriority(), getTimeToLive());

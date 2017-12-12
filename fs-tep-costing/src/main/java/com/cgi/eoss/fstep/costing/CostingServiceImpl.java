@@ -44,12 +44,7 @@ public class CostingServiceImpl implements CostingService {
 
     @Override
     public Integer estimateJobCost(JobConfig jobConfig) {
-        CostingExpression costingExpression = getCostingExpression(jobConfig.getService());
-
-        String expression = Strings.isNullOrEmpty(costingExpression.getEstimatedCostExpression())
-                ? costingExpression.getCostExpression()
-                : costingExpression.getEstimatedCostExpression();
-        int singleJobCost =  ((Number) expressionParser.parseExpression(expression).getValue(jobConfig)).intValue();
+        int singleJobCost =  estimateSingleRunJobCost(jobConfig);
         if (jobConfig.getService().getType() == FstepService.Type.PARALLEL_PROCESSOR) {
         		return calculateNumberOfInputs(jobConfig.getInputs().get("parallelInputs")) * singleJobCost;
         }
@@ -57,6 +52,18 @@ public class CostingServiceImpl implements CostingService {
         		return singleJobCost;
         }
     }
+    
+    @Override
+    public Integer estimateSingleRunJobCost(JobConfig jobConfig) {
+        CostingExpression costingExpression = getCostingExpression(jobConfig.getService());
+
+        String expression = Strings.isNullOrEmpty(costingExpression.getEstimatedCostExpression())
+                ? costingExpression.getCostExpression()
+                : costingExpression.getEstimatedCostExpression();
+        return ((Number) expressionParser.parseExpression(expression).getValue(jobConfig)).intValue();
+    }
+    
+    
 
 	private int calculateNumberOfInputs(Collection<String> inputUris){
 		int inputCount = 1;

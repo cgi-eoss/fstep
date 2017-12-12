@@ -419,14 +419,19 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             return deferred.promise;
         };
 
-        this.createJobConfig = function(service, inputs, label){
+        this.createJobConfig = function(service, inputs, label, parent){
             return $q(function(resolve, reject) {
+                    parent_link= null;
+                    if (parent){
+                        parent_link = parent._links.self.href;
+                    }
                     halAPI.from(rootUri + '/jobConfigs/')
                     .newRequest()
                     .post({
                         service: service._links.self.href,
                         inputs: inputs,
-                        label: label
+                        label: label,
+                        parent: parent_link
                     })
                     .result
                     .then(
