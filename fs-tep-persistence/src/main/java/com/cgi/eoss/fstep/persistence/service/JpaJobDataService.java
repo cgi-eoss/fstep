@@ -72,6 +72,7 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         JobConfig config = new JobConfig(owner, service);
         config.setLabel(Strings.isNullOrEmpty(jobConfigLabel) ? null : jobConfigLabel);
         config.setInputs(inputs);
+        config.setParent(parentJob);
 
         return buildNew(jobConfigDataService.save(config), extId, owner, parentJob);
     }
@@ -84,6 +85,13 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
 
     private Job buildNew(JobConfig jobConfig, String extId, User owner, Job parentJob) {
         return dao.save(new Job(jobConfig, extId, owner, parentJob));
+    }
+    
+    @Transactional(readOnly = true)
+    public Job reload(Long id) {
+        Job job = this.getById(id);
+        job.getOwner().getGroups().size();
+        return job;
     }
 
 }

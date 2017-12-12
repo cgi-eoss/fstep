@@ -19,4 +19,6 @@ public interface JobDataService extends
     Job buildNew(String extId, String userId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs);
     
     Job buildNew(String extId, String userId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs, Job parentJob);
+
+    Job reload(Long id);
 }

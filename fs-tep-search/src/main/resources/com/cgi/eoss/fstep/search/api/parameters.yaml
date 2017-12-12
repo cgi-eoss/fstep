@@ -23,7 +23,7 @@ owner:
       - 'FSTEP_PRODUCTS'
 
 mission:
-  title: 'Mission'
+  title: 'Collection'
   type: 'select'
   defaultValue: 'sentinel2'
   allowed:
@@ -37,7 +37,7 @@ mission:
       - value: 'landsat'
         title: 'Landsat'
       - value: 'envisat'
-        title: 'Envisat'
+        title: 'Envisat MERIS L1B'
   onlyIf:
     'catalogue':
       - 'SATELLITE'
@@ -79,6 +79,7 @@ identifier:
 platform:
   title: 'Platform'
   type: 'select'
+  defaultValue: 'Landsat-8'
   allowed:
     values:
       - value: 'Landsat-5'
@@ -134,13 +135,15 @@ s1ProductType:
 orbitDirection:
   title: 'Orbit direction'
   type: 'select'
-  defaultValue: 'ASCENDING'
+  defaultValue: 'ascending'
   allowed:
     values:
-      - value: 'ASCENDING'
+      - value: 'ascending'
         title: 'ASCENDING'
-      - value: 'DESCENDING'
+      - value: 'descending'
         title: 'DESCENDING'
+      - value: ''
+        title: ''
   onlyIf:
     'mission':
       - 'sentinel1'

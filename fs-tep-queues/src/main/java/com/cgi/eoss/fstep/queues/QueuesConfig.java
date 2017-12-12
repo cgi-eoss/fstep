@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
+import org.springframework.jms.connection.CachingConnectionFactory;
 import org.springframework.jms.connection.SingleConnectionFactory;
 import org.springframework.jms.core.JmsTemplate;
 import com.cgi.eoss.fstep.queues.service.FstepJMSQueueService;
@@ -80,7 +81,7 @@ public class QueuesConfig {
 
     @Bean
     public JmsTemplate jmsTemplate() {
-      return new JmsTemplate(new SingleConnectionFactory(activeMQConnectionFactory())) {
+      return new JmsTemplate(new CachingConnectionFactory(activeMQConnectionFactory())) {
           @Override
         protected void doSend(MessageProducer producer, Message message) throws JMSException {
             producer.send(message, getDeliveryMode(), message.getJMSPriority(), getTimeToLive());
