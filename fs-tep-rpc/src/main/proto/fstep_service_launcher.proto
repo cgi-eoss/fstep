@@ -25,6 +25,7 @@ message FstepServiceParams {
     string serviceId = 3;
     repeated JobParam inputs = 4;
     string jobConfigLabel = 5;
+    string jobParent = 6;
 }
 
 message FstepServiceResponse {

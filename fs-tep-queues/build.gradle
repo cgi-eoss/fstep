@@ -8,6 +8,7 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	
 	compile 'org.springframework.boot:spring-boot-starter-activemq'
+	compile 'org.apache.activemq:activemq-pool'
      
 	testCompile 'junit:junit'
     testCompile 'org.hamcrest:hamcrest-junit'

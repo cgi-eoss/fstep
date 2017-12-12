@@ -82,6 +82,7 @@ CREATE UNIQUE INDEX fstep_group_member_user_group_idx
 CREATE TABLE fstep_job_configs (
   id      BIGINT IDENTITY PRIMARY KEY,
   inputs  CLOB,
+  parent  BIGINT,
   owner   BIGINT NOT NULL FOREIGN KEY REFERENCES fstep_users (uid),
   service BIGINT NOT NULL FOREIGN KEY REFERENCES fstep_services (id),
   label   CHARACTER VARYING(255)
@@ -117,6 +118,10 @@ CREATE INDEX fstep_jobs_job_config_idx
   ON fstep_jobs (job_config);
 CREATE INDEX fstep_jobs_owner_idx
   ON fstep_jobs (owner);
+  
+--Reference to parent in job config
+ALTER TABLE fstep_job_configs ADD FOREIGN KEY (parent) REFERENCES fstep_jobs(id);
+  
 
 -- Data sources
 
