@@ -112,8 +112,10 @@ public class FstepJMSQueueService implements FstepQueueService {
             msg.setJMSReplyTo(replyTo);
             producer.send(msg);
             MapMessage reply = (MapMessage) consumer.receive();
-            session.close();
-            return reply.getLong("size");
+            long queueSize = reply.getLong("size");
+            producer.close();
+            consumer.close();
+            return queueSize;
         }, true);
 
     }
