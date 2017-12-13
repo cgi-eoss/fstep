@@ -1,7 +1,7 @@
 package com.cgi.eoss.fstep.queues;
 
-import java.net.URI;
-import java.util.Arrays;
+import com.cgi.eoss.fstep.queues.service.FstepJMSQueueService;
+import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
@@ -10,6 +10,7 @@ import org.apache.activemq.broker.BrokerPlugin;
 import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.broker.TransportConnector;
 import org.apache.activemq.plugin.StatisticsBrokerPlugin;
+import org.apache.activemq.pool.PooledConnectionFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
@@ -19,10 +20,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
-import org.springframework.jms.connection.SingleConnectionFactory;
 import org.springframework.jms.core.JmsTemplate;
-import com.cgi.eoss.fstep.queues.service.FstepJMSQueueService;
-import com.cgi.eoss.fstep.queues.service.FstepQueueService;
+import java.net.URI;
+import java.util.Arrays;
 
 /**
  * <p>
@@ -80,7 +80,7 @@ public class QueuesConfig {
 
     @Bean
     public JmsTemplate jmsTemplate() {
-      return new JmsTemplate(new SingleConnectionFactory(activeMQConnectionFactory())) {
+      return new JmsTemplate(new PooledConnectionFactory(activeMQConnectionFactory())) {
           @Override
         protected void doSend(MessageProducer producer, Message message) throws JMSException {
             producer.send(message, getDeliveryMode(), message.getJMSPriority(), getTimeToLive());

@@ -14,10 +14,11 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         $scope.serviceParams = ProductService.params.explorer;
         $scope.isWorkspaceLoading = false;
 
-        $scope.$on('update.selectedService', function(event, service, inputs, label) {
+        $scope.$on('update.selectedService', function(event, service, inputs, label, parent) {
             $scope.isWorkspaceLoading = true;
             $scope.serviceParams.inputValues = {};
             $scope.serviceParams.label = label;
+            $scope.serviceParams.parent = parent;
             $scope.serviceParams.dropLists = {};
             if(inputs){
                 for (var key in inputs) {
@@ -55,7 +56,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 iparams[key] = [value];
             }
 
-            JobService.createJobConfig($scope.serviceParams.selectedService, iparams, $scope.serviceParams.label).then(function(jobConfig){
+            JobService.createJobConfig($scope.serviceParams.selectedService, iparams, $scope.serviceParams.label, $scope.serviceParams.parent).then(function(jobConfig){
                 JobService.estimateJob(jobConfig, $event).then(function(estimation){
 
                     var currency = ( estimation.estimatedCost === 1 ? 'coin' : 'coins' );

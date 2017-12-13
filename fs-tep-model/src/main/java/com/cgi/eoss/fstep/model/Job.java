@@ -29,11 +29,13 @@ import com.google.common.collect.Multimap;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 /**
  * <p>Representation of a single {@link JobConfig} execution.</p>
  */
 @Data
+@ToString(exclude = {"parentJob"})
 @EqualsAndHashCode(exclude = {"id", "subJobs"})
 @Table(name = "fstep_jobs",
         indexes = {@Index(name = "fstep_jobs_job_config_idx", columnList = "job_config"), @Index(name = "fstep_jobs_owner_idx", columnList = "owner")},
