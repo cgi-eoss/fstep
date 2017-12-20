@@ -71,7 +71,12 @@
                     </section>
 
                     <section ng-if="displayField(field, 'polygon')">
-                        <aoi-field value="searchParams[index]" label="field.title" description="value.description"></aoi-field>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <md-subheader class="md-accent md-subheader-title">{{field.title}}</md-subheader>
+                            </div>
+                        </div>
+                        <aoi-field value="searchParams[index]" description="value.description"></aoi-field>
                     </section>
 
                     <section ng-if="displayField(field, 'text')">
