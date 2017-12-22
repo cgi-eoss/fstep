@@ -664,9 +664,11 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private SetMultimap<String, FstepFile> collectSubJobOutputs(Job parentJob) {
         SetMultimap<String, FstepFile> jobOutputsFiles = MultimapBuilder.hashKeys().hashSetValues().build();
         for (Job subJob: parentJob.getSubJobs()) {
-          subJob.getOutputs().forEach((k, v) -> subJob.getOutputFiles().stream().
+          if (subJob.getStatus().equals(Status.COMPLETED)){  
+              subJob.getOutputs().forEach((k, v) -> subJob.getOutputFiles().stream().
                   filter(x -> x.getUri().toString().equals(v)).findFirst().ifPresent(match -> jobOutputsFiles.put(k, match)));
           }
+        }
         return jobOutputsFiles;
     }
 

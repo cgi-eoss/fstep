@@ -39,6 +39,11 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             PRIVATE_SERVICES: { id: 3, name: 'Private', value: 'PRIVATE_SERVICES'}
         };
 
+        this.serviceRunModes = {
+            STANDARD: {id: 0, name: 'Standard'},
+            SYSTEMATIC: {id: 1, name: 'Systematic'}
+        }
+
         this.params = {
             explorer: {
                 services: undefined,
@@ -47,6 +52,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 selectedService: undefined,
                 selectedOwnershipFilter: self.serviceOwnershipFilters.ALL_SERVICES,
                 selectedTypeFilter: self.serviceTypeFilters.ALL_SERVICES,
+                runMode: self.serviceRunModes.STANDARD.id,
                 searchText: '',
                 inputValues: {},
                 label: undefined,
