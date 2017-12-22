@@ -111,7 +111,6 @@
   margin-right: 36px;
 }
 #bottombar #bottombar-tabs md-tabs md-tabs-wrapper md-tab-data {
-  display: table;
   float: right;
   left: initial;
   opacity: 1;
@@ -505,6 +504,41 @@
   100% {
     transform: rotate(360deg);
   }
+}
+
+.dynamic-form md-select {
+  margin-top: 0;
+}
+.dynamic-form md-datepicker {
+  padding: 0;
+  max-width: 100%;
+}
+.dynamic-form md-datepicker .md-datepicker-button {
+  margin: 0;
+}
+.dynamic-form md-datepicker .md-datepicker-input-container {
+  margin: 0;
+}
+@media (max-width: 991px) {
+  .dynamic-form md-datepicker .md-datepicker-input-container {
+    width: 80%;
+  }
+}
+.dynamic-form md-datepicker .md-datepicker-triangle-button {
+  margin: 0;
+}
+.dynamic-form md-datepicker .md-datepicker-invalid .md-datepicker-input {
+  background: #f2dede;
+}
+.dynamic-form .search-input-button i {
+  font-size: 1rem;
+}
+.dynamic-form .md-subheader-title md-checkbox {
+  margin-bottom: 0;
+}
+.dynamic-form .md-subheader-title md-checkbox .md-container.md-ink-ripple {
+  transform: scale(0.8);
+  top: -4px;
 }
 
 #navbar {
@@ -937,6 +971,19 @@
 #job-manage-container #job-outputs td,
 #job-share-container #job-outputs td {
   padding: 0.5rem 0;
+}
+#collection-details #collection-overview h5 {
+  font-size: 0.7rem;
+  font-weight: bold;
+  line-height: 1rem;
+  margin: 0;
+  padding: 0.3rem 0;
+}
+#collection-details #collection-overview p {
+  font-size: 0.7rem;
+  line-height: 1rem;
+  margin: 0;
+  padding: 0.3rem 0;
 }
 
 @media (min-width: 1600px) and (max-width: 2399px) {
@@ -1646,6 +1693,8 @@
   background-color: rgba(180, 180, 180, 0.95);
   display: -ms-flexbox;
   display: flex;
+  -ms-flex-direction: column;
+      flex-direction: column;
   height: 100%;
   -ms-flex-pack: center;
       justify-content: center;
@@ -1660,7 +1709,7 @@
   border-top: 12px solid #54ace0;
   border-radius: 50%;
   height: 80px;
-  margin: auto;
+  margin: 0 auto;
   width: 80px;
   z-index: 10;
 }
@@ -1851,6 +1900,21 @@
   position: inherit;
   vertical-align: top;
   width: auto;
+}
+#developer-container .right-container #service-form #mount-editor {
+  margin: 10px;
+}
+#developer-container .right-container #service-form #mount-editor table td,
+#developer-container .right-container #service-form #mount-editor table th {
+  padding: 0 10px;
+}
+#developer-container .right-container #service-form #mount-editor table td md-input-container,
+#developer-container .right-container #service-form #mount-editor table th md-input-container {
+  margin: 15px 0;
+}
+#developer-container .right-container #service-form #mount-editor table td input,
+#developer-container .right-container #service-form #mount-editor table th input {
+  min-width: 400px;
 }
 #developer-container .right-container #service-form .add-button,
 #developer-container .right-container #service-form .remove-button,
@@ -2292,6 +2356,13 @@
 #search-panel .search-input-button i {
   font-size: 1rem;
 }
+#search-panel .md-subheader-title md-checkbox {
+  margin-bottom: 0;
+}
+#search-panel .md-subheader-title md-checkbox .md-container.md-ink-ripple {
+  transform: scale(0.8);
+  top: -4px;
+}
 
 #services .item-list .service-type {
   background-color: #E69824;
@@ -2343,6 +2414,9 @@
 }
 #workspace-panel .workspace-content input:invalid {
   border-bottom: solid 1px #a94442;
+}
+#workspace-panel .workspace-content md-select {
+  margin-top: 0;
 }
 .dropped-file-popover {
   max-width: 1000px;

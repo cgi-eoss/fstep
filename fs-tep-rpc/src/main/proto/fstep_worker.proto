@@ -27,6 +27,7 @@ message JobSpec {
 	bool hasTimeout = 4;
 	int32 timeoutValue = 5;
 	repeated string exposedPorts = 6;
+	repeated string userBinds = 7;
 }
 
 message JobInputs {

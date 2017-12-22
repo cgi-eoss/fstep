@@ -117,11 +117,11 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             return message;
         }
 
-        this.createProject = function(name, description){
+        this.createProject = function(data){
             return $q(function(resolve, reject) {
                 halAPI.from(rootUri + '/projects/')
                          .newRequest()
-                         .post({name: name, description: description})
+                         .post({name: data.name, description: data.description})
                          .result
                          .then(
                 function (document) {

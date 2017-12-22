@@ -1,14 +1,19 @@
 package com.cgi.eoss.fstep.catalogue.resto;
 
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import com.cgi.eoss.fstep.catalogue.CatalogueException;
 import com.cgi.eoss.fstep.catalogue.IngestionException;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 import lombok.extern.log4j.Log4j2;
 import okhttp3.Credentials;
 import okhttp3.HttpUrl;
@@ -25,14 +30,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
-
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-
 /**
- * <p>Implementation of RestoService using Resto's HTTP REST-style API.</p>
+ * <p>
+ * Implementation of RestoService using Resto's HTTP REST-style API.
+ * </p>
  */
 @Component
 @Log4j2
@@ -67,22 +68,18 @@ public class RestoServiceImpl implements RestoService {
 
     @Autowired
     public RestoServiceImpl(@Value("${fstep.catalogue.resto.url:http://fstep-resto/resto/}") String restoBaseUrl,
-                            @Value("${fstep.catalogue.resto.username:fstepresto}") String username,
-                            @Value("${fstep.catalogue.resto.password:fsteprestopass}") String password) {
+            @Value("${fstep.catalogue.resto.username:fstepresto}") String username,
+            @Value("${fstep.catalogue.resto.password:fsteprestopass}") String password) {
         this.restoBaseUrl = restoBaseUrl;
-        this.client = new OkHttpClient.Builder()
-                .addInterceptor(new Interceptor() {
-                    @Override
-                    public Response intercept(Chain chain) throws IOException {
-                        Request request = chain.request();
-                        Request authenticatedRequest = request.newBuilder()
-                                .header("Authorization", Credentials.basic(username, password))
-                                .build();
-                        return chain.proceed(authenticatedRequest);
-                    }
-                })
-                .addInterceptor(new HttpLoggingInterceptor(LOG::trace).setLevel(HttpLoggingInterceptor.Level.BODY))
-                .build();
+        this.client = new OkHttpClient.Builder().addInterceptor(new Interceptor() {
+            @Override
+            public Response intercept(Chain chain) throws IOException {
+                Request request = chain.request();
+                Request authenticatedRequest =
+                        request.newBuilder().header("Authorization", Credentials.basic(username, password)).build();
+                return chain.proceed(authenticatedRequest);
+            }
+        }).addInterceptor(new HttpLoggingInterceptor(LOG::trace).setLevel(HttpLoggingInterceptor.Level.BODY)).build();
         jsonMapper = new ObjectMapper();
     }
 
@@ -92,13 +89,18 @@ public class RestoServiceImpl implements RestoService {
     }
 
     @Override
-    public UUID ingestOutputProduct(GeoJsonObject object) {
-        return ingest(outputProductCollection, object);
+    public UUID ingestOutputProduct(String collection, GeoJsonObject object) {
+        return ingest(collection, object);
     }
 
     @Override
     public UUID ingestExternalProduct(String collection, GeoJsonObject object) {
         return ingest(collection, object);
+    }
+
+    @Override
+    public void deleteOutputProduct(UUID restoId) {
+        delete(outputProductCollection, restoId);
     }
 
     @Override
@@ -108,12 +110,8 @@ public class RestoServiceImpl implements RestoService {
 
     @Override
     public GeoJsonObject getGeoJson(FstepFile fstepFile) {
-        HttpUrl url = HttpUrl.parse(restoBaseUrl).newBuilder()
-                .addPathSegment("api")
-                .addPathSegment("collections")
-                .addPathSegment("search.json")
-                .addQueryParameter("identifier", fstepFile.getRestoId().toString())
-                .build();
+        HttpUrl url = HttpUrl.parse(restoBaseUrl).newBuilder().addPathSegment("api").addPathSegment("collections")
+                .addPathSegment("search.json").addQueryParameter("identifier", fstepFile.getRestoId().toString()).build();
 
         Request request = new Request.Builder().url(url).get().build();
 
@@ -163,10 +161,8 @@ public class RestoServiceImpl implements RestoService {
 
         String geojson = GeoUtil.geojsonToString(object);
         LOG.debug("Ingesting GeoJSON to {}: {}", geojson);
-        Request request = new Request.Builder()
-                .url(url)
-                .post(RequestBody.create(MediaType.parse(APPLICATION_JSON_VALUE), geojson))
-                .build();
+        Request request =
+                new Request.Builder().url(url).post(RequestBody.create(MediaType.parse(APPLICATION_JSON_VALUE), geojson)).build();
 
         try (Response response = client.newCall(request).execute()) {
             if (response.isSuccessful()) {
@@ -174,7 +170,8 @@ public class RestoServiceImpl implements RestoService {
                 LOG.info("Created new Resto object with ID: {}", uuid);
                 return UUID.fromString(uuid);
             } else {
-                LOG.error("Failed to ingest Resto object to collection '{}': {} {}: {}", collection, response.code(), response.message(), response.body());
+                LOG.error("Failed to ingest Resto object to collection '{}': {} {}: {}", collection, response.code(),
+                        response.message(), response.body());
                 throw new IngestionException("Failed to ingest Resto object");
             }
         } catch (Exception e) {
@@ -188,16 +185,19 @@ public class RestoServiceImpl implements RestoService {
             return;
         }
 
-        HttpUrl url = HttpUrl.parse(restoBaseUrl).newBuilder().addPathSegment("collections").addPathSegment(collection).addPathSegment(uuid.toString()).build();
+        HttpUrl url = HttpUrl.parse(restoBaseUrl).newBuilder().addPathSegment("collections").addPathSegment(collection)
+                .addPathSegment(uuid.toString()).build();
         LOG.debug("Deleting Resto catalogue entry {} from collection: {}", uuid, collection);
 
         Request request = new Request.Builder().url(url).delete().build();
 
         try (Response response = client.newCall(request).execute()) {
-            if (response.isSuccessful()) {;
+            if (response.isSuccessful()) {
+                ;
                 LOG.info("Deleted Resto object with ID {}", uuid);
             } else {
-                LOG.error("Failed to delete Resto object from collection '{}': {} {}: {}", collection, response.code(), response.message(), response.body());
+                LOG.error("Failed to delete Resto object from collection '{}': {} {}: {}", collection, response.code(),
+                        response.message(), response.body());
                 throw new CatalogueException("Failed to delete Resto object");
             }
         } catch (Exception e) {
@@ -219,74 +219,102 @@ public class RestoServiceImpl implements RestoService {
     private void ensureCollectionExists(String collectionName) {
         if (!getRestoCollections().contains(collectionName)) {
             LOG.debug("Collection '{}' not found, creating", collectionName);
-            try (Response response = client
-                    .newCall(new Request.Builder()
-                            .url(HttpUrl.parse(restoBaseUrl).newBuilder().addPathSegment("collections").build())
-                            .post(RequestBody.create(MediaType.parse(APPLICATION_JSON_VALUE), jsonMapper.writeValueAsString(buildCollectionConfig(collectionName))))
-                            .build())
-                    .execute()) {
-                if (response.isSuccessful()) {
-                    LOG.info("Created Resto collection '{}'", collectionName);
-                } else {
-                    LOG.warn("Failed to create Resto collection '{}': {} {}: {}", collectionName, response.code(), response.message(), response.body());
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            createRestoCollection(collectionName);
+        }
+    }
+
+    private void createRestoCollection(String collectionName) {
+        createRestoCollection(buildCollectionConfig(collectionName));
+
+    }
+
+    private boolean createRestoCollection(RestoCollection collection) {
+        try (Response response = client.newCall(new Request.Builder()
+                .url(HttpUrl.parse(restoBaseUrl).newBuilder().addPathSegment("collections").build())
+                .post(RequestBody.create(MediaType.parse(APPLICATION_JSON_VALUE), jsonMapper.writeValueAsString(collection))).build())
+                .execute()) {
+            if (response.isSuccessful()) {
+                LOG.info("Created Resto collection '{}'", collection.getName());
+                return true;
+            } else {
+                LOG.warn("Failed to create Resto collection '{}': {} {}: {}", collection.getName(), response.code(),
+                        response.message(), response.body());
+                return false;
             }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
     private RestoCollection buildCollectionConfig(String collectionName) {
-        RestoCollection.RestoCollectionBuilder builder = RestoCollection.builder()
-                .name(collectionName)
-                .status("public")
-                .licenseId("unlicensed")
-                .rights(ImmutableMap.of("download", 0, "visualize", 1));
+        RestoCollection.RestoCollectionBuilder builder = RestoCollection.builder().name(collectionName).status("public")
+                .licenseId("unlicensed").rights(ImmutableMap.of("download", 0, "visualize", 1));
 
         // TODO Add WMS mapping properties where possible
 
         if (collectionName.equals(outputProductCollection)) {
-            builder
-                    .model(outputProductModel)
-                    .osDescription(ImmutableMap.of("en", RestoCollection.OpensearchDescription.builder()
-                            .shortName("fstepOutputs")
-                            .longName("FS-TEP Output Products")
-                            .description("Products created by FS-TEP services")
-                            .tags("fstep fs-tep output outputs generated")
-                            .query("fstepOutputs")
-                            .build()))
-                    .propertiesMapping(ImmutableMap.of(
-                            "fstepFileType", FstepFile.Type.OUTPUT_PRODUCT.toString())
-                    );
+            builder.model(outputProductModel)
+                    .osDescription(ImmutableMap.of("en",
+                            RestoCollection.OpensearchDescription.builder().shortName("fstepOutputs")
+                                    .longName("FS-TEP Output Products").description("Products created by FS-TEP services")
+                                    .tags("fstep fs-tep output outputs generated").query("fstepOutputs").build()))
+                    .propertiesMapping(ImmutableMap.of("fstepFileType", FstepFile.Type.OUTPUT_PRODUCT.toString()));
         } else if (collectionName.equals(refDataCollection)) {
-            builder
-                    .model(refDataModel)
-                    .osDescription(ImmutableMap.of("en", RestoCollection.OpensearchDescription.builder()
-                            .shortName("fstepRefData")
-                            .longName("FS-TEP Reference Data Products")
-                            .description("Reference data uploaded by FS-TEP users")
-                            .tags("fstep fs-tep refData reference")
-                            .query("fstepRefData")
-                            .build()))
-                    .propertiesMapping(ImmutableMap.of(
-                            "fstepFileType", FstepFile.Type.REFERENCE_DATA.toString())
-                    );
+            builder.model(refDataModel)
+                    .osDescription(ImmutableMap.of("en",
+                            RestoCollection.OpensearchDescription.builder().shortName("fstepRefData")
+                                    .longName("FS-TEP Reference Data Products").description("Reference data uploaded by FS-TEP users")
+                                    .tags("fstep fs-tep refData reference").query("fstepRefData").build()))
+                    .propertiesMapping(ImmutableMap.of("fstepFileType", FstepFile.Type.REFERENCE_DATA.toString()));
         } else {
-            builder
-                    .model(externalProductModel)
-                    .osDescription(ImmutableMap.of("en", RestoCollection.OpensearchDescription.builder()
-                            .shortName(collectionName)
-                            .longName("FS-TEP External Products: " + collectionName)
-                            .description("External products used as inputs by FS-TEP services (" + collectionName + ")")
-                            .tags("fstep fs-tep inputs input external " + collectionName)
-                            .query("fstepInputs_" + collectionName)
-                            .build()))
-                    .propertiesMapping(ImmutableMap.of(
-                            "fstepFileType", FstepFile.Type.EXTERNAL_PRODUCT.toString())
-                    );
+            builder.model(externalProductModel).osDescription(ImmutableMap.of("en", RestoCollection.OpensearchDescription.builder()
+                    .shortName(collectionName).longName("FS-TEP External Products: " + collectionName)
+                    .description("External products used as inputs by FS-TEP services (" + collectionName + ")")
+                    .tags("fstep fs-tep inputs input external " + collectionName).query("fstepInputs_" + collectionName).build()))
+                    .propertiesMapping(ImmutableMap.of("fstepFileType", FstepFile.Type.EXTERNAL_PRODUCT.toString()));
         }
 
         return builder.build();
+    }
+
+    @Override
+    public boolean createOutputCollection(Collection collection) {
+        RestoCollection restoCollection = getOutputRestoCollectionForCollection(collection);
+        if (!getRestoCollections().contains(restoCollection.getName())) {
+            return createRestoCollection(restoCollection);
+        }
+        return false;
+    }
+
+    private RestoCollection getOutputRestoCollectionForCollection(Collection collection) {
+        RestoCollection.RestoCollectionBuilder builder = RestoCollection.builder().name(collection.getIdentifier()).status("public")
+                .licenseId("unlicensed").rights(ImmutableMap.of("download", 0, "visualize", 1));
+        builder.model(outputProductModel)
+        .osDescription(ImmutableMap.of("en",
+                RestoCollection.OpensearchDescription.builder().shortName(collection.getName())
+                        .longName(collection.getOwner().getName()+" - " + collection.getName()).description(collection.getDescription())
+                        .tags("fstep fs-tep output outputs generated " + collection.getName()).query(collection.getName()).build()))
+        .propertiesMapping(ImmutableMap.of("fstepFileType", FstepFile.Type.OUTPUT_PRODUCT.toString()));
+        return builder.build();
+    }
+    
+    @Override
+    public boolean deleteCollection(Collection collection) {
+        try (Response response = client.newCall(new Request.Builder()
+                .url(HttpUrl.parse(restoBaseUrl).newBuilder().addPathSegment("collections").addPathSegment(collection.getIdentifier()).build())
+                .delete().build())
+                .execute()) {
+            if (response.isSuccessful()) {
+                LOG.info("Deleted Resto collection '{}'", collection.getName());
+                return true;
+            } else {
+                LOG.warn("Failed to delete Resto collection '{}': {} {}: {}", collection.getName(), response.code(),
+                        response.message(), response.body());
+                return false;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

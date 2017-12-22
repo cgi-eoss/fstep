@@ -53,7 +53,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                             delete config.inputs.input;
                         }
                     }
-                    $rootScope.$broadcast('update.selectedService', config._embedded.service, config.inputs, config.label, config._embedded.parent);
+                    $rootScope.$broadcast('update.selectedService', config._embedded.service, config.inputs, config.label, config._embedded.parent, config.systematicParameter);
                 });
             };
 

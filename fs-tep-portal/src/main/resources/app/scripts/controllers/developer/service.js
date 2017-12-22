@@ -9,12 +9,17 @@
 
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('ServiceCtrl', ['$scope', 'ProductService', 'CommonService', '$mdDialog', function ($scope, ProductService, CommonService, $mdDialog) {
+    fstepmodules.controller('ServiceCtrl', ['$scope', 'ProductService', 'UserMountsService', 'CommonService', '$mdDialog', function ($scope, ProductService, UserMountsService, CommonService, $mdDialog) {
 
         $scope.serviceParams = ProductService.params.development;
         $scope.serviceOwnershipFilters = ProductService.serviceOwnershipFilters;
         $scope.serviceTypeFilters = ProductService.serviceTypeFilters;
-        $scope.serviceForms = {files: {title: 'Files'}, dataInputs: {title: 'Input Definitions'}, dataOutputs: {title: 'Output Definitions'}};
+        $scope.serviceForms = {
+            files: {title: 'Files'},
+            dataInputs: {title: 'Input Definitions'},
+            userMounts: {title: 'User Mounts'},
+            dataOutputs: {title: 'Output Definitions'}
+        };
         $scope.serviceParams.activeArea = $scope.serviceForms.files;
         $scope.constants = {
             serviceFields: ['dataInputs', 'dataOutputs'],
@@ -27,6 +32,11 @@ define(['../../fstepmodules'], function (fstepmodules) {
             BULK_PROCESSOR: { id: 0, name: 'Bulk Processor', value: 'BULK_PROCESSOR'},
             PARALLEL_PROCESSOR: { id: 0, name: 'Parallel Processor', value: 'PARALLEL_PROCESSOR'}
         };
+
+        $scope.userMounts = [];
+        UserMountsService.getUserMounts().then(function(mounts) {
+            $scope.userMounts = mounts;
+        });
 
         $scope.toggleServiceFilter = function(){
             $scope.serviceParams.displayFilters = !$scope.serviceParams.displayFilters;

@@ -117,9 +117,9 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
             return deferred.promise;
         };
 
-        this.createDatabasket = function(name, desc) {
+        this.createDatabasket = function(data) {
             return $q(function(resolve, reject) {
-                var databasket = {name: name, description: (desc ? desc : '')};
+                var databasket = {name: data.name, description: (data.description ? data.description : '')};
                 halAPI.from(rootUri + '/databaskets/')
                     .newRequest()
                     .post(databasket)

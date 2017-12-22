@@ -36,7 +36,10 @@ public class ApiConfigIT {
                 .andExpect(jsonPath("$._links.projects").exists())
                 .andExpect(jsonPath("$._links.services").exists())
                 .andExpect(jsonPath("$._links.users").exists())
-                .andExpect(jsonPath("$._links.userPreferences").exists());
+                .andExpect(jsonPath("$._links.userPreferences").exists())
+                .andExpect(jsonPath("$._links.collections").exists())
+                .andExpect(jsonPath("$._links.userMounts").exists())
+                .andExpect(jsonPath("$._links.userEndpoints").exists());
     }
 
 }

@@ -145,9 +145,9 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             }
         };
 
-        this.createGroup = function(name, desc) {
+        this.createGroup = function(data) {
             return $q(function(resolve, reject) {
-                var group = {name: name, description: (desc ? desc : '')};
+                var group = {name: data.name, description: (data.description ? data.description : '')};
                 halAPI.from(rootUri + '/groups/')
                          .newRequest()
                          .post(group)

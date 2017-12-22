@@ -3,14 +3,11 @@ package com.cgi.eoss.fstep.model;
 import com.cgi.eoss.fstep.model.converters.FstepServiceDescriptorYamlConverter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.ComparisonChain;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
-
 import javax.persistence.CascadeType;
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
 import javax.persistence.Convert;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
@@ -22,10 +19,17 @@ import javax.persistence.Index;
 import javax.persistence.JoinColumn;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
+import javax.persistence.MapKeyColumn;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 @Data
@@ -110,6 +114,12 @@ public class FstepService implements FstepEntityWithOwner<FstepService>, Searcha
     @JsonIgnore
     private Set<FstepServiceContextFile> contextFiles = new HashSet<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @MapKeyColumn(name="user_mount_id", table = "fstep_services_mounts")
+    @Column(name="target_mount_path", table = "fstep_services_mounts")
+    @CollectionTable(name="fstep_services_mounts", joinColumns=@JoinColumn(name="fstep_service_id"))
+    private Map<Long, String> additionalMounts = new HashMap<>();
+    
     /**
      * <p>Create a new Service with the minimum required parameters.</p>
      *

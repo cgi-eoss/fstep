@@ -58,8 +58,10 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             .getResource()
             .result
             .then(function (user) {
-                _this.params.activeUser = user;
-                $rootScope.$broadcast('active.user', user);
+                if (user != _this.params.activeUser) {
+                    _this.params.activeUser = user;
+                    $rootScope.$broadcast('active.user', user);
+                }
                 updateHeartbeat(10000);
                 attemptCount = 5;
             },
@@ -176,7 +178,9 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 var membersArray = [];
 
                 for (var item in groupUsers) {
-                    membersArray.push(groupUsers[item]._links.self.href);
+                    if (groupUsers[item]._links) {
+                        membersArray.push(groupUsers[item]._links.self.href);
+                    }
                 }
 
                 /* Append user to new members array */

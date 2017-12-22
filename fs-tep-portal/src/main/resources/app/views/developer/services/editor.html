@@ -72,6 +72,42 @@
         </div>
     </section>
 
+    <!--section id="user-mount-points">
+        <h4>User mount points mapping</h4>
+        <div class="row" ng-repeat="mount in serviceParams.selectedService.userMounts">
+            <md-input-container md-no-float>
+                <label>Mount Point</label>
+                <md-select ng-model="mount.src" required>
+                    <md-option ng-repeat="mount in userMounts" ng-value="mount.id">
+                        {{mount.name}}
+                    </md-option>
+                </md-select>
+            </md-input-container>
+            <md-input-container md-no-float>
+                <label>Container location</label>
+                <input ng-model="mount.dst" type="text" placeholder="Path" aria-label="Path" required>
+            </md-input-container>
+            <md-button ng-click="serviceParams.selectedService.userMounts.splice($index, 1)"
+                        class="remove-button"
+                        aria-label="Remove Mount"
+                        uib-tooltip="Remove Mount"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">remove</i>
+            </md-button>
+        </div>
+        <div class="row">
+            <md-button ng-click="serviceParams.selectedService.userMounts.push({})"
+                class="remove-button"
+                aria-label="Add Mount"
+                uib-tooltip="Add Mount"
+                tooltip-trigger="mouseenter"
+                tooltip-append-to-body="true">
+                <i class="material-icons">add</i>
+            </md-button>
+        </div>
+    </section-->
+
     <section>
         <ul id="editor-area-list">
             <li ng-class="{active: serviceParams.activeArea === formArea}" ng-repeat="formArea in serviceForms" ng-click="serviceParams.activeArea = formArea">
@@ -259,6 +295,56 @@
             <i class="material-icons">add_box</i>
         </md-button>
 
+    </section>
+
+    <section id="mount-editor" ng-hide="serviceParams.activeArea !== serviceForms.userMounts">
+            <table>
+                <tr>
+                    <th>Mount point *</th>
+                    <th>Container location *</th>
+                    <th></th>
+                </tr>
+                <tr ng-repeat="mappings in serviceParams.selectedService.additionalMounts">
+                    <td>
+                        <md-input-container md-no-float>
+                            <md-select ng-model="mappings.mountId" placeholder="Mount point" required>
+                                <md-option ng-repeat="mount in userMounts" ng-value="mount.id">
+                                    {{mount.name}}
+                                </md-option>
+                            </md-select>
+                        </md-input-container>
+                    </td>
+                    <td>
+                        <md-input-container md-no-float>
+                            <input ng-model="mappings.target" type="text" placeholder="Path *" aria-label="Path" required>
+                        </md-input-container>
+                    </td>
+                    <td>
+                        <md-button ng-click="serviceParams.selectedService.additionalMounts.splice($index, 1)"
+                                    class="remove-button"
+                                    aria-label="Remove Mount"
+                                    uib-tooltip="Remove Mount"
+                                    tooltip-trigger="mouseenter"
+                                    tooltip-append-to-body="true">
+                            <i class="material-icons">remove</i>
+                        </md-button>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td>
+                        <md-button ng-click="serviceParams.selectedService.additionalMounts.push({})"
+                            class="remove-button"
+                            aria-label="Add Mount"
+                            uib-tooltip="Add Mount"
+                            tooltip-trigger="mouseenter"
+                            tooltip-append-to-body="true">
+                            <i class="material-icons">add</i>
+                        </md-button>
+                    </td>
+                </tr>
+            </table>
     </section>
 
 </form>

@@ -39,6 +39,11 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             PRIVATE_SERVICES: { id: 3, name: 'Private', value: 'PRIVATE_SERVICES'}
         };
 
+        this.serviceRunModes = {
+            STANDARD: {id: 0, name: 'Standard'},
+            SYSTEMATIC: {id: 1, name: 'Systematic'}
+        }
+
         this.params = {
             explorer: {
                 services: undefined,
@@ -47,6 +52,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 selectedService: undefined,
                 selectedOwnershipFilter: self.serviceOwnershipFilters.ALL_SERVICES,
                 selectedTypeFilter: self.serviceTypeFilters.ALL_SERVICES,
+                runMode: self.serviceRunModes.STANDARD.id,
                 searchText: '',
                 inputValues: {},
                 label: undefined,
@@ -375,6 +381,14 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                        .result
                        .then(
             function (document) {
+                document.additionalMounts = document.additionalMounts || {};
+
+                let mounts = [];
+                for (var id in document.additionalMounts) {
+                    mounts.push({mountId: id, target: document.additionalMounts[id]});
+                }
+                document.additionalMounts = mounts;
+
                 deferred.resolve(document);
             }, function (error) {
                 MessageService.addError('Could not get details for Service ' + service.name, error);
@@ -473,6 +487,13 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 serviceDescriptor: selectedService.serviceDescriptor,
                 type: selectedService.type
             };
+
+            var additionalMounts = {};
+            for (var i = 0; i < selectedService.additionalMounts.length; ++i) {
+                additionalMounts[selectedService.additionalMounts[i].mountId] = selectedService.additionalMounts[i].target;
+            }
+
+            editService.additionalMounts = additionalMounts;
 
             return $q(function(resolve, reject) {
                 halAPI.from(rootUri + '/services/' + selectedService.id)

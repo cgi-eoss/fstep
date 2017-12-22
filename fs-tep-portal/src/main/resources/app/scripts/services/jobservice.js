@@ -421,7 +421,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
 
         this.createJobConfig = function(service, inputs, label, parent){
             return $q(function(resolve, reject) {
-                    parent_link= null;
+                    var parent_link = null;
                     if (parent){
                         parent_link = parent._links.self.href;
                     }

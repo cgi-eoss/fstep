@@ -30,11 +30,11 @@ import com.cgi.eoss.fstep.io.download.Downloader;
 import com.cgi.eoss.fstep.io.download.DownloaderFacade;
 import com.cgi.eoss.fstep.queues.QueuesConfig;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
+import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
 import com.cgi.eoss.fstep.worker.metrics.QueueMetric;
 import com.cgi.eoss.fstep.worker.metrics.QueueMetricsRepository;
 import com.cgi.eoss.fstep.worker.worker.FstepWorkerNodeManager;
 import com.cgi.eoss.fstep.worker.worker.JobEnvironmentService;
-import com.cgi.eoss.fstep.worker.worker.WorkerLocator;
 import com.google.common.base.Strings;
 import okhttp3.OkHttpClient;
 
@@ -46,6 +46,7 @@ import okhttp3.OkHttpClient;
 @Import({
 		QueuesConfig.class,
         CloudsConfig.class,
+        InProcessRpcConfig.class,
         HibernateJpaAutoConfiguration.class,
         DataSourceAutoConfiguration.class
 })
@@ -142,12 +143,6 @@ public class WorkerConfig {
     @Bean
     public ServiceInputOutputManager serviceInputOutputManager(FstepServerClient ftepServerClient, DownloaderFacade downloaderFacade) {
         return new ServiceInputOutputManagerImpl(ftepServerClient, downloaderFacade);
-    }
-    
-    @Bean
-    public WorkerLocator workerLocator(DiscoveryClient discoveryClient,
-                                       @Value("${fstep.worker.eurekaServiceId:fs-tep worker}") String workerServiceId) {
-        return new WorkerLocator(discoveryClient, workerServiceId);
     }
     
     @Bean

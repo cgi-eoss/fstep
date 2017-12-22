@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.catalogue.files;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -19,6 +20,7 @@ import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoserverService;
 import com.cgi.eoss.fstep.catalogue.resto.RestoService;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,10 +48,13 @@ public class FilesystemOutputProductService implements OutputProductService {
     }
 
     @Override
-    public FstepFile ingest(User owner, String jobId, String crs, String geometry, Map<String, Object> properties, Path src) throws IOException {
-        String filename = src.getFileName().toString();
-        Path dest = outputProductBasedir.resolve(jobId).resolve(filename);
-
+    public String getDefaultCollection() {
+        return resto.getOutputProductsCollection();
+    }
+    
+    @Override
+    public FstepFile ingest(String collection, User owner, String jobId, String crs, String geometry, Map<String, Object> properties, Path src) throws IOException {
+        Path dest = outputProductBasedir.resolve(jobId).resolve(src);
         if (!src.equals(dest)) {
             if (Files.exists(dest)) {
                 LOG.warn("Found already-existing output product, overwriting: {}", dest);
@@ -77,13 +82,16 @@ public class FilesystemOutputProductService implements OutputProductService {
                 LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
             }
         }
+ 
+        Path relativePath= outputProductBasedir.resolve(jobId).relativize(src);
+        
         URI uri = CatalogueUri.OUTPUT_PRODUCT.build(
                 ImmutableMap.of(
                         "jobId", jobId,
-                        "filename", filename));
-
+                        "filename", relativePath.toString().replaceAll(File.pathSeparator, "_")));
+        long filesize = Files.size(dest);
         // Add automatically-determined properties
-        properties.put("productIdentifier", jobId + "_" + filename);
+        properties.put("productIdentifier", jobId + "_" + src.toString());
         properties.put("fstepUrl", uri);
         // TODO Get the proper MIME type
         properties.put("resourceMimeType", "application/unknown");
@@ -93,13 +101,13 @@ public class FilesystemOutputProductService implements OutputProductService {
         properties.put("extraParams", jsonMapper.writeValueAsString(ImmutableMap.of()));
 
         Feature feature = new Feature();
-        feature.setId(jobId + "_" + filename);
+        feature.setId(jobId + "_" + relativePath.toString().replaceAll(File.pathSeparator, "_"));
         feature.setGeometry(Strings.isNullOrEmpty(geometry) ? GeoUtil.defaultPoint() : GeoUtil.getGeoJsonGeometry(geometry));
         feature.setProperties(properties);
 
         UUID restoId;
         try {
-            restoId = resto.ingestOutputProduct(feature);
+            restoId = resto.ingestOutputProduct(collection, feature);
             LOG.info("Ingested output product with Resto id {} and URI {}", restoId, uri);
         } catch (Exception e) {
             LOG.error("Failed to ingest output product to Resto, continuing...", e);
@@ -109,6 +117,7 @@ public class FilesystemOutputProductService implements OutputProductService {
 
         FstepFile fstepFile = new FstepFile(uri, restoId);
         fstepFile.setOwner(owner);
+        fstepFile.setFilesize(filesize);
         fstepFile.setType(FstepFile.Type.OUTPUT_PRODUCT);
         fstepFile.setFilename(outputProductBasedir.relativize(dest).toString());
         return fstepFile;
@@ -149,13 +158,25 @@ public class FilesystemOutputProductService implements OutputProductService {
 
         Files.deleteIfExists(outputProductBasedir.resolve(relativePath));
 
-        resto.deleteReferenceData(file.getRestoId());
+        resto.deleteOutputProduct(file.getRestoId());
 
         // Workspace = jobId = first part of the relative filename
         String workspace = relativePath.getName(0).toString();
         // Layer name = filename without extension
         String layerName = MoreFiles.getNameWithoutExtension(relativePath.getFileName());
         geoserver.delete(workspace, layerName);
+    }
+
+    @Override
+    public boolean createCollection(Collection collection) {
+        return resto.createOutputCollection(collection);
+        
+    }
+
+    @Override
+    public boolean deleteCollection(Collection collection) {
+        return resto.deleteCollection(collection);
+        
     }
 
 }

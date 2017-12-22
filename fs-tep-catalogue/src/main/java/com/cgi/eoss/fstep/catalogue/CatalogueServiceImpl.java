@@ -4,15 +4,18 @@ import com.cgi.eoss.fstep.catalogue.external.ExternalProductDataService;
 import com.cgi.eoss.fstep.catalogue.files.OutputProductService;
 import com.cgi.eoss.fstep.catalogue.files.ReferenceDataService;
 import com.cgi.eoss.fstep.logging.Logging;
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.DataSource;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
+import com.cgi.eoss.fstep.persistence.service.CollectionDataService;
 import com.cgi.eoss.fstep.persistence.service.DataSourceDataService;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
+import com.cgi.eoss.fstep.persistence.service.UserDataService;
 import com.cgi.eoss.fstep.rpc.catalogue.CatalogueServiceGrpc;
 import com.cgi.eoss.fstep.rpc.catalogue.DatabasketContents;
 import com.cgi.eoss.fstep.rpc.catalogue.FileResponse;
@@ -27,6 +30,15 @@ import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.log4j.Log4j2;
 import okhttp3.HttpUrl;
 import org.apache.logging.log4j.CloseableThreadContext;
@@ -37,16 +49,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.file.Path;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 @Component
 @GRpcService
 @Log4j2
@@ -55,22 +57,26 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     private static final int FILE_STREAM_CHUNK_BYTES = 8192;
 
     private final FstepFileDataService fstepFileDataService;
+    private final CollectionDataService collectionDataService;
     private final DataSourceDataService dataSourceDataService;
     private final DatabasketDataService databasketDataService;
     private final OutputProductService outputProductService;
     private final ReferenceDataService referenceDataService;
     private final ExternalProductDataService externalProductDataService;
     private final FstepSecurityService securityService;
-
+    private final UserDataService userDataService;
+    
     @Autowired
-    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService) {
+    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService) {
         this.fstepFileDataService = fstepFileDataService;
+        this.collectionDataService = collectionDataService;
         this.dataSourceDataService = dataSourceDataService;
         this.databasketDataService = databasketDataService;
         this.outputProductService = outputProductService;
         this.referenceDataService = referenceDataService;
         this.externalProductDataService = externalProductDataService;
         this.securityService = securityService;
+        this.userDataService = userDataService;
     }
 
     @Override
@@ -84,10 +90,17 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     public Path provisionNewOutputProduct(OutputProductMetadata outputProduct, String filename) throws IOException {
         return outputProductService.provision(outputProduct.getJobId(), filename);
     }
-
+    
     @Override
-    public FstepFile ingestOutputProduct(OutputProductMetadata outputProduct, Path path) throws IOException {
+    public String getDefaultOutputProductCollection() {
+        return outputProductService.getDefaultCollection();
+    }
+    
+    @Override
+    public FstepFile ingestOutputProduct(String collection, OutputProductMetadata outputProduct, Path path) throws IOException {
+        ensureOutputCollectionExists(collection);
         FstepFile fstepFile = outputProductService.ingest(
+                collection,
                 outputProduct.getOwner(),
                 outputProduct.getJobId(),
                 outputProduct.getCrs(),
@@ -95,7 +108,27 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                 outputProduct.getProperties(),
                 path);
         fstepFile.setDataSource(dataSourceDataService.getForService(outputProduct.getService()));
+        fstepFile.setCollection(collectionDataService.getByIdentifier(collection));
         return fstepFileDataService.save(fstepFile);
+    }
+
+    private void ensureOutputCollectionExists(String collectionIdentifier) {
+        Collection collection = collectionDataService.getByIdentifier(collectionIdentifier);
+        if (collection == null) {
+            createOutputCollection(collectionIdentifier);
+        }
+    }
+
+    private void createOutputCollection(String collectionIdentifier) {
+       if (collectionIdentifier.equals("fstepOutputs")) {
+           Collection collection = new Collection("fstepOutputs", userDataService.getDefaultUser());
+           collection.setDescription("FS-TEP Output Products");
+           collection.setProductsType("Misc");
+           collection.setIdentifier("fstepOutputs");
+           collectionDataService.save(collection);
+           securityService.publish(Collection.class, collection.getId());
+       }
+        
     }
 
     @Override
@@ -143,7 +176,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                 // TODO Use the CatalogueUri pattern to determine file attributes
                 String[] pathComponents = uri.getPath().split("/");
                 String jobId = pathComponents[1];
-                String filename = pathComponents[2];
+                String filename = pathComponents[pathComponents.length-1];
                 return outputProductService.getWmsUrl(jobId, filename);
             default:
                 return null;
@@ -173,6 +206,12 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
 
             return true;
         }
+    }
+    
+    @Override
+    public boolean canUserWrite(User user, String collectionIdentifier) {
+        Collection collection = collectionDataService.getByIdentifier(collectionIdentifier);
+        return securityService.hasUserPermission(user, FstepPermission.WRITE, Collection.class, collection.getId());
     }
 
     private void logAccessFailure(URI uri) {
@@ -286,6 +325,24 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
         Databasket databasket = Optional.ofNullable(databasketDataService.getById(databasketId)).orElseThrow(() -> new CatalogueException("Failed to load databasket for ID " + databasketId));
         LOG.debug("Listing databasket contents for id {}", databasketId);
         return databasket;
+    }
+
+    @Override
+    public boolean createOutputCollection(Collection collection) throws IOException {
+        if (outputProductService.createCollection(collection)) {
+            collectionDataService.save(collection);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean deleteOutputCollection(Collection collection) throws IOException {
+        if (outputProductService.deleteCollection(collection)) {
+            collectionDataService.delete(collection);
+            return true;
+        }
+        return false;
     }
 
 }
