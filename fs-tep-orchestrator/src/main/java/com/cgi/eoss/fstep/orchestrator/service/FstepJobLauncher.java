@@ -466,6 +466,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             Job childJob =
                     jobDataService.buildNew(UUID.randomUUID().toString(), userId, service.getName(),
                             parentJob.getConfig().getLabel(), parallelJobParams, parentJob);
+            childJob = jobDataService.reload(childJob.getId());
             parentJob.getSubJobs().add(childJob);
             childJobs.add(childJob);
         }
@@ -478,7 +479,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     @JmsListener(destination = FstepQueueService.jobUpdatesQueueName)
     public void receiveJobUpdate(@Payload ObjectMessage objectMessage, @Header("workerId") String workerId,
             @Header("jobId") String internalJobId) {
-        Job job = jobDataService.getById(Long.parseLong(internalJobId));
+        Job job = jobDataService.reload(Long.parseLong(internalJobId));
         // TODO change into Chain of Responsibility type pattern
         Serializable update = null;
         try {
