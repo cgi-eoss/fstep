@@ -22,6 +22,8 @@ public interface ShortJob extends Identifiable<Long> {
     boolean isParent();
     @Value("#{target.config.service.name}")
     String getServiceName();
+    @Value("#{target.config.systematicParameter}")
+    String getSystematicParameter();
     @Value("#{@fstepSecurityService.getCurrentAccess(T(com.cgi.eoss.fstep.model.Job), target.id)}")
     FstepAccess getAccess();
 }

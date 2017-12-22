@@ -87,11 +87,13 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         return dao.save(new Job(jobConfig, extId, owner, parentJob));
     }
     
-    @Transactional(readOnly = true)
     public Job reload(Long id) {
         Job job = this.getById(id);
         job.getOwner().getGroups().size();
+        job.getOutputFiles().size();
         return job;
     }
+    
+    
 
 }

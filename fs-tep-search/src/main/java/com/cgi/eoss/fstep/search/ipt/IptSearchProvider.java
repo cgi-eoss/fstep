@@ -205,7 +205,8 @@ public class IptSearchProvider extends RestoSearchProvider {
                 .ifPresent(orbitDirection -> extraParams.put("fstepOrbitDirection", orbitDirection));
         Optional.ofNullable(extraParams.get("productType"))
                 .ifPresent(productType -> extraParams.put("fstepProductType", productType));
-
+        Optional.ofNullable(extraParams.get("updated"))
+        .ifPresent(updated -> extraParams.put("fstepUpdated", updated));
         feature.setProperty("extraParams", extraParams);
 
         Object quicklookURL = extraParams.get("thumbnail");
