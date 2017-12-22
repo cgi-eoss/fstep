@@ -1,5 +1,5 @@
 group 'com.cgi.eoss.fs-tep'
-version '1.0.1'
+version '1.1.0-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -8,9 +8,9 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	
 	compile 'org.springframework.boot:spring-boot-starter-activemq'
-    compile 'org.apache.activemq:activemq-pool' 
-    
-    testCompile 'junit:junit'
+	compile 'org.apache.activemq:activemq-pool'
+     
+	testCompile 'junit:junit'
     testCompile 'org.hamcrest:hamcrest-junit'
     testCompile 'org.mockito:mockito-core'
     testCompile 'org.springframework:spring-test'

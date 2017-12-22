@@ -9,12 +9,48 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('WorkspaceCtrl', [ '$scope', 'JobService', 'ProductService', 'MapService', 'CommonService', function ($scope, JobService, ProductService, MapService, CommonService) {
+    fstepmodules.controller('WorkspaceCtrl', [ '$scope', 'JobService', 'SystematicService', 'ProductService', 'SearchService', 'MapService', 'CommonService', function ($scope, JobService, SystematicService, ProductService, SearchService, MapService, CommonService) {
 
         $scope.serviceParams = ProductService.params.explorer;
+        $scope.runModes = ProductService.serviceRunModes;
         $scope.isWorkspaceLoading = false;
 
-        $scope.$on('update.selectedService', function(event, service, inputs, label, parent) {
+        $scope.searchForm = {
+            config: {},
+            api: {},
+            data: {
+                catalogue: 'SATELLITE'
+            }
+        }
+
+        SearchService.getSearchParameters().then(function(data){
+
+            delete data.productDate;
+            delete data.catalogue;
+
+            var config = {
+                productDateStart: {
+                    type: 'date',
+                    defaultValue: '0',
+                    description: 'UTC',
+                    title: 'Product start date'
+                },
+                productDateEnd: {
+                    type: 'date',
+                    defaultValue: '0',
+                    description: 'UTC',
+                    optional: true,
+                    format: 'YYYY-MM-DD[T23:59:59Z]',
+                    title: 'Product end date'
+                }
+            }
+
+            delete data.catalogue;
+
+            $scope.searchForm.config = Object.assign(config, data);
+        });
+
+        $scope.$on('update.selectedService', function(event, service, inputs, label, parent, systematicParameter) {
             $scope.isWorkspaceLoading = true;
             $scope.serviceParams.inputValues = {};
             $scope.serviceParams.label = label;
@@ -37,9 +73,31 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
             ProductService.getService(service).then(function(detailedService){
                 $scope.serviceParams.selectedService = detailedService;
+                if (detailedService.type !== 'APPLICATION') {
+                    if (systematicParameter) {
+                        $scope.serviceParams.runMode = $scope.runModes.SYSTEMATIC.id;
+                        $scope.serviceParams.systematicParameter = systematicParameter;
+                    }
+                    else if ($scope.serviceParams.runMode === $scope.runModes.SYSTEMATIC.id) {
+                        $scope.serviceParams.systematicParameter = detailedService.serviceDescriptor.dataInputs[0].id;
+                    }
+                }
+                else {
+                    $scope.serviceParams.runMode = $scope.runModes.STANDARD.id;
+                    delete $scope.serviceParams.systematicParameter;
+                }
                 $scope.isWorkspaceLoading = false;
             });
         });
+
+        $scope.onRunModeChange = function() {
+            if ($scope.serviceParams.runMode === $scope.runModes.SYSTEMATIC.id) {
+                $scope.serviceParams.systematicParameter = $scope.serviceParams.selectedService ? $scope.serviceParams.selectedService.serviceDescriptor.dataInputs[0].id : null;
+            }
+            else {
+                delete $scope.serviceParams.systematicParameter;
+            }
+        }
 
         $scope.getDefaultValue = function(fieldDesc){
             return $scope.serviceParams.inputValues[fieldDesc.id] ? $scope.serviceParams.inputValues[fieldDesc.id] : fieldDesc.defaultAttrs.value;
@@ -56,26 +114,53 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 iparams[key] = [value];
             }
 
-            JobService.createJobConfig($scope.serviceParams.selectedService, iparams, $scope.serviceParams.label, $scope.serviceParams.parent).then(function(jobConfig){
-                JobService.estimateJob(jobConfig, $event).then(function(estimation){
+            if ($scope.serviceParams.runMode === $scope.runModes.SYSTEMATIC.id) {
+                delete iparams[$scope.serviceParams.systematicParameter];
 
+                var searchParams = $scope.searchForm.api.getFormData();
+                searchParams.catalogue = 'SATELLITE';
+
+                SystematicService.estimateMonthlyCost($scope.serviceParams.selectedService, $scope.serviceParams.systematicParameter, iparams, searchParams).then(function(estimation) {
+                    console.log(iparams);
+                    console.log($scope.searchForm.api.getFormData());
                     var currency = ( estimation.estimatedCost === 1 ? 'coin' : 'coins' );
-                    CommonService.confirm($event, 'This job will cost ' + estimation.estimatedCost + ' ' + currency + '.' +
+                    CommonService.confirm($event, 'This job will approximatelly cost ' + estimation.estimatedCost + ' ' + currency + ' per month.' +
                             '\nAre you sure you want to continue?').then(function (confirmed) {
                         if (confirmed === false) {
                             return;
                         }
                         $scope.displayTab($scope.bottomNavTabs.JOBS, false);
-                        JobService.launchJob(jobConfig, $scope.serviceParams.selectedService, 'explorer').then(function () {
+
+                        SystematicService.launchSystematicProcessing($scope.serviceParams.selectedService, $scope.serviceParams.systematicParameter, iparams, searchParams, $scope.serviceParams.label).then(function () {
                             JobService.refreshJobs("explorer", "Create");
                         });
+
                     });
-                },
-                function (error) {
-                    CommonService.infoBulletin($event, 'The cost of this job exceeds your balance. This job cannot be run.' +
-                                               '\nYour balance: ' + error.currentWalletBalance + '\nCost estimation: ' + error.estimatedCost);
                 });
-            });
+
+            }
+            else {
+                JobService.createJobConfig($scope.serviceParams.selectedService, iparams, $scope.serviceParams.label,  $scope.serviceParams.parent).then(function(jobConfig){
+                    JobService.estimateJob(jobConfig, $event).then(function(estimation){
+
+                        var currency = ( estimation.estimatedCost === 1 ? 'coin' : 'coins' );
+                        CommonService.confirm($event, 'This job will cost ' + estimation.estimatedCost + ' ' + currency + '.' +
+                                '\nAre you sure you want to continue?').then(function (confirmed) {
+                            if (confirmed === false) {
+                                return;
+                            }
+                            $scope.displayTab($scope.bottomNavTabs.JOBS, false);
+                            JobService.launchJob(jobConfig, $scope.serviceParams.selectedService, 'explorer').then(function () {
+                                JobService.refreshJobs("explorer", "Create");
+                            });
+                        });
+                    },
+                    function (error) {
+                        CommonService.infoBulletin($event, 'The cost of this job exceeds your balance. This job cannot be run.' +
+                                                '\nYour balance: ' + error.currentWalletBalance + '\nCost estimation: ' + error.estimatedCost);
+                    });
+                });
+            }
         };
 
         $scope.pastePolygon = function(identifier){

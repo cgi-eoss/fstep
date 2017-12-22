@@ -8,11 +8,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.core.io.Resource;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +40,27 @@ public class SearchFacade {
                 ? getClass().getResourceAsStream("parameters.yaml")
                 : Files.newInputStream(Paths.get(parametersSchemaFile));
 
-        return yamlMapper.readValue(ByteStreams.toByteArray(parametersFile), new TypeReference<Map>() { });
+        Map<String, Object> parameterSchema = yamlMapper.readValue(ByteStreams.toByteArray(parametersFile), new TypeReference<Map>() { });
+        //TODO fill with dynamic parameters from providers
+        for (String parameter: parameterSchema.keySet()) {
+            Map<String, Object> parameterObj = (Map<String, Object>) parameterSchema.get(parameter);
+            if (parameterObj.containsKey("type") && "dynamic".equals(parameterObj.get("type"))) {
+                parameterObj.put("type", "select");
+                Map<String, Object> allowedValues = (Map<String, Object>) parameterObj.get("allowed");
+                List<Map<String, Object>> values = new ArrayList<Map<String, Object>>();
+                for (SearchProvider sp: searchProviders) {
+                    if (sp.supportsDynamicParameter(parameter)) {
+                        List<Map<String, Object>> additionalValues = sp.getDynamicParameterValues(parameter);
+                        values.addAll(additionalValues);
+                        String defaultValue = sp.getDynamicParameterDefaultValue(parameter);
+                        parameterObj.put ("defaultValue", defaultValue);
+                    }
+                }
+                allowedValues.put("values", values);
+                
+            }
+        }
+        return parameterSchema;
     }
 
     private SearchProvider getProvider(SearchParameters parameters) {

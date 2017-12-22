@@ -1,0 +1,18 @@
+<table class="metadata">
+    <tr>
+        <td>Owner:</td>
+        <td ng-bind="collection.owner.name" />
+    </tr>
+    <tr>
+        <td>Description:</td>
+        <td ng-bind="collection.description ? collection.description : 'No description'" />
+    </tr>
+    <tr>
+        <td>Access:</td>
+        <td ng-bind="collection.access.currentLevel" />
+    </tr>
+    <tr>
+        <td>Data type:</td>
+        <td ng-bind="collection.productsType" />
+    </tr>
+</table>

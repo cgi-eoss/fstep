@@ -111,7 +111,11 @@ class RestoModel_Fstep_Output extends RestoModel
         ),
         'jobStartDate'      => array(
             'name'  => 'jobStartDate',
-            'type'  => 'TIMESTAMP',
+            'type'  => 'TIMESTAMP', 
+            'osKey'     => 'jobStartDate',
+            'key'       => 'jobStartDate',
+            'operation' => '>=',
+            'title'     => 'Start of job processing',
             'index' => array(
                 'type'      => 'btree',
                 'direction' => 'DESC'
@@ -120,6 +124,10 @@ class RestoModel_Fstep_Output extends RestoModel
         'jobEndDate'        => array(
             'name'  => 'jobEndDate',
             'type'  => 'TIMESTAMP',
+            'osKey'     => 'jobEndDate',
+            'key'       => 'jobEndDate',
+            'operation' => '<=',
+            'title'     => 'End of job processing',            
             'index' => array(
                 'type'      => 'btree',
                 'direction' => 'DESC'

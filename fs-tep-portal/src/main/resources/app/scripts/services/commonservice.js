@@ -83,7 +83,7 @@ define(['../fstepmodules'], function (fstepmodules) {
             return html;
         }
 
-        this.createItemDialog = function ($event, serviceName, serviceMethod) {
+        this.createItemDialog = function ($event, serviceName, serviceMethod, optDialogTemplate) {
             var deferred = $q.defer();
 
             function CreateItemController($scope, $mdDialog) {
@@ -92,7 +92,7 @@ define(['../fstepmodules'], function (fstepmodules) {
                 var service = $injector.get(serviceName);
 
                 $scope.addItem = function () {
-                    service[serviceMethod]($scope.newItem.name, $scope.newItem.description, $scope.newItem.title).then(function (createdItem) {
+                    service[serviceMethod]($scope.newItem).then(function (createdItem) {
                             deferred.resolve(createdItem);
                         },
                         function (error) {
@@ -110,7 +110,7 @@ define(['../fstepmodules'], function (fstepmodules) {
             CreateItemController.$inject = ['$scope', '$mdDialog'];
             $mdDialog.show({
                 controller: CreateItemController,
-                templateUrl: 'views/common/templates/createitem.tmpl.html',
+                templateUrl: 'views/common/templates/' + (optDialogTemplate ? optDialogTemplate : 'createitem') + '.tmpl.html',
                 parent: angular.element(document.body),
                 targetEvent: $event,
                 clickOutsideToClose: true
@@ -119,7 +119,7 @@ define(['../fstepmodules'], function (fstepmodules) {
             return deferred.promise;
         };
 
-        this.editItemDialog = function ($event, item, serviceName, serviceMethod) {
+        this.editItemDialog = function ($event, item, serviceName, serviceMethod, optDialogTemplate) {
             var deferred = $q.defer();
 
             function EditController($scope, $mdDialog) {
@@ -169,7 +169,7 @@ define(['../fstepmodules'], function (fstepmodules) {
             EditController.$inject = ['$scope', '$mdDialog'];
             $mdDialog.show({
                 controller: EditController,
-                templateUrl: 'views/common/templates/edititem.tmpl.html',
+                templateUrl: 'views/common/templates/' + (optDialogTemplate ? optDialogTemplate : 'edititem') + '.tmpl.html',
                 parent: angular.element(document.body),
                 targetEvent: $event,
                 clickOutsideToClose: true

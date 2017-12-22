@@ -15,6 +15,7 @@ define([
     './controllers/common/directives/imageLoader',
     './controllers/common/directives/aoiField',
     './controllers/common/directives/aoiList',
+    './controllers/common/directives/dynamicForm',
 
     './controllers/community/community',
     './controllers/community/sidebar/databaskets',
@@ -22,12 +23,14 @@ define([
     './controllers/community/sidebar/groups',
     './controllers/community/sidebar/jobs',
     './controllers/community/sidebar/projects',
+    './controllers/community/sidebar/collections',
     './controllers/community/sidebar/services',
     './controllers/community/manage/databasket',
     './controllers/community/manage/file',
     './controllers/community/manage/group',
     './controllers/community/manage/job',
     './controllers/community/manage/project',
+    './controllers/community/manage/collection',
     './controllers/community/manage/service',
 
     './controllers/developer/developer',
@@ -40,6 +43,8 @@ define([
     './controllers/explorer/sidebar/services',
     './controllers/explorer/sidebar/workspace',
 
+    './controllers/userendpoint/userendpoint',
+
     './controllers/helpdesk/helpdesk',
 
     //services
@@ -50,14 +55,18 @@ define([
     './services/groupservice',
     './services/jobservice',
     './services/messageservice',
+    './services/collectionservice',
     './services/projectservice',
     './services/productservice',
     './services/publishingservice',
     './services/searchservice',
+    './services/systematicservice',
     './services/tabservice',
     './services/userservice',
     './services/walletservice',
     './services/userprefservice',
+    './services/usermountsservice',
+    './services/userendpointservice',
     './services/aoiservice',
     './services/map/mapservice',
     './services/map/aoilayerservice',

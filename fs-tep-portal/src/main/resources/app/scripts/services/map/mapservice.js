@@ -59,11 +59,10 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
         };
 
         this.setBackgroundLayer = function(layer) {
+            map.getLayers().removeAt(0);
             if(layer === 'OSM') {
-                map.removeLayer(layerMapBox);
                 map.getLayers().insertAt(0, layerOSM);
             } else if (layer === 'MB') {
-                map.removeLayer(layerOSM);
                 map.getLayers().insertAt(0, layerMapBox);
             }
         };

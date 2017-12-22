@@ -30,7 +30,9 @@
                     <p><i class="material-icons">person</i><span> Manage / Share</span></p>
                 </li>
 
-
+                <li ng-repeat="endpoint in userEndpoints" ng-click="goTo('/userendpoint/' + endpoint.id)" aria-label="{{endpoint.name}}" ng-class="{ active: isActive('/userendpoint/' + endpoint.id)}">
+                    <p><i class="material-icons">apps</i><span>{{endpoint.name}}</span></p>
+                </li>
 
                 <li ng-click="goTo('/admin')" ng-if="user.name && user.active.role === 'ADMIN'" aria-label="Admin"
                     ng-class="{ active: isActive('/admin')}">

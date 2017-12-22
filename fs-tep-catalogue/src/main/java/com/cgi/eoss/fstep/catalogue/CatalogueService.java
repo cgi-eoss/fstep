@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.catalogue;
 
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
@@ -42,7 +43,7 @@ public interface CatalogueService {
     Path provisionNewOutputProduct(OutputProductMetadata outputProduct, String filename) throws IOException;
 
     /**
-     * <p>Process an already-existing file, to be treated as an {@link FstepFile.Type#OUTPUT_PRODUCT}.</p>
+     * <p>Process an already-existing file, to be treated as an {@link FstepFile.Type#OUTPUT_PRODUCT}, to be ingested in the specified collection</p>
      * <p>This will return a persisted entity.</p>
      *
      * @param outputProduct
@@ -50,8 +51,14 @@ public interface CatalogueService {
      * @return
      * @throws IOException
      */
-    FstepFile ingestOutputProduct(OutputProductMetadata outputProduct, Path path) throws IOException;
-
+    FstepFile ingestOutputProduct(String collection, OutputProductMetadata outputProduct, Path path) throws IOException;
+    
+    /**
+     * <p>Returns the identifier of the default output collection</p>
+     * 
+     */
+    String getDefaultOutputProductCollection();
+    
     /**
      * <p>Store an external product's metadata for later reference by FS-TEP.</p>
      *
@@ -95,4 +102,29 @@ public interface CatalogueService {
      * @return
      */
     boolean canUserRead(User user, URI uri);
+
+    /**
+     * <p>Creates the underlying collection represented by the collection parameter
+     *
+     * @param collection
+     * @return
+     */
+    public boolean createOutputCollection(Collection collection) throws IOException;
+    
+    /**
+     * <p>Deletes the underlying collection represented by the collection parameter
+     *
+     * @param collection
+     * @return 
+     * 
+     */
+    public boolean deleteOutputCollection(Collection collection) throws IOException;
+
+    /**
+     * <p>Check that the user has write access on the collection
+     *
+     * @param user
+     * @param collectionIdentifier
+     */
+    boolean canUserWrite(User user, String collectionIdentifier);
 }

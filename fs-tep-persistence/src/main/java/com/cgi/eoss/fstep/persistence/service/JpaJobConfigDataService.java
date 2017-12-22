@@ -2,10 +2,12 @@ package com.cgi.eoss.fstep.persistence.service;
 
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.model.QJobConfig;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.persistence.dao.FstepEntityDao;
 import com.cgi.eoss.fstep.persistence.dao.JobConfigDao;
 import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,9 +34,22 @@ public class JpaJobConfigDataService extends AbstractJpaDataService<JobConfig> i
 
     @Override
     Predicate getUniquePredicate(JobConfig entity) {
-        return jobConfig.owner.eq(entity.getOwner())
+        BooleanExpression equalityExpr = jobConfig.owner.eq(entity.getOwner())
                 .and(jobConfig.service.eq(entity.getService()))
                 .and(jobConfig.inputs.eq(entity.getInputs()));
+        if (entity.getParent() == null) {
+            equalityExpr = equalityExpr.and(QJobConfig.jobConfig.parent.isNull());
+        }
+        else {
+            equalityExpr = equalityExpr.and(QJobConfig.jobConfig.parent.id.eq(entity.getParent().getId()));
+        }
+        if (entity.getSystematicParameter() == null) {
+            equalityExpr = equalityExpr.and(QJobConfig.jobConfig.systematicParameter.isNull());
+        }
+        else {
+            equalityExpr = equalityExpr.and(QJobConfig.jobConfig.systematicParameter.eq(entity.getSystematicParameter()));
+        }
+        return equalityExpr;
     }
 
     @Override

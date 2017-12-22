@@ -74,7 +74,7 @@ public class GeoserverServiceImpl implements GeoserverService {
 
         if (!isIngestibleFile(fileName.toString())) {
             // TODO Ingest more filetypes
-            LOG.info("Unable to ingest product with filename: {}" + fileName);
+            LOG.info("Unable to ingest product with filename: {}", fileName);
             return null;
         }
 
@@ -100,7 +100,7 @@ public class GeoserverServiceImpl implements GeoserverService {
 
         if (!isIngestibleFile(fileName.toString())) {
             // TODO Ingest more filetypes
-            LOG.info("Unable to ingest product with filename: {}" + fileName);
+            LOG.info("Unable to ingest product with filename: {}", fileName);
             return null;
         }
 

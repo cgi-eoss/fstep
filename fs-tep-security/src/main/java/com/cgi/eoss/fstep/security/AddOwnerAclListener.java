@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.security;
 
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepEntityWithOwner;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepServiceContextFile;
@@ -8,6 +9,8 @@ import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.WalletTransaction;
 import com.google.common.collect.ImmutableSet;
+import javax.annotation.PostConstruct;
+import javax.persistence.EntityManagerFactory;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
@@ -22,9 +25,6 @@ import org.springframework.security.acls.model.MutableAcl;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-import javax.persistence.EntityManagerFactory;
 import java.util.Set;
 
 @Component
@@ -87,6 +87,8 @@ public class AddOwnerAclListener implements PostInsertEventListener {
                 FstepPermission.READ.getAclPermissions()
                         .forEach(p -> acl.insertAce(acl.getEntries().size(), p, new GrantedAuthoritySid((Group) entity), true));
             }
+            
+            
 
             if (FstepFile.class.equals(entityClass) && ((FstepFile) entity).getType() == FstepFile.Type.EXTERNAL_PRODUCT) {
                 // No one should have ADMIN permission for EXTERNAL_PRODUCT FstepFiles, but they should be PUBLIC to read ...
@@ -98,6 +100,15 @@ public class AddOwnerAclListener implements PostInsertEventListener {
                 LOG.debug("Adding owner-level ACL for new {} with ID {} (owner: {})", entityClass.getSimpleName(), entity.getId(), entity.getOwner().getName());
                 FstepPermission.ADMIN.getAclPermissions()
                         .forEach(p -> acl.insertAce(acl.getEntries().size(), p, ownerSid, true));
+            }
+            
+            if (FstepFile.class.equals(entityClass) && ((FstepFile) entity).getType() == FstepFile.Type.OUTPUT_PRODUCT) {
+                // Fs-tep output products should have the collection as parent ACL
+                LOG.debug("Adding PARENT ACL for new OUTPUT_PRODUCT FstepFile with ID {}", entity.getId());
+                FstepFile fstepFile = (FstepFile) entity;
+                if (fstepFile.getCollection() != null) {
+                    acl.setParent(fstepSecurityService.getAcl(new ObjectIdentityImpl(Collection.class, fstepFile.getCollection().getId())));
+                }
             }
 
             fstepSecurityService.saveAcl(acl);

@@ -2,8 +2,8 @@ package com.cgi.eoss.fstep.search.api;
 
 import com.google.common.collect.ComparisonChain;
 import org.springframework.core.io.Resource;
-
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public interface SearchProvider extends Comparable<SearchProvider> {
@@ -21,8 +21,15 @@ public interface SearchProvider extends Comparable<SearchProvider> {
 
     Resource getQuicklook(String productSource, String productIdentifier) throws IOException;
 
+    boolean supportsDynamicParameter(String parameter);
+    
+    List<Map<String, Object>> getDynamicParameterValues(String parameter);
+
+    String getDynamicParameterDefaultValue(String parameter);
+    
     @Override
     default int compareTo(SearchProvider o) {
         return ComparisonChain.start().compare(getPriority(), o.getPriority()).result();
     }
+
 }
