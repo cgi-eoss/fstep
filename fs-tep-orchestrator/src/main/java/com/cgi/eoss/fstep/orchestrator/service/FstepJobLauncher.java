@@ -14,6 +14,7 @@ import com.cgi.eoss.fstep.logging.Logging;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
+import com.cgi.eoss.fstep.model.FstepService.Type;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
@@ -33,6 +34,8 @@ import com.cgi.eoss.fstep.rpc.FstepServiceParams;
 import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.JobParam;
+import com.cgi.eoss.fstep.rpc.RelaunchFailedJobParams;
+import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
 import com.cgi.eoss.fstep.rpc.StopServiceResponse;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
@@ -163,7 +166,6 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         try (CloseableThreadContext.Instance ctc =
                 CloseableThreadContext.push("FS-TEP Service Orchestrator").put("userId", userId)
                         .put("serviceId", serviceId).put("zooId", zooId)) {
-            // TODO Allow re-use of existing JobConfig
             
             if (!Strings.isNullOrEmpty(parentId)) {
                 //this is a request to attach a subjob to an existing parent
@@ -206,8 +208,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 }
                 
                 //TODO: Check that the user can use the geoserver spec
-                
-                
+
                 Collection<String> parallelInput = inputs.get("parallelInputs");
                 List<String> newInputs = explodeParallelInput(parallelInput);
                 checkCost(job.getOwner(), job.getConfig(), newInputs);
@@ -235,7 +236,6 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             } 
             else {
                 checkCost(job.getOwner(), job.getConfig());
-                chargeUser(job.getOwner(), job);
                 if (!checkInputs(job.getOwner(), rpcInputs)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.error("User {} does not have read access to all requested inputs",
@@ -244,6 +244,17 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     throw new ServiceExecutionException(
                             "User does not have read access to all requested inputs");
                 }
+              //TODO: Check that the user can use the geoserver spec
+                if (!checkAccessToOutputCollection(job.getOwner(), rpcInputs)) {
+                    try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                        LOG.error("User {} does not have read access to all requested output collections",
+                                userId);
+                    }
+                    throw new ServiceExecutionException(
+                            "User does not have read access to all requested output collections");
+                }
+                
+                chargeUser(job.getOwner(), job);
                 responseObservers.put(job.getExtId(), responseObserver);
                 submitJob(job, rpcJob, rpcInputs, SINGLE_JOB_PRIORITY);
             }
@@ -256,6 +267,80 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             LOG.error("Failed to run processor. Notifying gRPC client", e);
             responseObserver.onError(new StatusRuntimeException(
                     io.grpc.Status.fromCode(io.grpc.Status.Code.ABORTED).withCause(e)));
+        }
+    }
+    
+    @Override
+    public void relaunchFailedJob(RelaunchFailedJobParams request, StreamObserver<RelaunchFailedJobResponse> responseObserver) {
+
+        com.cgi.eoss.fstep.rpc.Job rpcJob = request.getJob();
+        Job job = jobDataService.reload(Long.parseLong(rpcJob.getIntJobId()));
+        responseObserver.onNext(RelaunchFailedJobResponse.newBuilder().build());
+        try (CloseableThreadContext.Instance ctc =
+                CloseableThreadContext.push("FS-TEP Service Orchestrator").put("userId", String.valueOf(job.getOwner().getId()))
+                        .put("serviceId", String.valueOf(job.getConfig().getService().getId())).put("zooId", job.getExtId())) {
+            if (job.getConfig().getService().getType() == Type.PARALLEL_PROCESSOR && job.isParent()) {
+                Set<Job> failedSubJobs =
+                        job.getSubJobs().stream().filter(j -> j.getStatus() == Status.ERROR).collect(Collectors.toSet());
+                if (failedSubJobs.size() > 0) {
+                    checkCost(job.getOwner(), job.getConfig(), failedSubJobs.size());
+                    //TODO: Check that the user can use the geoserver spec
+                    for (Job failedSubJob : failedSubJobs) {
+                        List<JobParam> failedSubJobInputs = GrpcUtil.mapToParams(failedSubJob.getConfig().getInputs());
+                        if (!checkInputs(job.getOwner(), failedSubJobInputs)) {
+                            try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                                LOG.error("User {} does not have read access to all requested inputs", job.getOwner().getId());
+                            }
+                            throw new ServiceExecutionException("User does not have read access to all requested inputs");
+                        }
+
+                        if (!checkAccessToOutputCollection(job.getOwner(), failedSubJobInputs)) {
+                            try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                                LOG.error("User {} does not have read access to all requested output collections",
+                                        job.getOwner().getId());
+                            }
+                            throw new ServiceExecutionException("User does not have read access to all requested output collections");
+                        }
+                    }
+                    int i = 0;
+                    for (Job failedSubJob : failedSubJobs) {
+                        List<JobParam> failedSubJobInputs = GrpcUtil.mapToParams(failedSubJob.getConfig().getInputs());
+                        chargeUser(failedSubJob.getOwner(), failedSubJob);
+                        failedSubJob.setStatus(Status.CREATED);
+                        jobDataService.save(failedSubJob);
+                        submitJob(failedSubJob, GrpcUtil.toRpcJob(failedSubJob), failedSubJobInputs, getJobPriority(i));
+                    }
+                    i++;
+                }
+            } else {
+                List<JobParam> jobInputs = GrpcUtil.mapToParams(job.getConfig().getInputs());
+                checkCost(job.getOwner(), job.getConfig());
+                //TODO: Check that the user can use the geoserver spec
+                if (!checkInputs(job.getOwner(), jobInputs)) {
+                    try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                        LOG.error("User {} does not have read access to all requested inputs", job.getOwner().getId());
+                    }
+                    throw new ServiceExecutionException("User does not have read access to all requested inputs");
+                }
+
+                if (!checkAccessToOutputCollection(job.getOwner(), jobInputs)) {
+                    try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                        LOG.error("User {} does not have read access to all requested output collections", job.getOwner().getId());
+                    }
+                    throw new ServiceExecutionException("User does not have read access to all requested output collections");
+                }
+                chargeUser(job.getOwner(), job);
+                job.setStatus(Status.CREATED);
+                jobDataService.save(job);
+                submitJob(job, rpcJob, GrpcUtil.mapToParams(job.getConfig().getInputs()), SINGLE_JOB_PRIORITY);
+            }
+        } catch (Exception e) {
+            if (job != null) {
+                endJobWithError(job);
+            }
+
+            LOG.error("Failed to run processor. Notifying gRPC client", e);
+            responseObserver.onError(new StatusRuntimeException(io.grpc.Status.fromCode(io.grpc.Status.Code.ABORTED).withCause(e)));
         }
     }
 
@@ -289,6 +374,15 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private void checkCost(User user, JobConfig config, List<String> newInputs) {
         int singleJobCost = costingService.estimateSingleRunJobCost(config);
         int estimatedCost = newInputs.size() * singleJobCost;
+        if (estimatedCost > user.getWallet().getBalance()) {
+            throw new ServiceExecutionException(
+                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
+        }
+    }
+    
+    private void checkCost(User user, JobConfig config, int numberOfJobs) {
+        int singleJobCost = costingService.estimateSingleRunJobCost(config);
+        int estimatedCost = numberOfJobs * singleJobCost;
         if (estimatedCost > user.getWallet().getBalance()) {
             throw new ServiceExecutionException(
                     "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
