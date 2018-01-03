@@ -3,6 +3,7 @@ package com.cgi.eoss.fstep.worker.worker;
 import com.google.common.collect.Multimap;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -78,7 +79,9 @@ public class JobEnvironmentService {
         Path workingDir = baseDir.resolve(WORKING_DIR_PREFIX + jobId);
         Path inputDir = workingDir.resolve(INPUT_DIR);
         Path outputDir = workingDir.resolve(OUTPUT_DIR);
-
+        if (Files.exists(workingDir)){
+            FileUtils.deleteDirectory(workingDir.toFile());
+        }
         Files.createDirectory(workingDir);
         Files.createDirectory(inputDir);
         Files.createDirectory(outputDir);
