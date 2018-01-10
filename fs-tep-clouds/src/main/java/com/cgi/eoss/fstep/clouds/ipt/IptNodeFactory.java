@@ -196,6 +196,14 @@ public class IptNodeFactory implements NodeFactory {
             ssh.exec("sudo mkdir -p " + dataBaseDirStr);
             ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + baseDir + " " + baseDir);
             ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + dataBaseDirStr + " " + dataBaseDirStr);
+            String additionalNfsMountsStr = provisioningConfig.getAdditionalNfsMounts();
+            if (additionalNfsMountsStr != null) {
+                String[] additionalNfsMounts = additionalNfsMountsStr.split(",");
+                for (String additionalNfsMount: additionalNfsMounts) {
+                    ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + additionalNfsMount + " " + additionalNfsMount);
+                }
+                
+            }
             // TODO Use/create a certificate authority for secure docker communication
             LOG.info("Launching dockerd listening on tcp://0.0.0.0:{}", DEFAULT_DOCKER_PORT);
             with().pollInterval(FIVE_HUNDRED_MILLISECONDS)
