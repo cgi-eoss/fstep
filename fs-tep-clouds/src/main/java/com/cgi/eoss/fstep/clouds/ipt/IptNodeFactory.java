@@ -200,6 +200,7 @@ public class IptNodeFactory implements NodeFactory {
             if (additionalNfsMountsStr != null) {
                 String[] additionalNfsMounts = additionalNfsMountsStr.split(",");
                 for (String additionalNfsMount: additionalNfsMounts) {
+                    ssh.exec("sudo mkdir -p " + additionalNfsMount);
                     ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + additionalNfsMount + " " + additionalNfsMount);
                 }
                 
