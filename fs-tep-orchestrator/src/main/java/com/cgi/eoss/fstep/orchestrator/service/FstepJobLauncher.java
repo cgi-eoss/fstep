@@ -56,7 +56,6 @@ import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileResponse;
-import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -508,7 +507,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 throw new IllegalStateException(
                         "FS-TEP worker not found for job " + rpcJob.getId());
             LOG.info("Stop requested for job {}", rpcJob.getId());
-            StopContainerResponse stopContainerResponse = worker.stopContainer(rpcJob);
+            worker.stopContainer(rpcJob);
             LOG.info("Successfully stopped job {}", rpcJob.getId());
             responseObserver.onNext(StopServiceResponse.newBuilder().build());
             responseObserver.onCompleted();
@@ -826,7 +825,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         
         for (String outputId : outputsByRelativePath.keySet()) {
             for (String relativePath: outputsByRelativePath.get(outputId)) {
-                outputFiles.put(outputId,ingestOutputFile(job, rpcJob, worker, inputs, jobEnvironment, geoServerSpecs, collectionSpecs, outputId, relativePath));
+                outputFiles.put(outputId,ingestOutputFile(job, rpcJob, worker, jobEnvironment, geoServerSpecs, collectionSpecs, outputId, relativePath));
              }
         }
 
@@ -834,8 +833,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     }
 
     private FstepFile ingestOutputFile(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, FstepWorkerGrpc.FstepWorkerBlockingStub worker,
-            Multimap<String, String> inputs, JobEnvironment jobEnvironment,
-            Map<String, GeoServerSpec> geoServerSpecs, Map<String, String> collectionSpecs, String outputId, String relativePath) throws IOException {
+            JobEnvironment jobEnvironment, Map<String, GeoServerSpec> geoServerSpecs, Map<String, String> collectionSpecs, String outputId, String relativePath) throws IOException {
         Iterator<OutputFileResponse> outputFile = worker.getOutputFile(GetOutputFileParam
                 .newBuilder().setJob(rpcJob).setPath(Paths.get(jobEnvironment.getOutputDir())
                         .resolve(relativePath).toString())
@@ -848,8 +846,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
            
         OutputProductMetadata.OutputProductMetadataBuilder outputProductMetadataBuilder = OutputProductMetadata.builder()
                 .owner(job.getOwner()).service(job.getConfig().getService())
-                .jobId(job.getExtId()).crs(Iterables.getOnlyElement(inputs.get("crs"), null))
-                .geometry(Iterables.getOnlyElement(inputs.get("aoi"), null));
+                .jobId(job.getExtId());
         
         HashMap<String, Object> properties = new HashMap<>(ImmutableMap.<String, Object>builder()
                 .put("jobId", job.getExtId()).put("intJobId", job.getId())
@@ -886,8 +883,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     Unchecked.consumer(of -> of.getChunk().getData().writeTo(outputStream)));
         }
 
-        // Try to read CRS/AOI from the file if not set by input parameters - note that
-        // CRS/AOI may still be null after this
+        // Try to read CRS/AOI from the file - note that CRS/AOI may still be null after this
         outputProduct.setCrs(
                 Optional.ofNullable(outputProduct.getCrs()).orElse(getOutputCrs(outputPath)));
         outputProduct.setGeometry(Optional.ofNullable(outputProduct.getGeometry())
