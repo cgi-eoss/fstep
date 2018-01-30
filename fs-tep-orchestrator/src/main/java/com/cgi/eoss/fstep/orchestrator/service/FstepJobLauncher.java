@@ -16,6 +16,7 @@ import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepService.Type;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
+import com.cgi.eoss.fstep.model.FstepServiceDockerBuildInfo;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.JobConfig;
@@ -25,8 +26,11 @@ import com.cgi.eoss.fstep.model.UserMount;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
+import com.cgi.eoss.fstep.rpc.BuildServiceParams;
+import com.cgi.eoss.fstep.rpc.BuildServiceResponse;
 import com.cgi.eoss.fstep.rpc.CancelJobParams;
 import com.cgi.eoss.fstep.rpc.CancelJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepJobLauncherGrpc;
@@ -39,6 +43,7 @@ import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
 import com.cgi.eoss.fstep.rpc.StopServiceResponse;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
+import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.rpc.worker.GetOutputFileParam;
@@ -130,6 +135,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private final FstepSecurityService securityService;
     private final FstepQueueService queueService;
     private final UserMountDataService userMountDataService;
+    private final ServiceDataService serviceDataService;
     
     private Map<String, StreamObserver<FstepServiceResponse>> responseObservers = new HashMap<>();
 
@@ -138,7 +144,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             DatabasketDataService databasketDataService, FstepGuiServiceManager guiService,
             CatalogueService catalogueService, CostingService costingService,
             FstepSecurityService securityService, FstepQueueService queueService, 
-            UserMountDataService userMountDataService) {
+            UserMountDataService userMountDataService,
+            ServiceDataService serviceDataService) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.databasketDataService = databasketDataService;
@@ -148,6 +155,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         this.securityService = securityService;
         this.queueService = queueService;
         this.userMountDataService = userMountDataService;
+        this.serviceDataService = serviceDataService;
     }
 
     @Override
@@ -931,5 +939,33 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private void chargeUser(User user, Job job) {
         costingService.chargeForJob(user.getWallet(), job);
     }
+    
+    @Override
+    public void buildService(BuildServiceParams buildServiceParams,
+            StreamObserver<BuildServiceResponse> responseObserver) {
+        
+        FstepWorkerBlockingStub worker = workerFactory.getOne();
+        
+        Long serviceId = Long.parseLong(buildServiceParams.getServiceId());
+        
+        FstepService service = serviceDataService.getById(serviceId);
+        responseObserver.onNext(BuildServiceResponse.newBuilder().build());
+        DockerImageConfig dockerImageConfig = DockerImageConfig.newBuilder()
+        .setDockerImage(service.getDockerTag())
+        .setServiceName(service.getName())
+        .build();
+        try {
+            worker.prepareDockerImage(dockerImageConfig);
+            service.getDockerBuildInfo().setDockerBuildStatus(FstepServiceDockerBuildInfo.Status.COMPLETED);
+            service.getDockerBuildInfo().setLastBuiltFingerprint(buildServiceParams.getBuildFingerprint());
+            serviceDataService.save(service);
+        }
+        catch(StatusRuntimeException e){
+            service.getDockerBuildInfo().setDockerBuildStatus(FstepServiceDockerBuildInfo.Status.ERROR);
+            serviceDataService.save(service);
+        }
+        responseObserver.onCompleted();
+    }
+ 
 
 }

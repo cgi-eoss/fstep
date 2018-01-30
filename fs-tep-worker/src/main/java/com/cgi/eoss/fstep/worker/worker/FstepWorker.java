@@ -13,7 +13,9 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -34,6 +36,7 @@ import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExitCode;
+import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.ExitParams;
 import com.cgi.eoss.fstep.rpc.worker.ExitWithTimeoutParams;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
@@ -49,6 +52,8 @@ import com.cgi.eoss.fstep.rpc.worker.OutputFileResponse;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.rpc.worker.PortBindings;
 import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
+import com.cgi.eoss.fstep.rpc.worker.PrepareDockerImageResponse;
+import com.cgi.eoss.fstep.worker.DockerRegistryConfig;
 import com.cgi.eoss.fstep.worker.docker.DockerClientFactory;
 import com.cgi.eoss.fstep.worker.docker.Log4jContainerCallback;
 import com.google.common.annotations.VisibleForTesting;
@@ -68,13 +73,18 @@ import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
 import shadow.dockerjava.com.github.dockerjava.api.command.BuildImageCmd;
 import shadow.dockerjava.com.github.dockerjava.api.command.CreateContainerCmd;
 import shadow.dockerjava.com.github.dockerjava.api.command.InspectContainerResponse;
+import shadow.dockerjava.com.github.dockerjava.api.command.PullImageCmd;
+import shadow.dockerjava.com.github.dockerjava.api.command.PushImageCmd;
 import shadow.dockerjava.com.github.dockerjava.api.exception.DockerClientException;
+import shadow.dockerjava.com.github.dockerjava.api.model.AuthConfig;
 import shadow.dockerjava.com.github.dockerjava.api.model.Bind;
 import shadow.dockerjava.com.github.dockerjava.api.model.ExposedPort;
+import shadow.dockerjava.com.github.dockerjava.api.model.Image;
 import shadow.dockerjava.com.github.dockerjava.api.model.Ports;
 import shadow.dockerjava.com.github.dockerjava.core.command.BuildImageResultCallback;
+import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
+import shadow.dockerjava.com.github.dockerjava.core.command.PushImageResultCallback;
 import shadow.dockerjava.com.github.dockerjava.core.command.WaitContainerResultCallback;
-
 /**
  * <p>Service for executing FS-TEP (WPS) services inside Docker containers.</p>
  */
@@ -96,14 +106,21 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     private final Multimap<String, URI> jobInputs = MultimapBuilder.hashKeys().hashSetValues().build();
 
     private int minWorkerNodes;
+
+    private DockerRegistryConfig dockerRegistryConfig;
     
     
     @Autowired
-    public FstepWorker(FstepWorkerNodeManager nodeManager, JobEnvironmentService jobEnvironmentService, ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes) {
+    public FstepWorker(FstepWorkerNodeManager nodeManager, JobEnvironmentService jobEnvironmentService,
+            ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes,
+            Optional<DockerRegistryConfig> dockerRegistryConfig) {
         this.nodeManager = nodeManager;
         this.jobEnvironmentService = jobEnvironmentService;
         this.inputOutputManager = inputOutputManager;
         this.minWorkerNodes = minWorkerNodes;
+        if (dockerRegistryConfig.isPresent()) {
+            this.dockerRegistryConfig = dockerRegistryConfig.get();
+        }
     }
     
     @PostConstruct
@@ -134,7 +151,14 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
             try {
                 Node node = nodeManager.getJobNode(request.getJob().getId());
-                DockerClient dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl());
+                DockerClient dockerClient;
+                if (dockerRegistryConfig != null) {
+                    dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl(), 
+                        dockerRegistryConfig);
+                }
+                else {
+                    dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl());
+                }
                 jobClients.put(request.getJob().getId(), dockerClient);
             } catch (Exception e) {
                 try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
@@ -181,6 +205,34 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
         }
     }
 
+	
+   @Override
+   public void prepareDockerImage(DockerImageConfig request, StreamObserver<PrepareDockerImageResponse> responseObserver) {
+        DockerClient dockerClient;
+        if (dockerRegistryConfig != null) {
+            dockerClient = DockerClientFactory.buildDockerClient("unix:///var/run/docker.sock", dockerRegistryConfig);
+            try {
+                String dockerImageTag = dockerRegistryConfig.getDockerRegistryUrl() + "/"+request.getDockerImage();
+                responseObserver.onNext(PrepareDockerImageResponse.newBuilder().build());
+                //Remove previous images with same name
+                removeDockerImage(dockerClient, dockerImageTag);
+                buildDockerImage(dockerClient, request.getServiceName(), dockerImageTag);
+                pushDockerImage(dockerClient, dockerImageTag);
+                dockerClient.close();
+                responseObserver.onCompleted();
+            } catch (IOException e) {
+                responseObserver.onError(e);
+            } catch (InterruptedException e) {
+                responseObserver.onError(e);
+            }
+        }
+        else {
+            String errorMessage = "No docker registry available to prepare the Docker image";
+            LOG.error(errorMessage);
+            responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(new Exception(errorMessage))));
+        }
+    }
+	
     @Override
     public void launchContainer(JobDockerConfig request, StreamObserver<LaunchContainerResponse> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
@@ -190,10 +242,29 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             String containerId = null;
 
             try {
-                buildDockerImage(dockerClient, request.getServiceName(), request.getDockerImage());
-
+                String imageTag;
+                if (dockerRegistryConfig != null) {
+                    imageTag = dockerRegistryConfig.getDockerRegistryUrl() + "/" + request.getDockerImage();
+                    //Get the image from the repository, if available
+                    try {
+                        pullDockerImage(dockerClient, imageTag);
+                    }
+                    catch(DockerClientException e) {
+                        LOG.info("Failed to pull image {} from registry '{}'", imageTag, dockerRegistryConfig.getDockerRegistryUrl());
+                    }
+                }
+                
+                else {
+                    imageTag = request.getDockerImage();
+                }
+                
+                if (!isImageAvailableLocally(dockerClient, imageTag)) {
+                    LOG.info("Building image '{}' locally", imageTag);
+                    buildDockerImage(dockerClient, request.getServiceName(), imageTag);
+                }
+                
                 // Launch tag
-                try (CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(request.getDockerImage())) {
+                try (CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(imageTag)) {
                     createContainerCmd.withLabels(ImmutableMap.of(
                             "jobId", request.getJob().getId(),
                             "intJobId", request.getJob().getIntJobId(),
@@ -513,6 +584,47 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             LOG.error("Failed to build Docker context for service {}", serviceName, e);
             throw e;
         }
+    }
+    
+    private void pushDockerImage(DockerClient dockerClient, String dockerImage) throws IOException, InterruptedException {
+        LOG.info("Pushing Docker image '{}' to registry {}", dockerImage, dockerRegistryConfig.getDockerRegistryUrl());
+        PushImageCmd pushImageCmd = dockerClient.pushImageCmd(dockerImage);
+        AuthConfig authConfig = new AuthConfig()
+                .withRegistryAddress(dockerRegistryConfig.getDockerRegistryUrl())
+                .withUsername(dockerRegistryConfig.getDockerRegistryUsername())
+                .withPassword(dockerRegistryConfig.getDockerRegistryPassword());
+        dockerClient.authCmd().withAuthConfig(authConfig).exec();
+        pushImageCmd = pushImageCmd.withAuthConfig(authConfig);
+        pushImageCmd.exec(new PushImageResultCallback()).awaitSuccess();
+        LOG.info("Pushed Docker image '{}' to registry {}", dockerImage, dockerRegistryConfig.getDockerRegistryUrl());
+    }
+    
+    private void pullDockerImage(DockerClient dockerClient, String dockerImage) throws IOException, InterruptedException {
+        LOG.info("Pulling Docker image '{}' from registry {}", dockerImage, dockerRegistryConfig.getDockerRegistryUrl());
+        PullImageCmd pullImageCmd = dockerClient.pullImageCmd(dockerImage);
+        AuthConfig authConfig = new AuthConfig()
+            .withRegistryAddress(dockerRegistryConfig.getDockerRegistryUrl())
+            .withUsername(dockerRegistryConfig.getDockerRegistryUsername())
+            .withPassword(dockerRegistryConfig.getDockerRegistryPassword());
+        dockerClient.authCmd().withAuthConfig(authConfig).exec();
+        pullImageCmd = pullImageCmd.withRegistry(dockerRegistryConfig.getDockerRegistryUrl()).withAuthConfig(authConfig);
+        pullImageCmd.exec(new PullImageResultCallback()).awaitSuccess();
+        LOG.info("Pulled Docker image '{}' from registry {}", dockerImage, dockerRegistryConfig.getDockerRegistryUrl());
+    }
+    
+    private void removeDockerImage(DockerClient dockerClient, String dockerImageTag) {
+        List<Image> images = dockerClient.listImagesCmd().withImageNameFilter(dockerImageTag).exec();
+        for (Image image: images) {
+            dockerClient.removeImageCmd(image.getId()).exec();
+        }
+    }
+    
+    private boolean isImageAvailableLocally(DockerClient dockerClient, String dockerImage) {
+        List<Image> images = dockerClient.listImagesCmd().withImageNameFilter(dockerImage).exec();
+        if (images.isEmpty()) {
+            return false;
+        }
+        return true;
     }
 
     @VisibleForTesting
