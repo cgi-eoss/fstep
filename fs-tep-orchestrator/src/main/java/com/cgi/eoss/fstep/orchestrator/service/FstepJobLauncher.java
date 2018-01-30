@@ -16,6 +16,7 @@ import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepService.Type;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
+import com.cgi.eoss.fstep.model.FstepServiceDockerBuildInfo;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.JobConfig;
@@ -25,8 +26,11 @@ import com.cgi.eoss.fstep.model.UserMount;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
+import com.cgi.eoss.fstep.rpc.BuildServiceParams;
+import com.cgi.eoss.fstep.rpc.BuildServiceResponse;
 import com.cgi.eoss.fstep.rpc.CancelJobParams;
 import com.cgi.eoss.fstep.rpc.CancelJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepJobLauncherGrpc;
@@ -39,6 +43,7 @@ import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
 import com.cgi.eoss.fstep.rpc.StopServiceResponse;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
+import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.rpc.worker.GetOutputFileParam;
@@ -51,7 +56,6 @@ import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileResponse;
-import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -130,6 +134,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private final FstepSecurityService securityService;
     private final FstepQueueService queueService;
     private final UserMountDataService userMountDataService;
+    private final ServiceDataService serviceDataService;
     
     private Map<String, StreamObserver<FstepServiceResponse>> responseObservers = new HashMap<>();
 
@@ -138,7 +143,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             DatabasketDataService databasketDataService, FstepGuiServiceManager guiService,
             CatalogueService catalogueService, CostingService costingService,
             FstepSecurityService securityService, FstepQueueService queueService, 
-            UserMountDataService userMountDataService) {
+            UserMountDataService userMountDataService,
+            ServiceDataService serviceDataService) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.databasketDataService = databasketDataService;
@@ -148,6 +154,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         this.securityService = securityService;
         this.queueService = queueService;
         this.userMountDataService = userMountDataService;
+        this.serviceDataService = serviceDataService;
     }
 
     @Override
@@ -500,7 +507,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 throw new IllegalStateException(
                         "FS-TEP worker not found for job " + rpcJob.getId());
             LOG.info("Stop requested for job {}", rpcJob.getId());
-            StopContainerResponse stopContainerResponse = worker.stopContainer(rpcJob);
+            worker.stopContainer(rpcJob);
             LOG.info("Successfully stopped job {}", rpcJob.getId());
             responseObserver.onNext(StopServiceResponse.newBuilder().build());
             responseObserver.onCompleted();
@@ -818,7 +825,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         
         for (String outputId : outputsByRelativePath.keySet()) {
             for (String relativePath: outputsByRelativePath.get(outputId)) {
-                outputFiles.put(outputId,ingestOutputFile(job, rpcJob, worker, inputs, jobEnvironment, geoServerSpecs, collectionSpecs, outputId, relativePath));
+                outputFiles.put(outputId,ingestOutputFile(job, rpcJob, worker, jobEnvironment, geoServerSpecs, collectionSpecs, outputId, relativePath));
              }
         }
 
@@ -826,8 +833,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     }
 
     private FstepFile ingestOutputFile(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, FstepWorkerGrpc.FstepWorkerBlockingStub worker,
-            Multimap<String, String> inputs, JobEnvironment jobEnvironment,
-            Map<String, GeoServerSpec> geoServerSpecs, Map<String, String> collectionSpecs, String outputId, String relativePath) throws IOException {
+            JobEnvironment jobEnvironment, Map<String, GeoServerSpec> geoServerSpecs, Map<String, String> collectionSpecs, String outputId, String relativePath) throws IOException {
         Iterator<OutputFileResponse> outputFile = worker.getOutputFile(GetOutputFileParam
                 .newBuilder().setJob(rpcJob).setPath(Paths.get(jobEnvironment.getOutputDir())
                         .resolve(relativePath).toString())
@@ -840,8 +846,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
            
         OutputProductMetadata.OutputProductMetadataBuilder outputProductMetadataBuilder = OutputProductMetadata.builder()
                 .owner(job.getOwner()).service(job.getConfig().getService())
-                .jobId(job.getExtId()).crs(Iterables.getOnlyElement(inputs.get("crs"), null))
-                .geometry(Iterables.getOnlyElement(inputs.get("aoi"), null));
+                .jobId(job.getExtId());
         
         HashMap<String, Object> properties = new HashMap<>(ImmutableMap.<String, Object>builder()
                 .put("jobId", job.getExtId()).put("intJobId", job.getId())
@@ -878,8 +883,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     Unchecked.consumer(of -> of.getChunk().getData().writeTo(outputStream)));
         }
 
-        // Try to read CRS/AOI from the file if not set by input parameters - note that
-        // CRS/AOI may still be null after this
+        // Try to read CRS/AOI from the file - note that CRS/AOI may still be null after this
         outputProduct.setCrs(
                 Optional.ofNullable(outputProduct.getCrs()).orElse(getOutputCrs(outputPath)));
         outputProduct.setGeometry(Optional.ofNullable(outputProduct.getGeometry())
@@ -931,5 +935,33 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private void chargeUser(User user, Job job) {
         costingService.chargeForJob(user.getWallet(), job);
     }
+    
+    @Override
+    public void buildService(BuildServiceParams buildServiceParams,
+            StreamObserver<BuildServiceResponse> responseObserver) {
+        
+        FstepWorkerBlockingStub worker = workerFactory.getOne();
+        
+        Long serviceId = Long.parseLong(buildServiceParams.getServiceId());
+        
+        FstepService service = serviceDataService.getById(serviceId);
+        responseObserver.onNext(BuildServiceResponse.newBuilder().build());
+        DockerImageConfig dockerImageConfig = DockerImageConfig.newBuilder()
+        .setDockerImage(service.getDockerTag())
+        .setServiceName(service.getName())
+        .build();
+        try {
+            worker.prepareDockerImage(dockerImageConfig);
+            service.getDockerBuildInfo().setDockerBuildStatus(FstepServiceDockerBuildInfo.Status.COMPLETED);
+            service.getDockerBuildInfo().setLastBuiltFingerprint(buildServiceParams.getBuildFingerprint());
+            serviceDataService.save(service);
+        }
+        catch(StatusRuntimeException e){
+            service.getDockerBuildInfo().setDockerBuildStatus(FstepServiceDockerBuildInfo.Status.ERROR);
+            serviceDataService.save(service);
+        }
+        responseObserver.onCompleted();
+    }
+ 
 
 }

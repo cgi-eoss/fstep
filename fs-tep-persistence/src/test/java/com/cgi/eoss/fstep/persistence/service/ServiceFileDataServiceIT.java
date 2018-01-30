@@ -18,6 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
 
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -62,5 +64,50 @@ public class ServiceFileDataServiceIT {
         // Verify text file recovery
         assertThat(dataService.getById(serviceFile.getId()).getContent().getBytes(), is(fileBytes));
     }
+    
+    @Test
+    public void testServiceFingerprint() throws Exception {
+        User owner = new User("owner-uid");
+        User owner2 = new User("owner-uid2");
+        userService.save(ImmutableSet.of(owner, owner2));
+
+        FstepService svc = new FstepService();
+        svc.setName("Test Service");
+        svc.setOwner(owner);
+        svc.setDockerTag("dockerTag");
+        
+        FstepService svc2 = new FstepService();
+        svc2.setName("Test Service 2");
+        svc2.setOwner(owner);
+        svc2.setDockerTag("dockerTag");
+        serviceDataService.save(svc);
+        serviceDataService.save(svc2);
+        
+        String serviceFingerPrint = serviceDataService.computeServiceFingerprint(svc);
+        
+        assertThat(serviceFingerPrint, is(notNullValue()));
+        
+        byte[] fileBytes = Files.readAllBytes(Paths.get(getClass().getResource("/testService/Dockerfile").toURI()));
+        FstepServiceContextFile serviceFile = new FstepServiceContextFile();
+        serviceFile.setService(svc);
+        serviceFile.setFilename("Dockerfile");
+        serviceFile.setContent(new String(fileBytes));
+        dataService.save(serviceFile);
+        serviceDataService.save(svc);
+        
+        String newServiceFingerPrint = serviceDataService.computeServiceFingerprint(svc);
+        assertThat(serviceFingerPrint, is(not(newServiceFingerPrint)));
+        
+        serviceFile.setService(svc2);
+        dataService.save(serviceFile);
+        
+        serviceDataService.save(svc);
+        
+        String shouldBeRestoredServiceFingerPrint = serviceDataService.computeServiceFingerprint(svc);
+        
+        assertThat(serviceFingerPrint, is((shouldBeRestoredServiceFingerPrint)));
+        
+        
+  }
 
 }

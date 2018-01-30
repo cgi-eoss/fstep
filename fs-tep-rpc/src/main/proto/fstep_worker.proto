@@ -10,6 +10,7 @@ option java_package = "com.cgi.eoss.fstep.rpc.worker";
 service FstepWorker {
     rpc PrepareEnvironment (JobInputs) returns (JobEnvironment);
     rpc PrepareInputs (JobInputs) returns (JobEnvironment);
+    rpc PrepareDockerImage (DockerImageConfig) returns (PrepareDockerImageResponse);
     rpc LaunchContainer (JobDockerConfig) returns (LaunchContainerResponse);
     rpc ExecuteServiceCmd (ServiceCmd) returns (ServiceCmdResponse);
     rpc GetPortBindings (Job) returns (PortBindings);
@@ -65,6 +66,11 @@ message JobDockerConfig {
     string dockerImage = 3;
     repeated string binds = 4;
     repeated string ports = 5;
+}
+
+message DockerImageConfig {
+    string serviceName = 1;
+    string dockerImage = 2;
 }
 
 message LaunchContainerResponse {
@@ -139,4 +145,7 @@ message OutputFileResponse {
         FileMeta meta = 1;
         Chunk chunk = 2;
     }
+}
+
+message PrepareDockerImageResponse {
 }
