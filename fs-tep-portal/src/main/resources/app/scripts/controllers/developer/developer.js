@@ -9,7 +9,7 @@
 
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('DeveloperCtrl', ['$scope', 'TabService', 'MessageService', function ($scope, TabService, MessageService) {
+    fstepmodules.controller('DeveloperCtrl', ['$scope', 'TabService', 'MessageService', 'CommonService', function ($scope, TabService, MessageService, CommonService) {
 
         $scope.developerSideNavs = TabService.getDeveloperSideNavs();
         $scope.navInfo = TabService.navInfo.developer;
@@ -21,6 +21,10 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.$on('update.messages', function(event, job) {
             $scope.message.count = MessageService.countMessages();
         });
+
+        $scope.getColorForStatus = function(status){
+            return CommonService.getColor(status);
+        };
 
         $scope.toggleBottomView = function(){
             $scope.bottombarNavInfo.bottomViewVisible = !$scope.bottombarNavInfo.bottomViewVisible;
