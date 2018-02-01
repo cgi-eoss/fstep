@@ -216,6 +216,9 @@ public class FstepSearchProvider extends RestoSearchProvider {
             List<Collection> readableCollections = collectionDataService.getAll().stream()
             .filter(collection -> securityService.isReadableByCurrentUser(Collection.class, collection.getId()))
             .collect(Collectors.toList());
+            if (readableCollections.size()  == 0) {
+                return catalogueService.getDefaultOutputProductCollection();
+            }
             Collection defaultCollection = readableCollections.stream()
             .filter(c -> c.getIdentifier().equals(catalogueService.getDefaultOutputProductCollection()))
             .findFirst().orElse(readableCollections.get(0));

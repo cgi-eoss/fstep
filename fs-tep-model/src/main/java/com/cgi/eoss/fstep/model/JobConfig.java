@@ -32,7 +32,7 @@ import javax.persistence.UniqueConstraint;
 @ToString(exclude = {"inputs", "parent"})
 @Table(name = "fstep_job_configs",
         indexes = {@Index(name = "fstep_job_configs_service_idx", columnList = "service"), @Index(name = "fstep_job_configs_owner_idx", columnList = "owner"), @Index(name = "fstep_job_configs_label_idx", columnList = "label")},
-        uniqueConstraints = @UniqueConstraint(columnNames = {"owner", "service", "inputs"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"owner", "service", "inputs", "parent", "systematic_parameter"}))
 @NoArgsConstructor
 @Entity
 public class JobConfig implements FstepEntityWithOwner<JobConfig> {
@@ -79,6 +79,12 @@ public class JobConfig implements FstepEntityWithOwner<JobConfig> {
      */
     @Column(name = "label")
     private String label;
+    
+    /**
+     * <p>Tag and identify parameter that will be dynamically getting values </p>
+     */
+    @Column(name = "systematic_parameter")
+    private String systematicParameter;
 
     /**
      * <p>Create a new JobConfig instance with the minimum required parameters.</p>

@@ -33,7 +33,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                     type: 'date',
                     defaultValue: '0',
                     description: 'UTC',
-                    title: 'Processing start'
+                    title: 'Product start date'
                 },
                 productDateEnd: {
                     type: 'date',
@@ -41,7 +41,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                     description: 'UTC',
                     optional: true,
                     format: 'YYYY-MM-DD[T23:59:59Z]',
-                    title: 'Processing end'
+                    title: 'Product end date'
                 }
             }
 

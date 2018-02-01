@@ -176,7 +176,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                 // TODO Use the CatalogueUri pattern to determine file attributes
                 String[] pathComponents = uri.getPath().split("/");
                 String jobId = pathComponents[1];
-                String filename = pathComponents[2];
+                String filename = pathComponents[pathComponents.length-1];
                 return outputProductService.getWmsUrl(jobId, filename);
             default:
                 return null;

@@ -21,10 +21,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.rpc.CancelJobParams;
 import com.cgi.eoss.fstep.rpc.CancelJobResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
+import com.cgi.eoss.fstep.rpc.RelaunchFailedJobParams;
+import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
 import com.cgi.eoss.fstep.rpc.StopServiceResponse;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -160,6 +163,24 @@ public class JobsApiExtension {
         localServiceLauncher.asyncCancelJob(cancelJobParams, responseObserver);
         
     }
+    
+    @GetMapping("/{jobId}/relaunchFailed")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#job, 'write')")
+    @ResponseBody
+    public void relaunchFailedJob(@ModelAttribute("jobId") Job job) throws IOException {
+        RelaunchFailedJobParams.Builder relaunchJobParamsBuilder = RelaunchFailedJobParams.newBuilder()
+                .setJob(GrpcUtil.toRpcJob(job));
+        
+        RelaunchFailedJobParams relaunchJobParams = relaunchJobParamsBuilder.build();
+
+        LOG.info("Relaunching failed job via REST API: {}", relaunchJobParams);
+        
+        final CountDownLatch latch = new CountDownLatch(1);
+        JobRelaunchObserver responseObserver = new JobRelaunchObserver(latch);
+
+        localServiceLauncher.asyncRelaunchFailedJob(relaunchJobParams, responseObserver);
+        
+    }
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -222,6 +243,30 @@ public class JobsApiExtension {
         @Override
         public void onError(Throwable t) {
             LOG.error("Failed to cancel job via REST API", t);
+        }
+
+        @Override
+        public void onCompleted() {
+            // No-op, the user has long stopped listening here
+        }
+    }
+    
+    private static final class JobRelaunchObserver implements StreamObserver<RelaunchFailedJobResponse> {
+        private final CountDownLatch latch;
+
+        JobRelaunchObserver(CountDownLatch latch) {
+            this.latch = latch;
+        }
+
+        @Override
+        public void onNext(RelaunchFailedJobResponse value) {
+            LOG.debug("Received RealunchFailedJobResponse: {}", value);
+            latch.countDown();
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            LOG.error("Failed to relaunch job via REST API", t);
         }
 
         @Override
