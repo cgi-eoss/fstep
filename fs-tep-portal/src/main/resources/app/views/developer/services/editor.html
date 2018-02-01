@@ -70,43 +70,52 @@
             <div class="col-md-1 service-field no-padding">
             </div>
         </div>
-    </section>
+        <div class="row build-status">
+            <label >Container build status:</label>
+            <md-content layout="row" layout-align="start center" flex="50" ng-switch on="serviceParams.selectedService.buildStatus.status">
 
-    <!--section id="user-mount-points">
-        <h4>User mount points mapping</h4>
-        <div class="row" ng-repeat="mount in serviceParams.selectedService.userMounts">
-            <md-input-container md-no-float>
-                <label>Mount Point</label>
-                <md-select ng-model="mount.src" required>
-                    <md-option ng-repeat="mount in userMounts" ng-value="mount.id">
-                        {{mount.name}}
-                    </md-option>
-                </md-select>
-            </md-input-container>
-            <md-input-container md-no-float>
-                <label>Container location</label>
-                <input ng-model="mount.dst" type="text" placeholder="Path" aria-label="Path" required>
-            </md-input-container>
-            <md-button ng-click="serviceParams.selectedService.userMounts.splice($index, 1)"
-                        class="remove-button"
-                        aria-label="Remove Mount"
-                        uib-tooltip="Remove Mount"
-                        tooltip-trigger="mouseenter"
-                        tooltip-append-to-body="true">
-                <i class="material-icons">remove</i>
-            </md-button>
+                <md-content ng-switch-when="NOT_STARTED" layout="row" layout-align="start center" flex style="{{getColorForStatus('Warning')}}">
+                    <i class="material-icons">warning</i>
+                    <span>Build required</span>
+                </md-content>
+                <md-content ng-switch-when="ONGOING" layout="row" layout-align="start center" flex style="{{getColorForStatus('RUNNING')}}">
+                    <md-progress-circular md-diameter="20px" md-mode="indeterminate"></md-progress-circular>
+                    <span>Build running</span>
+                </md-content>
+                <md-content ng-switch-when="COMPLETED" layout="row" layout-align="start center" flex style="{{getColorForStatus('COMPLETED')}}">
+                    <i class="material-icons">check</i>
+                    <span>Build success</span>
+                </md-content>
+                <md-content ng-switch-when="ERROR" layout="row" layout-align="start center" flex style="{{getColorForStatus('ERROR')}}">
+                    <i class="material-icons">error</i>
+                    <span>Build error</span>
+                </md-content>
+                <md-button
+                    class="md-icon-button"
+                    aria-label="Build"
+                    ng-click="refreshServiceStatus(serviceParams.selectedService)"
+                    uib-tooltip="Refresh status"
+                    tooltip-placement="top"
+                    tooltip-trigger="mouseenter"
+                    tooltip-append-to-body="true"
+                >
+                    <i class="material-icons">refresh</i>
+                </md-button>
+                <md-button
+                    class="md-icon-button"
+                    aria-label="Build"
+                    ng-if="serviceParams.selectedService.buildStatus.needsBuild && serviceParams.selectedService.buildStatus.status != 'ONGOING'"
+                    ng-click="rebuildServiceContainer(serviceParams.selectedService)"
+                    uib-tooltip="Build container"
+                    tooltip-placement="top"
+                    tooltip-trigger="mouseenter"
+                    tooltip-append-to-body="true"
+                >
+                    <i class="material-icons">build</i>
+                </md-button>
+            </md-content>
         </div>
-        <div class="row">
-            <md-button ng-click="serviceParams.selectedService.userMounts.push({})"
-                class="remove-button"
-                aria-label="Add Mount"
-                uib-tooltip="Add Mount"
-                tooltip-trigger="mouseenter"
-                tooltip-append-to-body="true">
-                <i class="material-icons">add</i>
-            </md-button>
-        </div>
-    </section-->
+    </section>
 
     <section>
         <ul id="editor-area-list">
@@ -132,8 +141,8 @@
                             {{file.tree}} {{file.name}}
                         </td>
                         <td class="remove-file">
-                            <span ng-click="deleteFileDialog($event, file)"
-                                  ng-hide="file.filename === 'Dockerfile' || file.filename === 'workflow.sh'"
+                            <span ng-click="deleteFileDialog($event, file.contents)"
+                                  ng-hide="file.name === 'Dockerfile' || file.name === 'workflow.sh'"
                                   aria-label="Delete File"
                                   uib-tooltip="Delete File"
                                   tooltip-placement="top"
