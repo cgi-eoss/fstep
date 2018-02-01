@@ -163,10 +163,6 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             }
         };
 
-        $scope.pastePolygon = function(identifier){
-            $scope.serviceParams.inputValues[identifier] = MapService.getPolygonWkt();
-        };
-
         /** DRAG-AND-DROP FILES TO THE INPUT FIELD **/
         $scope.onDrop = function(dropObject, fieldId) {
             if($scope.serviceParams.dropLists[fieldId] === undefined){
