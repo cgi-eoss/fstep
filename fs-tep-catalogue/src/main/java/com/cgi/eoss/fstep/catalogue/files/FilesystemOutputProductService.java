@@ -65,21 +65,22 @@ public class FilesystemOutputProductService implements OutputProductService {
         }
         LOG.info("Ingesting output at {}", dest);
 
-        String geoserverUrl = null;
-        
-        if (properties.containsKey("geoServerSpec")) {
-            GeoServerSpec geoServerSpec = (GeoServerSpec) properties.get("geoServerSpec");
-            try {
-                geoserverUrl = geoserver.ingest(dest, geoServerSpec);
-            } catch (Exception e) {
-                LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+        if (geoserver.isIngestibleFile(dest.getFileName().toString())) {
+            //TODO link geoserver URL to catalogue
+            if (properties.containsKey("geoServerSpec")) {
+                GeoServerSpec geoServerSpec = (GeoServerSpec) properties.get("geoServerSpec");
+                try {
+                    geoserver.ingest(dest, geoServerSpec);
+                } catch (Exception e) {
+                    LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+                }
             }
-        }
-        else {
-            try {
-                geoserverUrl = geoserver.ingest(jobId, dest, crs);
-            } catch (Exception e) {
-                LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+            else {
+                try {
+                    geoserver.ingest(jobId, dest, crs);
+                } catch (Exception e) {
+                    LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+                }
             }
         }
  

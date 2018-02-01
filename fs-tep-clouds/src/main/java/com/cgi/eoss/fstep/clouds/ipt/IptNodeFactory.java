@@ -120,7 +120,7 @@ public class IptNodeFactory implements NodeFactory {
             LOG.info("Provisioning IPT image '{}' to server '{}'", provisioningConfig.getNodeImageId(), sc.getName());
             server = osClient.compute().servers().bootAndWaitActive(sc, SERVER_STARTUP_TIMEOUT_MILLIS);
 
-            if (provisioningConfig.provisionFloatingIp) {
+            if (provisioningConfig.isProvisionFloatingIp()) {
                 floatingIp = getFloatingIp(osClient);
                 osClient.compute().floatingIps().addFloatingIP(server, floatingIp.getFloatingIpAddress());
                 LOG.info("Allocated floating IP to server: {} to {}", floatingIp.getFloatingIpAddress(), server.getId());
@@ -196,6 +196,15 @@ public class IptNodeFactory implements NodeFactory {
             ssh.exec("sudo mkdir -p " + dataBaseDirStr);
             ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + baseDir + " " + baseDir);
             ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + dataBaseDirStr + " " + dataBaseDirStr);
+            String additionalNfsMountsStr = provisioningConfig.getAdditionalNfsMounts();
+            if (additionalNfsMountsStr != null) {
+                String[] additionalNfsMounts = additionalNfsMountsStr.split(",");
+                for (String additionalNfsMount: additionalNfsMounts) {
+                    ssh.exec("sudo mkdir -p " + additionalNfsMount);
+                    ssh.exec("sudo mount -t nfs " + provisioningConfig.getNfsHost() + ":" + additionalNfsMount + " " + additionalNfsMount);
+                }
+                
+            }
             // TODO Use/create a certificate authority for secure docker communication
             LOG.info("Launching dockerd listening on tcp://0.0.0.0:{}", DEFAULT_DOCKER_PORT);
             with().pollInterval(FIVE_HUNDRED_MILLISECONDS)
@@ -203,8 +212,22 @@ public class IptNodeFactory implements NodeFactory {
                     .await("Successfully launched Dockerd")
                     .until(() -> {
                         try {
-                            ssh.exec("echo '{\"hosts\":[\"tcp://0.0.0.0:" + DEFAULT_DOCKER_PORT + "\"]}' | sudo tee /etc/docker/daemon.json");
-                            ssh.exec("sudo systemctl start docker.service");
+                            StringBuffer dockerConf = new StringBuffer();
+                            dockerConf.append("{");
+                            String dockerHost = "\"hosts\":[\"tcp://0.0.0.0:" + DEFAULT_DOCKER_PORT + "\"]";
+                            dockerConf.append(dockerHost);
+                            if (provisioningConfig.getInsecureRegistries() != null){
+                                dockerConf.append(",");
+                                dockerConf.append("\"insecure-registries\":[");
+                                String[] insecureRegistriesList = provisioningConfig.getInsecureRegistries().split(",");
+                                String elems = Arrays.stream(insecureRegistriesList).map(s -> "\""+ s + "\"").collect(Collectors.joining(", "));
+                                dockerConf.append(elems);
+                                dockerConf.append("]");
+                            }
+                            dockerConf.append("}");
+                            
+                            ssh.exec("echo '"+ dockerConf + "'" + "| sudo tee /etc/docker/daemon.json");
+                            ssh.exec("sudo systemctl restart docker.service");
                             return ssh.exec("sudo systemctl status docker.service | grep 'API listen on \\[::\\]:2375'").getExitStatus() == 0;
                         } catch (Exception e) {
                             return false;

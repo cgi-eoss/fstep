@@ -13,5 +13,7 @@ final class ProvisioningConfig {
     private final String floatingIpPool;
     private final String networkId;
     private final String nfsHost;
-    public boolean provisionFloatingIp;
+    private final  String additionalNfsMounts;
+    private boolean provisionFloatingIp;
+    private String insecureRegistries;
 }

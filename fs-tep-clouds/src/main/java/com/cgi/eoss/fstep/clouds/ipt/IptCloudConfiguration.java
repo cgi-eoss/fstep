@@ -58,6 +58,12 @@ public class IptCloudConfiguration {
 
     @Value("${fstep.clouds.ipt.node.nfsHost}")
     private String nfsHost;
+    
+    @Value("${fstep.clouds.ipt.node.additionalNfsMounts}")
+    private String additionalNfsMounts;
+    
+    @Value("${fstep.clouds.ipt.node.insecureRegistries}")
+    private String insecureRegistries;
 
     @Bean
     public IOSClientBuilder.V3 osClientBuilder() {
@@ -86,7 +92,9 @@ public class IptCloudConfiguration {
                         .securityGroupName(securityGroupName)
                         .networkId(networkId)
                         .nfsHost(nfsHost)
+                        .additionalNfsMounts(additionalNfsMounts)
                         .provisionFloatingIp(provisionFloatingIp)
+                        .insecureRegistries(insecureRegistries)
                         .build()
         );
     }
