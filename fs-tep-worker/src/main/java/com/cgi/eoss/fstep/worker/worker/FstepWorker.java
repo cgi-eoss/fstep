@@ -120,7 +120,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     }
     
     @Autowired(required = false)
-    public DockerRegistryConfig setDockerRegistryConfig(DockerRegistryConfig dockerRegistryConfig) {
+    public void setDockerRegistryConfig(DockerRegistryConfig dockerRegistryConfig) {
         this.dockerRegistryConfig = dockerRegistryConfig;
     }
     
