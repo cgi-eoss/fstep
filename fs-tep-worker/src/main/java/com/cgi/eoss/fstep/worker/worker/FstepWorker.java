@@ -112,15 +112,16 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     
     @Autowired
     public FstepWorker(FstepWorkerNodeManager nodeManager, JobEnvironmentService jobEnvironmentService,
-            ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes,
-            Optional<DockerRegistryConfig> dockerRegistryConfig) {
+            ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes) {
         this.nodeManager = nodeManager;
         this.jobEnvironmentService = jobEnvironmentService;
         this.inputOutputManager = inputOutputManager;
         this.minWorkerNodes = minWorkerNodes;
-        if (dockerRegistryConfig.isPresent()) {
-            this.dockerRegistryConfig = dockerRegistryConfig.get();
-        }
+    }
+    
+    @Autowired(required = false)
+    public DockerRegistryConfig setDockerRegistryConfig(DockerRegistryConfig dockerRegistryConfig) {
+        this.dockerRegistryConfig = dockerRegistryConfig;
     }
     
     @PostConstruct

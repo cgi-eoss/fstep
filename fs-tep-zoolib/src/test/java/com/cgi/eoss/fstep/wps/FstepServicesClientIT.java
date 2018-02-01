@@ -150,7 +150,7 @@ public class FstepServicesClientIT {
         FstepSecurityService securityService = mock(FstepSecurityService.class);
 
         FstepServiceLauncher fstepServiceLauncher = new FstepServiceLauncher(workerFactory, jobDataService, guiService, catalogueService, costingService, securityService);
-        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 0, null);
+        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 0);
 
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
 
