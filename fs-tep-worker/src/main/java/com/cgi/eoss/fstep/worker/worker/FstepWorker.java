@@ -135,15 +135,15 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     
     @Override
     public void prepareEnvironment(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
-    		try {
+            try {
                 nodeManager.provisionNodeForJob(jobEnvironmentService.getBaseDir(), request.getJob().getId());
             } catch (NodeProvisioningException e) {
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             }
-		prepareInputs(request, responseObserver);
+        prepareInputs(request, responseObserver);
     }
     
-	@Override
+    @Override
     public void prepareInputs(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
             try {
@@ -202,7 +202,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
         }
     }
 
-	
+    
    @Override
    public void prepareDockerImage(DockerImageConfig request, StreamObserver<PrepareDockerImageResponse> responseObserver) {
         DockerClient dockerClient;
@@ -229,7 +229,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(new Exception(errorMessage))));
         }
     }
-	
+    
     @Override
     public void launchContainer(JobDockerConfig request, StreamObserver<LaunchContainerResponse> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
