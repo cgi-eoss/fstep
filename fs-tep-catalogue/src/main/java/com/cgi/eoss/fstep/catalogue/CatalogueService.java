@@ -110,7 +110,7 @@ public interface CatalogueService {
      * @param collection
      * @return
      */
-    public boolean createOutputCollection(Collection collection) throws IOException;
+    public boolean createOutputCollection(Collection collection);
     
     /**
      * <p>Deletes the underlying collection represented by the collection parameter
@@ -119,7 +119,7 @@ public interface CatalogueService {
      * @return 
      * 
      */
-    public boolean deleteOutputCollection(Collection collection) throws IOException;
+    public boolean deleteOutputCollection(Collection collection);
 
     /**
      * <p>Check that the user has write access on the collection

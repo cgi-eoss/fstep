@@ -336,21 +336,13 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     }
 
     @Override
-    public boolean createOutputCollection(Collection collection) throws IOException {
-        if (outputProductService.createCollection(collection)) {
-            collectionDataService.save(collection);
-            return true;
-        }
-        return false;
+    public boolean createOutputCollection(Collection collection) {
+        return outputProductService.createCollection(collection); 
     }
 
     @Override
-    public boolean deleteOutputCollection(Collection collection) throws IOException {
-        if (outputProductService.deleteCollection(collection)) {
-            collectionDataService.delete(collection);
-            return true;
-        }
-        return false;
+    public boolean deleteOutputCollection(Collection collection) {
+        return outputProductService.deleteCollection(collection);
     }
 
 }
