@@ -40,6 +40,7 @@ import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.Wallet;
+import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.orchestrator.service.FstepGuiServiceManager;
 import com.cgi.eoss.fstep.orchestrator.service.FstepServiceLauncher;
@@ -125,8 +126,8 @@ public class FstepServicesClientIT {
             return outputPath;
         });
         when(catalogueService.ingestOutputProduct(any(), any())).thenAnswer(invocation -> {
-            OutputProductMetadata outputProductMetadata = (OutputProductMetadata) invocation.getArgument(1);
-            Path outputPath = (Path) invocation.getArgument(2);
+            OutputFileMetadata outputFileMetadata = (OutputFileMetadata) invocation.getArgument(0);
+            Path outputPath = (Path) invocation.getArgument(1);
             FstepFile fstepFile = new FstepFile(URI.create("fstep://outputs/" + ingestedOutputsDir.relativize(outputPath)), UUID.randomUUID());
             fstepFile.setFilename(ingestedOutputsDir.relativize(outputPath).toString());
             return fstepFile;
