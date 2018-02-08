@@ -3,6 +3,7 @@ package com.cgi.eoss.fstep.catalogue;
 import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
 import okhttp3.HttpUrl;
@@ -51,7 +52,7 @@ public interface CatalogueService {
      * @return
      * @throws IOException
      */
-    FstepFile ingestOutputProduct(String collection, OutputProductMetadata outputProduct, Path path) throws IOException;
+    FstepFile ingestOutputProduct(OutputFileMetadata outputFileMetadata, Path path) throws IOException;
     
     /**
      * <p>Returns the identifier of the default output collection</p>

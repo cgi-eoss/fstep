@@ -27,6 +27,10 @@ public class FstepServerClient {
     public CatalogueServiceGrpc.CatalogueServiceBlockingStub catalogueServiceBlockingStub() {
         return CatalogueServiceGrpc.newBlockingStub(getChannel());
     }
+    
+    public CatalogueServiceGrpc.CatalogueServiceStub catalogueServiceStub() {
+        return CatalogueServiceGrpc.newStub(getChannel());
+    }
 
     private ManagedChannel getChannel() {
         ServiceInstance fstepServer = Iterables.getOnlyElement(discoveryClient.getInstances(fstepServerServiceId));

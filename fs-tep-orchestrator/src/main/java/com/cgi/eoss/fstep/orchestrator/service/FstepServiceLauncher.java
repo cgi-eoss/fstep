@@ -5,10 +5,10 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +38,7 @@ import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
+import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
 import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.logging.Logging;
@@ -49,8 +49,14 @@ import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.JobStep;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
+import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
+import com.cgi.eoss.fstep.model.internal.OutputFileMetadata.OutputFileMetadataBuilder;
+import com.cgi.eoss.fstep.model.internal.OutputProductMetadata.OutputProductMetadataBuilder;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.rpc.FileStream;
+import com.cgi.eoss.fstep.rpc.FileStreamClient;
 import com.cgi.eoss.fstep.rpc.FstepServiceLauncherGrpc;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
 import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
@@ -68,13 +74,16 @@ import com.cgi.eoss.fstep.rpc.worker.GetOutputFileParam;
 import com.cgi.eoss.fstep.rpc.worker.JobDockerConfig;
 import com.cgi.eoss.fstep.rpc.worker.JobEnvironment;
 import com.cgi.eoss.fstep.rpc.worker.JobInputs;
-import com.cgi.eoss.fstep.rpc.worker.LaunchContainerResponse;
 import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
-import com.cgi.eoss.fstep.rpc.worker.OutputFileResponse;
-import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.MapType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
@@ -161,7 +170,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
                 SetMultimap<String, FstepFile> parallelJobOutputs = executeParallelJob(job, rpcJob, rpcInputs, worker);
                 jobOutputFiles.putAll(parallelJobOutputs);
             } else {
-                Map<String, FstepFile> jobOutputs = executeJob(job, rpcJob, rpcInputs, worker);
+                Multimap<String, FstepFile> jobOutputs = executeJob(job, rpcJob, rpcInputs, worker);
                 jobOutputs.forEach(jobOutputFiles::put);
             }
 
@@ -208,7 +217,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         try {
             FstepWorkerGrpc.FstepWorkerBlockingStub worker = Optional.ofNullable(jobWorkers.get(rpcJob)).orElseThrow(() -> new IllegalStateException("FS-TEP worker not found for job " + rpcJob.getId()));
             LOG.info("Stop requested for job {}", rpcJob.getId());
-            StopContainerResponse stopContainerResponse = worker.stopContainer(rpcJob);
+            worker.stopContainer(rpcJob);
             LOG.info("Successfully stopped job {}", rpcJob.getId());
             responseObserver.onNext(StopServiceResponse.newBuilder().build());
             responseObserver.onCompleted();
@@ -285,7 +294,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
             LOG.info("Launching child job {} ({}) for job {} ({})", parallelJob.getExtId(), parallelJob.getId(), job.getExtId(), job.getId());
 
             jobFutures.add(listeningExecutorService.submit(Unchecked.runnable(() -> {
-                Map<String, FstepFile> parallelJobOutputs = executeJob(parallelJob, parallelRpcJob, parallelRpcInputs, worker);
+                Multimap<String, FstepFile> parallelJobOutputs = executeJob(parallelJob, parallelRpcJob, parallelRpcInputs, worker);
                 parallelJobOutputs.forEach(jobOutputFiles::put);
             })));
         }
@@ -310,9 +319,8 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         return jobOutputFiles;
     }
 
-    private Map<String, FstepFile> executeJob(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, List<JobParam> rpcInputs, FstepWorkerGrpc.FstepWorkerBlockingStub worker) throws IOException {
+    private Multimap<String, FstepFile> executeJob(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, List<JobParam> rpcInputs, FstepWorkerGrpc.FstepWorkerBlockingStub worker) throws Exception {
         String zooId = job.getExtId();
-        String userId = job.getOwner().getName();
         FstepService service = job.getConfig().getService();
         Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
 
@@ -336,16 +344,15 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         waitForContainerExit(job, rpcJob, worker, inputs);
 
         // Enumerate files in the job output directory
-        Map<String, String> outputsByRelativePath = listOutputFiles(job, rpcJob, worker, jobEnvironment);
+        Multimap<String, String> outputsByRelativePath = listOutputFiles(job, rpcJob, worker, jobEnvironment);
 
         // Repatriate output files
-        Map<String, FstepFile> outputFiles = repatriateAndIngestOutputFiles(job, rpcJob, worker, inputs, jobEnvironment, outputsByRelativePath);
+        Multimap<String, FstepFile> outputFiles = repatriateAndIngestOutputFiles(job, rpcJob, worker, inputs, jobEnvironment, outputsByRelativePath);
 
         job.setStatus(Job.Status.COMPLETED);
-        job.setOutputs(outputFiles.entrySet().stream().collect(toMultimap(
-                e -> e.getKey(),
-                e -> e.getValue().getUri().toString(),
-                MultimapBuilder.hashKeys().hashSetValues()::build)));
+        job.setOutputs(outputFiles.entries().stream()
+                .collect(toMultimap(e -> e.getKey(), e -> e.getValue().getUri().toString(),
+                        MultimapBuilder.hashKeys().hashSetValues()::build)));
         job.setOutputFiles(ImmutableSet.copyOf(outputFiles.values()));
         jobDataService.save(job);
 
@@ -391,7 +398,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         LOG.info("Launching docker container for job {}", job.getExtId());
         job.setStage(JobStep.PROCESSING.getText());
         jobDataService.save(job);
-        LaunchContainerResponse launchContainerResponse = worker.launchContainer(dockerConfigBuilder.build());
+        worker.launchContainer(dockerConfigBuilder.build());
         LOG.info("Job {} ({}) launched for service: {}", job.getId(), job.getExtId(), service.getName());
     }
 
@@ -424,95 +431,163 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         jobDataService.save(job);
     }
 
-    private Map<String, String> listOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, FstepWorkerGrpc.FstepWorkerBlockingStub worker, JobEnvironment jobEnvironment) {
+    private Multimap<String, String> listOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
+            FstepWorkerGrpc.FstepWorkerBlockingStub worker, JobEnvironment jobEnvironment)
+            throws Exception {
         FstepService service = job.getConfig().getService();
 
         OutputFileList outputFileList = worker.listOutputFiles(ListOutputFilesParam.newBuilder()
-                .setJob(rpcJob)
-                .setOutputsRootPath(jobEnvironment.getOutputDir())
-                .build());
+                .setJob(rpcJob).setOutputsRootPath(jobEnvironment.getOutputDir()).build());
         List<String> relativePaths = outputFileList.getItemsList().stream()
-                .map(OutputFileItem::getRelativePath)
-                .collect(Collectors.toList());
+                .map(OutputFileItem::getRelativePath).collect(toList());
 
-        Map<String, String> outputsByRelativePath;
-
+        Multimap<String, String> outputsByRelativePath;
         if (service.getType() == FstepService.Type.APPLICATION) {
-            // Collect all files in the output directory with simple index IDs
-            outputsByRelativePath = IntStream.range(0, relativePaths.size())
-                    .boxed()
-                    .collect(toMap(i -> Integer.toString(i + 1), relativePaths::get));
+            outputsByRelativePath = IntStream.range(0, relativePaths.size()).boxed()
+            .collect(ArrayListMultimap::create, (mm,i) -> mm.put(Integer.toString(i+1), relativePaths.get(i)), Multimap::putAll);
+            
         } else {
             // Ensure we have one file per expected output
-            Set<String> expectedServiceOutputIds = service.getServiceDescriptor().getDataOutputs().stream()
-                    .map(FstepServiceDescriptor.Parameter::getId).collect(toSet());
-            outputsByRelativePath = new HashMap<>(expectedServiceOutputIds.size());
-
+            Set<String> expectedServiceOutputIds = service.getServiceDescriptor().getDataOutputs()
+                    .stream().map(FstepServiceDescriptor.Parameter::getId).collect(toSet());
+            outputsByRelativePath = ArrayListMultimap.create();
+            
             for (String expectedOutputId : expectedServiceOutputIds) {
-                Optional<String> relativePath = relativePaths.stream()
+                List<String> relativePathValues = relativePaths.stream()
                         .filter(path -> path.startsWith(expectedOutputId + "/"))
-                        .reduce((a, b) -> null);
-                if (relativePath.isPresent()) {
-                    outputsByRelativePath.put(expectedOutputId, relativePath.get());
+                        .collect(Collectors.toList());
+                if (relativePathValues.size() > 0) {
+                    outputsByRelativePath.putAll(expectedOutputId, relativePathValues);
                 } else {
-                    throw new ServiceExecutionException(String.format("Did not find expected single output for '%s' in outputs list: %s", expectedOutputId, relativePaths));
+                    throw new Exception(String.format(
+                            "Did not find a minimum of 1 output for '%s' in outputs list: %s",
+                            expectedOutputId, relativePathValues));
                 }
             }
         }
-
         return outputsByRelativePath;
     }
 
-    private Map<String, FstepFile> repatriateAndIngestOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, FstepWorkerGrpc.FstepWorkerBlockingStub worker, Multimap<String, String> inputs, JobEnvironment jobEnvironment, Map<String, String> outputsByRelativePath) throws IOException {
-        Map<String, FstepFile> outputFiles = new HashMap<>(outputsByRelativePath.size());
+    private Multimap<String, FstepFile> repatriateAndIngestOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
+            FstepWorkerGrpc.FstepWorkerBlockingStub worker, Multimap<String, String> inputs, JobEnvironment jobEnvironment,
+            Multimap<String, String> outputsByRelativePath) throws IOException, InterruptedException {
+        List<RetrievedOutputFile> retrievedOutputFiles = new ArrayList<RetrievedOutputFile>(outputsByRelativePath.size());
 
-        for (Map.Entry<String, String> output : outputsByRelativePath.entrySet()) {
-            String outputId = output.getKey();
-            String relativePath = output.getValue();
+        Multimap<String, FstepFile> outputFiles = ArrayListMultimap.create();
+        Map<String, GeoServerSpec> geoServerSpecs = getGeoServerSpecs(inputs);
+        Map<String, String> collectionSpecs = getCollectionSpecs(inputs);
 
-            Iterator<OutputFileResponse> outputFile = worker.getOutputFile(GetOutputFileParam.newBuilder()
-                    .setJob(rpcJob)
-                    .setPath(Paths.get(jobEnvironment.getOutputDir()).resolve(relativePath).toString())
-                    .build());
+        for (String outputId : outputsByRelativePath.keySet()) {
+            OutputProductMetadata outputProduct = getOutputMetadata(job, geoServerSpecs, collectionSpecs, outputId);
 
-            // First message is the file metadata
-            OutputFileResponse.FileMeta fileMeta = outputFile.next().getMeta();
-            LOG.info("Collecting output '{}' with filename {} ({} bytes)", outputId, fileMeta.getFilename(), fileMeta.getSize());
+            for (String relativePath : outputsByRelativePath.get(outputId)) {
+                GetOutputFileParam getOutputFileParam = GetOutputFileParam.newBuilder().setJob(rpcJob)
+                        .setPath(Paths.get(jobEnvironment.getOutputDir()).resolve(relativePath).toString()).build();
 
-            OutputProductMetadata outputProduct = OutputProductMetadata.builder()
-                    .owner(job.getOwner())
-                    .service(job.getConfig().getService())
-                    .jobId(job.getExtId())
-                    .crs(Iterables.getOnlyElement(inputs.get("crs"), null))
-                    .geometry(Iterables.getOnlyElement(inputs.get("aoi"), null))
-                    .properties(new HashMap<>(ImmutableMap.<String, Object>builder()
-                            .put("jobId", job.getExtId())
-                            .put("intJobId", job.getId())
-                            .put("serviceName", job.getConfig().getService().getName())
-                            .put("jobOwner", job.getOwner().getName())
-                            .put("jobStartTime", job.getStartTime().atOffset(ZoneOffset.UTC).toString())
-                            .put("jobEndTime", job.getEndTime().atOffset(ZoneOffset.UTC).toString())
-                            .put("filename", fileMeta.getFilename())
-                            .build()))
-                    .build();
+                FstepWorkerGrpc.FstepWorkerStub asyncWorker = FstepWorkerGrpc.newStub(worker.getChannel());
 
-            // TODO Configure whether files need to be transferred via RPC or simply copied
-            Path outputPath = catalogueService.provisionNewOutputProduct(outputProduct, fileMeta.getFilename());
-            LOG.info("Writing output file for job {}: {}", job.getExtId(), outputPath);
-            try (BufferedOutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(outputPath, CREATE, TRUNCATE_EXISTING, WRITE))) {
-                outputFile.forEachRemaining(Unchecked.consumer(of -> of.getChunk().getData().writeTo(outputStream)));
+                try (FileStreamClient<GetOutputFileParam> fileStreamClient = new FileStreamClient<GetOutputFileParam>() {
+                    private OutputFileMetadata outputFileMetadata;
+
+                    @Override
+                    public OutputStream buildOutputStream(FileStream.FileMeta fileMeta) throws IOException {
+                        LOG.info("Collecting output '{}' with filename {} ({} bytes)", outputId, fileMeta.getFilename(),
+                                fileMeta.getSize());
+
+                        OutputFileMetadataBuilder outputFileMetadataBuilder = OutputFileMetadata.builder();
+
+                        outputFileMetadata = outputFileMetadataBuilder.outputProductMetadata(outputProduct)
+                                .build();
+
+                        setOutputPath(catalogueService.provisionNewOutputProduct(outputProduct, fileMeta.getFilename()));
+                        LOG.info("Writing output file for job {}: {}", job.getExtId(), getOutputPath());
+                        return new BufferedOutputStream(Files.newOutputStream(getOutputPath(), CREATE, TRUNCATE_EXISTING, WRITE));
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        super.onCompleted();
+                        retrievedOutputFiles.add(new RetrievedOutputFile(outputFileMetadata, getOutputPath()));
+                    }
+                }) {
+                    asyncWorker.getOutputFile(getOutputFileParam, fileStreamClient.getFileStreamObserver());
+                    fileStreamClient.getLatch().await();
+                }
             }
-
-            // Try to read CRS/AOI from the file if not set by input parameters - note that CRS/AOI may still be null after this
-            outputProduct.setCrs(Optional.ofNullable(outputProduct.getCrs()).orElse(getOutputCrs(outputPath)));
-            outputProduct.setGeometry(Optional.ofNullable(outputProduct.getGeometry()).orElse(getOutputGeometry(outputPath)));
-
-            outputFiles.put(outputId, catalogueService.ingestOutputProduct(catalogueService.getDefaultOutputProductCollection(), outputProduct, outputPath));
         }
-
+        postProcessOutputProducts(retrievedOutputFiles).forEach( Unchecked.consumer(retrievedOutputFile -> outputFiles.put(retrievedOutputFile.getOutputFileMetadata().getOutputProductMetadata().getOutputId(), catalogueService.ingestOutputProduct(retrievedOutputFile.getOutputFileMetadata(), retrievedOutputFile.getPath()))));
         return outputFiles;
     }
 
+    private OutputProductMetadata getOutputMetadata(Job job, Map<String, GeoServerSpec> geoServerSpecs,
+            Map<String, String> collectionSpecs, String outputId) {
+        OutputProductMetadataBuilder outputProductMetadataBuilder = OutputProductMetadata.builder()
+                .owner(job.getOwner())
+                .service(job.getConfig().getService())
+                .outputId(outputId)
+                .jobId(job.getExtId());
+                
+        
+        HashMap<String, Object> properties = new HashMap<>(ImmutableMap.<String, Object>builder()
+                .put("jobId", job.getExtId()).put("intJobId", job.getId())
+                .put("serviceName", job.getConfig().getService().getName())
+                .put("jobOwner", job.getOwner().getName())
+                .put("jobStartTime",
+                        job.getStartTime().atOffset(ZoneOffset.UTC).toString())
+                .put("jobEndTime", job.getEndTime().atOffset(ZoneOffset.UTC).toString())
+                .build());
+        
+        GeoServerSpec geoServerSpecForOutput = geoServerSpecs.get(outputId);
+        if (geoServerSpecForOutput != null) {
+            properties.put("geoServerSpec", geoServerSpecForOutput);
+        }
+        
+        String collectionSpecForOutput = collectionSpecs.get(outputId);
+        if (collectionSpecForOutput == null) {
+            properties.put("collection", geoServerSpecForOutput);
+        }
+        
+
+        OutputProductMetadata outputProduct = outputProductMetadataBuilder.productProperties(properties).build();
+        return outputProduct;
+    }
+
+        
+    private List<RetrievedOutputFile> postProcessOutputProducts(List<RetrievedOutputFile> retrievedOutputFiles) throws IOException {
+        // Try to read CRS/AOI from all files - note that CRS/AOI may still be null after this
+        retrievedOutputFiles.forEach(retrievedOutputFile -> {
+            retrievedOutputFile.getOutputFileMetadata().setCrs(getOutputCrs(retrievedOutputFile.getPath()));
+            retrievedOutputFile.getOutputFileMetadata().setGeometry(getOutputGeometry(retrievedOutputFile.getPath()));
+        });
+
+        return retrievedOutputFiles;
+    }
+
+    
+    private Map<String, GeoServerSpec> getGeoServerSpecs(Multimap<String, String> inputs) throws JsonParseException, JsonMappingException, IOException {
+        String geoServerSpecsStr = Iterables.getOnlyElement(inputs.get("geoServerSpec"), null);
+        Map<String, GeoServerSpec> geoServerSpecs = new HashMap<String, GeoServerSpec>();
+        if (geoServerSpecsStr != null && geoServerSpecsStr.length() > 0) {
+            ObjectMapper mapper = new ObjectMapper();
+                TypeFactory typeFactory = mapper.getTypeFactory();
+                MapType mapType = typeFactory.constructMapType(HashMap.class, String.class, GeoServerSpec.class);
+                geoServerSpecs.putAll(mapper.readValue(geoServerSpecsStr, mapType));
+        }
+        return geoServerSpecs;
+    }
+    
+    private Map<String, String> getCollectionSpecs(Multimap<String, String> inputs) throws JsonParseException, JsonMappingException, IOException {
+        String collectionsStr = Iterables.getOnlyElement(inputs.get("collection"), null);
+        Map<String, String> collectionSpecs = new HashMap<String, String>();
+        if (collectionsStr != null && collectionsStr.length() > 0) {
+            ObjectMapper mapper = new ObjectMapper();
+                TypeFactory typeFactory = mapper.getTypeFactory();
+                MapType mapType = typeFactory.constructMapType(HashMap.class, String.class, String.class);
+                collectionSpecs.putAll(mapper.readValue(collectionsStr, mapType));
+        }
+        return collectionSpecs;
+    }
+    
     private String getOutputCrs(Path outputPath) {
         try {
             return GeoUtil.extractEpsg(outputPath);

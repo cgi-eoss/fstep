@@ -18,7 +18,8 @@ service FstepWorker {
     rpc WaitForContainerExit (ExitParams) returns (ContainerExitCode);
     rpc WaitForContainerExitWithTimeout (ExitWithTimeoutParams) returns (ContainerExitCode);
     rpc ListOutputFiles (ListOutputFilesParam) returns (OutputFileList);
-    rpc GetOutputFile (GetOutputFileParam) returns (stream OutputFileResponse);
+    rpc GetOutputFile (GetOutputFileParam) returns (stream FileStream);
+    rpc CleanUp (Job) returns (CleanUpResponse);
 }
 
 message JobSpec {
@@ -132,20 +133,8 @@ message GetOutputFileParam {
     string path = 2;
 }
 
-message OutputFileResponse {
-    message FileMeta {
-        string filename = 1;
-        int64 size = 2;
-    }
-    message Chunk {
-        int64 position = 1;
-        bytes data = 2;
-    }
-    oneof Payload {
-        FileMeta meta = 1;
-        Chunk chunk = 2;
-    }
+message PrepareDockerImageResponse {
 }
 
-message PrepareDockerImageResponse {
+message CleanUpResponse {
 }

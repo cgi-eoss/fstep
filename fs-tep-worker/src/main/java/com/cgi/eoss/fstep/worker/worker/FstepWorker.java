@@ -1,37 +1,11 @@
 package com.cgi.eoss.fstep.worker.worker;
 
-import java.io.IOException;
-import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.annotation.PostConstruct;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.CloseableThreadContext;
-import org.jooq.lambda.Unchecked;
-import org.lognet.springboot.grpc.GRpcService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.logging.Logging;
+import com.cgi.eoss.fstep.rpc.FileStream;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
@@ -48,27 +22,33 @@ import com.cgi.eoss.fstep.rpc.worker.LaunchContainerResponse;
 import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
-import com.cgi.eoss.fstep.rpc.worker.OutputFileResponse;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.rpc.worker.PortBindings;
-import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
 import com.cgi.eoss.fstep.rpc.worker.PrepareDockerImageResponse;
+import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
 import com.cgi.eoss.fstep.worker.DockerRegistryConfig;
 import com.cgi.eoss.fstep.worker.docker.DockerClientFactory;
 import com.cgi.eoss.fstep.worker.docker.Log4jContainerCallback;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
-import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import javax.annotation.PostConstruct;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.CloseableThreadContext;
+import org.jooq.lambda.Unchecked;
+import org.lognet.springboot.grpc.GRpcService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
 import shadow.dockerjava.com.github.dockerjava.api.command.BuildImageCmd;
 import shadow.dockerjava.com.github.dockerjava.api.command.CreateContainerCmd;
@@ -85,15 +65,30 @@ import shadow.dockerjava.com.github.dockerjava.core.command.BuildImageResultCall
 import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
 import shadow.dockerjava.com.github.dockerjava.core.command.PushImageResultCallback;
 import shadow.dockerjava.com.github.dockerjava.core.command.WaitContainerResultCallback;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 /**
  * <p>Service for executing FS-TEP (WPS) services inside Docker containers.</p>
  */
 @GRpcService
 @Log4j2
 public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
-
-    private static final int FILE_STREAM_CHUNK_BYTES = 8192;
-  
+    
     private FstepWorkerNodeManager nodeManager;
     private final JobEnvironmentService jobEnvironmentService;
     private final ServiceInputOutputManager inputOutputManager;
@@ -457,37 +452,23 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     }
 
     @Override
-    public void getOutputFile(GetOutputFileParam request, StreamObserver<OutputFileResponse> responseObserver) {
+    public void getOutputFile(GetOutputFileParam request, StreamObserver<FileStream> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
             try {
                 Path outputFile = Paths.get(request.getPath());
                 long outputFileSize = Files.size(outputFile);
                 LOG.info("Returning output file from job {}: {} ({} bytes)", request.getJob().getId(), outputFile, outputFileSize);
 
-                // First message is the metadata
-                OutputFileResponse.FileMeta fileMeta = OutputFileResponse.FileMeta.newBuilder()
-                        .setFilename(outputFile.getFileName().toString())
-                        .setSize(outputFileSize)
-                        .build();
-                responseObserver.onNext(OutputFileResponse.newBuilder().setMeta(fileMeta).build());
-
-                // Then read the file, chunked at 8kB
-                LocalDateTime startTime = LocalDateTime.now();
-                try (SeekableByteChannel channel = Files.newByteChannel(outputFile, StandardOpenOption.READ)) {
-                    ByteBuffer buffer = ByteBuffer.allocate(FILE_STREAM_CHUNK_BYTES);
-                    int position = 0;
-                    while (channel.read(buffer) > 0) {
-                        int size = buffer.position();
-                        buffer.rewind();
-                        responseObserver.onNext(OutputFileResponse.newBuilder().setChunk(OutputFileResponse.Chunk.newBuilder()
-                                .setPosition(position)
-                                .setData(ByteString.copyFrom(buffer, size))
-                                .build()).build());
-                        position += buffer.position();
-                        buffer.flip();
-                    }
+                Stopwatch stopwatch = Stopwatch.createStarted();
+                try (ReadableByteChannel channel = Files.newByteChannel(outputFile, StandardOpenOption.READ)) {
+                    GrpcUtil.streamFile(
+                            responseObserver,
+                            outputFile.getFileName().toString(),
+                            outputFileSize,
+                            channel
+                    );
                 }
-                LOG.info("Transferred output file {} ({} bytes) in {}", outputFile.getFileName(), outputFileSize, Duration.between(startTime, LocalDateTime.now()));
+                LOG.info("Transferred output file {} ({} bytes) in {}", outputFile.getFileName(), outputFileSize, stopwatch.stop().elapsed());
 
                 responseObserver.onCompleted();
             } catch (Exception e) {

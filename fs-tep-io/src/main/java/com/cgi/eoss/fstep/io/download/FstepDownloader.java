@@ -1,5 +1,7 @@
 package com.cgi.eoss.fstep.io.download;
 
+import com.cgi.eoss.fstep.rpc.FileStream;
+import com.cgi.eoss.fstep.rpc.FileStreamClient;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
 import com.cgi.eoss.fstep.rpc.GetServiceContextFilesParams;
 import com.cgi.eoss.fstep.rpc.ServiceContextFiles;
@@ -7,7 +9,6 @@ import com.cgi.eoss.fstep.rpc.ShortFile;
 import com.cgi.eoss.fstep.rpc.catalogue.CatalogueServiceGrpc;
 import com.cgi.eoss.fstep.rpc.catalogue.Databasket;
 import com.cgi.eoss.fstep.rpc.catalogue.DatabasketContents;
-import com.cgi.eoss.fstep.rpc.catalogue.FileResponse;
 import com.cgi.eoss.fstep.rpc.catalogue.FstepFile;
 import com.cgi.eoss.fstep.rpc.catalogue.FstepFileUri;
 import com.google.common.collect.ImmutableSet;
@@ -20,6 +21,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -107,22 +109,26 @@ public class FstepDownloader implements Downloader {
     }
 
     private Path downloadFstepFile(Path targetDir, URI uri) throws IOException {
-        CatalogueServiceGrpc.CatalogueServiceBlockingStub catalogueService = fstepServerClient.catalogueServiceBlockingStub();
+        FstepFileUri fstepFileUri = FstepFileUri.newBuilder().setUri(uri.toString()).build();
 
-        Iterator<FileResponse> outputFile = catalogueService.downloadFstepFile(FstepFileUri.newBuilder().setUri(uri.toString()).build());
+        CatalogueServiceGrpc.CatalogueServiceStub catalogueService = fstepServerClient.catalogueServiceStub();
 
-        // First message is the file metadata
-        FileResponse.FileMeta fileMeta = outputFile.next().getMeta();
-
-        // TODO Configure whether files need to be transferred via RPC or simply copied
-        Path outputPath = targetDir.resolve(fileMeta.getFilename());
-        LOG.info("Transferring FstepFile ({} bytes) to {}", fileMeta.getSize(), outputPath);
-
-        try (BufferedOutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(outputPath, CREATE, TRUNCATE_EXISTING, WRITE))) {
-            outputFile.forEachRemaining(Unchecked.consumer(of -> of.getChunk().getData().writeTo(outputStream)));
+        try (FileStreamClient<FstepFileUri> fileStreamClient = new FileStreamClient<FstepFileUri>() {
+            @Override
+            public OutputStream buildOutputStream(FileStream.FileMeta fileMeta) throws IOException {
+                setOutputPath(targetDir.resolve(fileMeta.getFilename()));
+                LOG.info("Transferring FstepFile ({} bytes) to {}", fileMeta.getSize(), getOutputPath());
+                return new BufferedOutputStream(Files.newOutputStream(getOutputPath(), CREATE, TRUNCATE_EXISTING, WRITE));
+            }
+        }) {
+            catalogueService.downloadFstepFile(fstepFileUri, fileStreamClient.getFileStreamObserver());
+            fileStreamClient.getLatch().await();
+            return fileStreamClient.getOutputPath();
+        } catch (InterruptedException e) {
+            // Restore interrupted state, then re-throw
+            Thread.currentThread().interrupt();
+            throw new IOException(e);
         }
-
-        return outputPath;
     }
 
     private Path downloadDatabasket(Path targetDir, URI uri) {

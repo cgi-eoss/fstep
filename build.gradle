@@ -90,7 +90,7 @@ allprojects {
                 entry 'cucumber-junit'
                 entry 'cucumber-picocontainer'
             }
-            dependencySet(group: 'io.grpc', version: '1.5.0') {
+            dependencySet(group: 'io.grpc', version: '1.7.0') {
                 entry 'grpc-netty'
                 entry 'grpc-protobuf'
                 entry 'grpc-stub'
