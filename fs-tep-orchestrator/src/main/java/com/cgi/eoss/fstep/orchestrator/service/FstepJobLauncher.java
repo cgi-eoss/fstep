@@ -823,6 +823,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 if (relativePathValues.size() > 0) {
                     outputsByRelativePath.putAll(expectedOutputId, relativePathValues);
                 } else {
+                    try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                        LOG.error("Did not find a minimum of one output file for output id '%s'",
+                                expectedOutputId);
+                    }
                     throw new Exception(String.format(
                             "Did not find a minimum of 1 output for '%s' in outputs list: %s",
                             expectedOutputId, relativePathValues));
