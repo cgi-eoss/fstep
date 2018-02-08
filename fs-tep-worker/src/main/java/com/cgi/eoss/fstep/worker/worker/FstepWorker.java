@@ -56,6 +56,7 @@ import shadow.dockerjava.com.github.dockerjava.api.command.InspectContainerRespo
 import shadow.dockerjava.com.github.dockerjava.api.command.PullImageCmd;
 import shadow.dockerjava.com.github.dockerjava.api.command.PushImageCmd;
 import shadow.dockerjava.com.github.dockerjava.api.exception.DockerClientException;
+import shadow.dockerjava.com.github.dockerjava.api.exception.NotFoundException;
 import shadow.dockerjava.com.github.dockerjava.api.model.AuthConfig;
 import shadow.dockerjava.com.github.dockerjava.api.model.Bind;
 import shadow.dockerjava.com.github.dockerjava.api.model.ExposedPort;
@@ -245,7 +246,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                     try {
                         pullDockerImage(dockerClient, imageTag);
                     }
-                    catch(DockerClientException e) {
+                    catch(DockerClientException | NotFoundException e) {
                         LOG.info("Failed to pull image {} from registry '{}'", imageTag, dockerRegistryConfig.getDockerRegistryUrl());
                     }
                 }
