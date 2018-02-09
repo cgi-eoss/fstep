@@ -824,8 +824,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     outputsByRelativePath.putAll(expectedOutputId, relativePathValues);
                 } else {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
-                        LOG.error("Did not find a minimum of one output file for output id '%s'",
-                                expectedOutputId);
+                        LOG.info("Service defined output with ID '{}' but no matching directory was found in the job outputs", expectedOutputId);
                     }
                     throw new Exception(String.format(
                             "Did not find a minimum of 1 output for '%s' in outputs list: %s",
