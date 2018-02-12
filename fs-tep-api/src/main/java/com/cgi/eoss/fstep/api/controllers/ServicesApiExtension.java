@@ -57,15 +57,15 @@ public class ServicesApiExtension {
      */
     @GetMapping("/{serviceId}/buildStatus")
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#service, 'administration')")
-    public ResponseEntity<BuildStatus> buildStatus(@ModelAttribute("serviceId") FstepService fstepService) {
-        String currentServiceFingerprint = serviceDataService.computeServiceFingerprint(fstepService);
-        boolean needsBuild = needsBuild(fstepService, currentServiceFingerprint);
+    public ResponseEntity<BuildStatus> buildStatus(@ModelAttribute("serviceId") FstepService service) {
+        String currentServiceFingerprint = serviceDataService.computeServiceFingerprint(service);
+        boolean needsBuild = needsBuild(service, currentServiceFingerprint);
         FstepServiceDockerBuildInfo.Status status;
-        if (fstepService.getDockerBuildInfo() == null) {
+        if (service.getDockerBuildInfo() == null) {
             status = FstepServiceDockerBuildInfo.Status.NOT_STARTED;
         }
         else {
-            status = fstepService.getDockerBuildInfo().getDockerBuildStatus();
+            status = service.getDockerBuildInfo().getDockerBuildStatus();
         }
         BuildStatus buildStatus = new BuildStatus(needsBuild, status);
         return new ResponseEntity<BuildStatus>(buildStatus, HttpStatus.OK);
@@ -90,28 +90,28 @@ public class ServicesApiExtension {
      */
     @PostMapping("/{serviceId}/build")
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#service, 'administration')")
-    public ResponseEntity build(@ModelAttribute("serviceId") FstepService fstepService) {
-        FstepServiceDockerBuildInfo dockerBuildInfo = fstepService.getDockerBuildInfo();
+    public ResponseEntity build(@ModelAttribute("serviceId") FstepService service) {
+        FstepServiceDockerBuildInfo dockerBuildInfo = service.getDockerBuildInfo();
         
         if (dockerBuildInfo != null && dockerBuildInfo.getDockerBuildStatus().equals(FstepServiceDockerBuildInfo.Status.ONGOING)) {
             return new ResponseEntity<>("A build is already ongoing",  HttpStatus.CONFLICT);
         }
         else {
-            String currentServiceFingerprint = serviceDataService.computeServiceFingerprint(fstepService);
-            if (needsBuild(fstepService, currentServiceFingerprint)) {
-                LOG.info("Building service via REST API: {}", fstepService.getName());
+            String currentServiceFingerprint = serviceDataService.computeServiceFingerprint(service);
+            if (needsBuild(service, currentServiceFingerprint)) {
+                LOG.info("Building service via REST API: {}", service.getName());
                 if (dockerBuildInfo == null) {
                     dockerBuildInfo = new FstepServiceDockerBuildInfo();
-                    fstepService.setDockerBuildInfo(dockerBuildInfo);
+                    service.setDockerBuildInfo(dockerBuildInfo);
                 }
                 dockerBuildInfo.setDockerBuildStatus(Status.ONGOING);
-                serviceDataService.save(fstepService);
+                serviceDataService.save(service);
                 BuildServiceParams.Builder buildServiceParamsBuilder = BuildServiceParams.newBuilder()
                         .setUserId(fstepSecurityService.getCurrentUser().getName())
-                        .setServiceId(String.valueOf(fstepService.getId()))
+                        .setServiceId(String.valueOf(service.getId()))
                         .setBuildFingerprint(currentServiceFingerprint);
                 BuildServiceParams buildServiceParams = buildServiceParamsBuilder.build();
-                buildService(fstepService, buildServiceParams);
+                buildService(service, buildServiceParams);
                 return new ResponseEntity<>( HttpStatus.ACCEPTED);
             }
             else {
