@@ -2,7 +2,6 @@ package com.cgi.eoss.fstep.persistence.service;
 
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.User;
-
 import java.util.List;
 
 public interface ServiceDataService extends
@@ -13,5 +12,7 @@ public interface ServiceDataService extends
     FstepService getByName(String serviceName);
 
     List<FstepService> findAllAvailable();
+
+    String computeServiceFingerprint(FstepService fstepService);
 
 }

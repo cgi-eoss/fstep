@@ -14,11 +14,22 @@ service FstepServiceLauncher {
 }
 
 service FstepJobLauncher {
-	rpc SubmitJob (FstepServiceParams) returns (stream FstepServiceResponse);
+	rpc BuildService (BuildServiceParams) returns (BuildServiceResponse);
+    rpc SubmitJob (FstepServiceParams) returns (stream FstepServiceResponse);
     rpc CancelJob (CancelJobParams) returns (CancelJobResponse);
     rpc StopJob (StopServiceParams) returns (StopServiceResponse);
     rpc RelaunchFailedJob (RelaunchFailedJobParams) returns (RelaunchFailedJobResponse);
     
+}
+
+message BuildServiceParams {
+    string userId = 1;
+    string serviceId = 2;
+    string buildFingerprint = 3;
+}
+
+message BuildServiceResponse {
+   
 }
 
 message FstepServiceParams {

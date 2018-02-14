@@ -11,7 +11,6 @@ import com.google.common.base.Strings;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.NumberPath;
-import java.io.IOException;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -46,30 +45,27 @@ public class CollectionsApiImpl extends BaseRepositoryApiImpl<Collection> implem
 
     @Override
     public <S extends Collection> S save(S collection) {
-        try {
-            if (collection.getOwner() == null) {
-                getSecurityService().updateOwnerWithCurrentUser(collection);
-            }
+        if (collection.getOwner() == null) {
+            getSecurityService().updateOwnerWithCurrentUser(collection);
+        }
+        if (collection.getIdentifier() == null) {
             collection.setIdentifier("fstep" + UUID.randomUUID().toString().replaceAll("-", ""));
             //TODO can be extended to ref data collections
-            if (catalogueService.createOutputCollection(collection)) {
-                return collection;
+            if (!catalogueService.createOutputCollection(collection)) {
+                throw new RuntimeException("Failed to create underlyig output collection ");
             }
-            else {
-                throw new RuntimeException("Failed to create requested collection ");
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
+        return dao.save(collection);
     }
     
     @Override
     public void delete(Collection collection) {
         //TODO can be extended to ref data collections
-        try {
-            catalogueService.deleteOutputCollection(collection);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (catalogueService.deleteOutputCollection(collection)) {
+            dao.delete(collection);
+        }
+        else {
+            throw new RuntimeException("Failed to delete underlying output collection");
         }
     }
 

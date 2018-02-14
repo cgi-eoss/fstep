@@ -1780,6 +1780,16 @@
 #developer-container .right-container #service-form #service-header #service-summary {
   width: 100%;
 }
+#developer-container .right-container #service-form #service-header .build-status md-content {
+  padding: 0 0.5rem;
+  overflow: hidden;
+}
+#developer-container .right-container #service-form #service-header .build-status md-content md-progress-circular {
+  margin: 2px 0;
+}
+#developer-container .right-container #service-form #service-header .build-status md-content span {
+  margin-left: 0.5rem;
+}
 #developer-container .right-container #service-form #editor-area-list {
   border-bottom: #d2d2d2 solid 1px;
   list-style-type: none;
