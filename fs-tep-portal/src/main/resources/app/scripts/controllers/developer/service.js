@@ -167,6 +167,23 @@ define(['../../fstepmodules'], function (fstepmodules) {
             });
         };
 
+        $scope.rebuildServiceContainer = function(service) {
+            service.buildStatus = {
+                needsBuild: false,
+                status: 'ONGOING'
+            };
+
+            ProductService.rebuildServiceContainer(service).then(function() {
+                ProductService.updateBuildStatus(service);
+            }, function() {
+                ProductService.updateBuildStatus(service);
+            });
+        }
+
+        $scope.refreshServiceStatus = function(service) {
+            ProductService.updateBuildStatus(service);
+        }
+
         $scope.createFileDialog = function($event){
             function CreateFileController($scope, $mdDialog, ProductService) {
 

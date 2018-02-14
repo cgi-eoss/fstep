@@ -5,12 +5,12 @@ import com.cgi.eoss.fstep.model.FstepServiceContextFile;
 import com.cgi.eoss.fstep.persistence.service.RpcServiceFileService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceFileDataService;
+import com.cgi.eoss.fstep.rpc.FileStream;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
 import com.cgi.eoss.fstep.rpc.ServiceContextFilesServiceGrpc;
 import com.cgi.eoss.fstep.rpc.catalogue.CatalogueServiceGrpc;
 import com.cgi.eoss.fstep.rpc.catalogue.Databasket;
 import com.cgi.eoss.fstep.rpc.catalogue.DatabasketContents;
-import com.cgi.eoss.fstep.rpc.catalogue.FileResponse;
 import com.cgi.eoss.fstep.rpc.catalogue.FstepFile;
 import com.cgi.eoss.fstep.rpc.catalogue.FstepFileUri;
 import com.google.common.collect.ImmutableList;
@@ -83,9 +83,11 @@ public class FstepDownloaderTest {
 
         ServiceContextFilesServiceGrpc.ServiceContextFilesServiceBlockingStub serviceContextFilesServiceBlockingStub = ServiceContextFilesServiceGrpc.newBlockingStub(channelBuilder.build());
         CatalogueServiceGrpc.CatalogueServiceBlockingStub catalogueServiceBlockingStub = CatalogueServiceGrpc.newBlockingStub(channelBuilder.build());
+        CatalogueServiceGrpc.CatalogueServiceStub catalogueServiceStub = CatalogueServiceGrpc.newStub(channelBuilder.build());
         when(fstepServerClient.serviceContextFilesServiceBlockingStub()).thenReturn(serviceContextFilesServiceBlockingStub);
         when(fstepServerClient.catalogueServiceBlockingStub()).thenReturn(catalogueServiceBlockingStub);
-
+        when(fstepServerClient.catalogueServiceStub()).thenReturn(catalogueServiceStub);
+        
         this.dl = new FstepDownloader(fstepServerClient, new CachingSymlinkDownloaderFacade(cacheRoot));
         this.dl.postConstruct();
     }
@@ -173,20 +175,20 @@ public class FstepDownloaderTest {
         }
 
         @Override
-        public void downloadFstepFile(FstepFileUri request, StreamObserver<FileResponse> responseObserver) {
+        public void downloadFstepFile(FstepFileUri request, StreamObserver<FileStream> responseObserver) {
             try {
                 URI uri = URI.create(request.getUri());
                 Path fileContent = Paths.get(getClass().getResource(uri.getPath()).toURI());
 
                 // First message is the metadata
-                FileResponse.FileMeta fileMeta = FileResponse.FileMeta.newBuilder()
+                FileStream.FileMeta fileMeta = FileStream.FileMeta.newBuilder()
                         .setFilename(fileContent.getFileName().toString())
                         .setSize(Files.size(fileContent))
                         .build();
-                responseObserver.onNext(FileResponse.newBuilder().setMeta(fileMeta).build());
+                responseObserver.onNext(FileStream.newBuilder().setMeta(fileMeta).build());
 
                 // Then the content
-                responseObserver.onNext(FileResponse.newBuilder().setChunk(FileResponse.Chunk.newBuilder()
+                responseObserver.onNext(FileStream.newBuilder().setChunk(FileStream.Chunk.newBuilder()
                         .setPosition(0)
                         .setData(ByteString.copyFrom(Files.readAllBytes(fileContent)))
                         .build()).build());

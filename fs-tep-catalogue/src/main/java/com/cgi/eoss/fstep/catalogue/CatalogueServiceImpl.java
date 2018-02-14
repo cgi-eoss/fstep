@@ -9,6 +9,7 @@ import com.cgi.eoss.fstep.model.DataSource;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
 import com.cgi.eoss.fstep.persistence.service.CollectionDataService;
@@ -16,9 +17,11 @@ import com.cgi.eoss.fstep.persistence.service.DataSourceDataService;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.persistence.service.UserDataService;
+import com.cgi.eoss.fstep.rpc.FileStream;
+import com.cgi.eoss.fstep.rpc.FileStreamIOException;
+import com.cgi.eoss.fstep.rpc.FileStreamServer;
 import com.cgi.eoss.fstep.rpc.catalogue.CatalogueServiceGrpc;
 import com.cgi.eoss.fstep.rpc.catalogue.DatabasketContents;
-import com.cgi.eoss.fstep.rpc.catalogue.FileResponse;
 import com.cgi.eoss.fstep.rpc.catalogue.FstepFileUri;
 import com.cgi.eoss.fstep.rpc.catalogue.UriDataSourcePolicies;
 import com.cgi.eoss.fstep.rpc.catalogue.UriDataSourcePolicy;
@@ -26,13 +29,11 @@ import com.cgi.eoss.fstep.rpc.catalogue.Uris;
 import com.cgi.eoss.fstep.security.FstepPermission;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.google.common.base.Stopwatch;
-import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
@@ -53,9 +54,7 @@ import org.springframework.web.multipart.MultipartFile;
 @GRpcService
 @Log4j2
 public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceImplBase implements CatalogueService {
-
-    private static final int FILE_STREAM_CHUNK_BYTES = 8192;
-
+    
     private final FstepFileDataService fstepFileDataService;
     private final CollectionDataService collectionDataService;
     private final DataSourceDataService dataSourceDataService;
@@ -97,17 +96,22 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     }
     
     @Override
-    public FstepFile ingestOutputProduct(String collection, OutputProductMetadata outputProduct, Path path) throws IOException {
+    public FstepFile ingestOutputProduct(OutputFileMetadata outputFileMetadata, Path path) throws IOException {
+        OutputProductMetadata outputProductMetadata = outputFileMetadata.getOutputProductMetadata();
+        String collection = (String) outputProductMetadata.getProductProperties().get("collection");
+        if (collection == null) {
+            collection = getDefaultOutputProductCollection();
+        }
         ensureOutputCollectionExists(collection);
         FstepFile fstepFile = outputProductService.ingest(
                 collection,
-                outputProduct.getOwner(),
-                outputProduct.getJobId(),
-                outputProduct.getCrs(),
-                outputProduct.getGeometry(),
-                outputProduct.getProperties(),
+                outputProductMetadata.getOwner(),
+                outputProductMetadata.getJobId(),
+                outputFileMetadata.getCrs(),
+                outputFileMetadata.getGeometry(),
+                outputProductMetadata.getProductProperties(),
                 path);
-        fstepFile.setDataSource(dataSourceDataService.getForService(outputProduct.getService()));
+        fstepFile.setDataSource(dataSourceDataService.getForService(outputProductMetadata.getService()));
         fstepFile.setCollection(collectionDataService.getByIdentifier(collection));
         return fstepFileDataService.save(fstepFile);
     }
@@ -221,41 +225,45 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     }
 
     @Override
-    public void downloadFstepFile(FstepFileUri request, StreamObserver<FileResponse> responseObserver) {
-        try {
-            FstepFile file = fstepFileDataService.getByUri(request.getUri());
-            Resource fileResource = getAsResource(file);
+    public void downloadFstepFile(FstepFileUri request, StreamObserver<FileStream> responseObserver) {
+        FstepFile file = fstepFileDataService.getByUri(request.getUri());
+        Resource fileResource = getAsResource(file);
 
-            // First message is the metadata
-            FileResponse.FileMeta fileMeta = FileResponse.FileMeta.newBuilder()
-                    .setFilename(fileResource.getFilename())
-                    .setSize(fileResource.contentLength())
-                    .build();
-            responseObserver.onNext(FileResponse.newBuilder().setMeta(fileMeta).build());
-
-            // Then read the file, chunked at 8kB
-            Stopwatch stopwatch = Stopwatch.createStarted();
-            try (ReadableByteChannel channel = Channels.newChannel(fileResource.getInputStream())) {
-                ByteBuffer buffer = ByteBuffer.allocate(FILE_STREAM_CHUNK_BYTES);
-                int position = 0;
-                while (channel.read(buffer) > 0) {
-                    int size = buffer.position();
-                    buffer.rewind();
-                    responseObserver.onNext(FileResponse.newBuilder().setChunk(FileResponse.Chunk.newBuilder()
-                            .setPosition(position)
-                            .setData(ByteString.copyFrom(buffer, size))
-                            .build()).build());
-                    position += buffer.position();
-                    buffer.flip();
+        try (FileStreamServer fileStreamServer = new FileStreamServer(null, responseObserver) {
+            @Override
+            protected FileStream.FileMeta buildFileMeta() {
+                try {
+                    return FileStream.FileMeta.newBuilder()
+                            .setFilename(fileResource.getFilename())
+                            .setSize(fileResource.contentLength())
+                            .build();
+                } catch (IOException e) {
+                    throw new FileStreamIOException(e);
                 }
             }
-            LOG.info("Transferred FstepFile {} ({} bytes) in {}", fileResource.getFilename(), fileResource.contentLength(), stopwatch.stop().elapsed());
 
-            responseObserver.onCompleted();
-        } catch (Exception e) {
+            @Override
+            protected ReadableByteChannel buildByteChannel() {
+                try {
+                    return Channels.newChannel(fileResource.getInputStream());
+                } catch (IOException e) {
+                    throw new FileStreamIOException(e);
+                }
+            }
+        }) {
+            Stopwatch stopwatch = Stopwatch.createStarted();
+            fileStreamServer.streamFile();
+            LOG.info("Transferred FstepFile {} ({} bytes) in {}", fileResource.getFilename(), fileResource.contentLength(), stopwatch.stop().elapsed());
+        } catch (IOException e) {
+            LOG.error("Failed to serve file download for {}", request.getUri(), e);
+            responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+        } catch (InterruptedException e) {
+            // Restore interrupted state
+            Thread.currentThread().interrupt();
             LOG.error("Failed to serve file download for {}", request.getUri(), e);
             responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
         }
+
     }
 
     @Override
@@ -328,21 +336,13 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     }
 
     @Override
-    public boolean createOutputCollection(Collection collection) throws IOException {
-        if (outputProductService.createCollection(collection)) {
-            collectionDataService.save(collection);
-            return true;
-        }
-        return false;
+    public boolean createOutputCollection(Collection collection) {
+        return outputProductService.createCollection(collection); 
     }
 
     @Override
-    public boolean deleteOutputCollection(Collection collection) throws IOException {
-        if (outputProductService.deleteCollection(collection)) {
-            collectionDataService.delete(collection);
-            return true;
-        }
-        return false;
+    public boolean deleteOutputCollection(Collection collection) {
+        return outputProductService.deleteCollection(collection);
     }
 
 }

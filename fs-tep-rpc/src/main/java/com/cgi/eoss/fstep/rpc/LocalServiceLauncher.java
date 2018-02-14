@@ -47,4 +47,10 @@ public class LocalServiceLauncher {
         FstepJobLauncherGrpc.FstepJobLauncherStub jobLauncher = FstepJobLauncherGrpc.newStub(inProcessChannelBuilder.build());
         jobLauncher.relaunchFailedJob(relaunchJobParams, responseObserver);
     }
+    
+    @Async
+    public void asyncBuildService(BuildServiceParams buildServiceParams, StreamObserver<BuildServiceResponse> responseObserver) {
+        FstepJobLauncherGrpc.FstepJobLauncherStub jobLauncher = FstepJobLauncherGrpc.newStub(inProcessChannelBuilder.build());
+        jobLauncher.buildService(buildServiceParams, responseObserver);
+    }
 }
