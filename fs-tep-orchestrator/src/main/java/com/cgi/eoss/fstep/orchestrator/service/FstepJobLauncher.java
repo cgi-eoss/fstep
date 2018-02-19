@@ -866,7 +866,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                         outputFileMetadata = outputFileMetadataBuilder.outputProductMetadata(outputProduct)
                                 .build();
 
-                        setOutputPath(catalogueService.provisionNewOutputProduct(outputProduct, fileMeta.getFilename()));
+                        setOutputPath(catalogueService.provisionNewOutputProduct(outputProduct, relativePath.toString()));
                         LOG.info("Writing output file for job {}: {}", job.getExtId(), getOutputPath());
                         return new BufferedOutputStream(Files.newOutputStream(getOutputPath(), CREATE, TRUNCATE_EXISTING, WRITE));
                     }
