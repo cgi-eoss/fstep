@@ -910,8 +910,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         }
         
         String collectionSpecForOutput = collectionSpecs.get(outputId);
-        if (collectionSpecForOutput == null) {
-            properties.put("collection", geoServerSpecForOutput);
+        if (collectionSpecForOutput != null) {
+            properties.put("collection", collectionSpecForOutput);
         }
         
 
