@@ -97,7 +97,7 @@ public class FilesystemOutputProductService implements OutputProductService {
         // TODO Get the proper MIME type
         properties.put("resourceMimeType", "application/unknown");
         properties.put("resourceSize", Files.size(dest));
-        properties.put("filename", relativePath.getFileName());
+        properties.put("filename", relativePath.toFile().getName());
         properties.put("resourceChecksum", "sha256=" + MoreFiles.asByteSource(dest).hash(Hashing.sha256()));
         // TODO Add extra properties if needed
         properties.put("extraParams", jsonMapper.writeValueAsString(ImmutableMap.of()));
