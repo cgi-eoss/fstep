@@ -6,6 +6,8 @@ import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.logging.Logging;
 import com.cgi.eoss.fstep.rpc.FileStream;
+import com.cgi.eoss.fstep.rpc.FileStreamIOException;
+import com.cgi.eoss.fstep.rpc.FileStreamServer;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
@@ -78,7 +80,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -455,29 +456,44 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     @Override
     public void getOutputFile(GetOutputFileParam request, StreamObserver<FileStream> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
-            try {
-                Path outputFile = Paths.get(request.getPath());
-                long outputFileSize = Files.size(outputFile);
-                LOG.info("Returning output file from job {}: {} ({} bytes)", request.getJob().getId(), outputFile, outputFileSize);
-
-                Stopwatch stopwatch = Stopwatch.createStarted();
-                try (ReadableByteChannel channel = Files.newByteChannel(outputFile, StandardOpenOption.READ)) {
-                    GrpcUtil.streamFile(
-                            responseObserver,
-                            outputFile.getFileName().toString(),
-                            outputFileSize,
-                            channel
-                    );
+            try (FileStreamServer fileStreamServer = new FileStreamServer(Paths.get(request.getPath()), responseObserver) {
+                @Override
+                protected FileStream.FileMeta buildFileMeta() {
+                    try {
+                        return FileStream.FileMeta.newBuilder()
+                                .setFilename(getInputPath().getFileName().toString())
+                                .setSize(Files.size(getInputPath()))
+                                .build();
+                    } catch (IOException e) {
+                        throw new FileStreamIOException(e);
+                    }
                 }
-                LOG.info("Transferred output file {} ({} bytes) in {}", outputFile.getFileName(), outputFileSize, stopwatch.stop().elapsed());
 
-                responseObserver.onCompleted();
-            } catch (Exception e) {
+                @Override
+                protected ReadableByteChannel buildByteChannel() {
+                    try {
+                        return Files.newByteChannel(getInputPath(), StandardOpenOption.READ);
+                    } catch (IOException e) {
+                        throw new FileStreamIOException(e);
+                    }
+                }
+            }) {
+                LOG.info("Returning output file from job {}: {} ({} bytes)", request.getJob().getId(), fileStreamServer.getInputPath(), fileStreamServer.getFileMeta().getSize());
+                Stopwatch stopwatch = Stopwatch.createStarted();
+                fileStreamServer.streamFile();
+                LOG.info("Transferred output file {} ({} bytes) in {}", fileStreamServer.getInputPath().getFileName(), fileStreamServer.getFileMeta().getSize(), stopwatch.stop().elapsed());
+            } catch (IOException e) {
+                LOG.error("Failed to collect output file: {}", request.toString(), e);
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+            } catch (InterruptedException e) {
+                // Restore interrupted state
+                Thread.currentThread().interrupt();
                 LOG.error("Failed to collect output file: {}", request.toString(), e);
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             }
         }
     }
+
 
     private void cleanUpJob(String jobId) {
         jobContainers.remove(jobId);
