@@ -92,11 +92,12 @@ public class FilesystemOutputProductService implements OutputProductService {
                         "filename", relativePath.toString().replaceAll(File.pathSeparator, "_")));
         long filesize = Files.size(dest);
         // Add automatically-determined properties
-        properties.put("productIdentifier", jobId + "_" + src.toString());
+        properties.put("productIdentifier", jobId + "_" + relativePath.toString());
         properties.put("fstepUrl", uri);
         // TODO Get the proper MIME type
         properties.put("resourceMimeType", "application/unknown");
         properties.put("resourceSize", Files.size(dest));
+        properties.put("filename", relativePath.toFile().getName());
         properties.put("resourceChecksum", "sha256=" + MoreFiles.asByteSource(dest).hash(Hashing.sha256()));
         // TODO Add extra properties if needed
         properties.put("extraParams", jsonMapper.writeValueAsString(ImmutableMap.of()));

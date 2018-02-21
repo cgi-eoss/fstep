@@ -73,30 +73,4 @@ public class GrpcUtil {
                 .build();
     }
     
-    public static void streamFile(StreamObserver<FileStream> observer, String filename, long filesize, ReadableByteChannel byteChannel) throws IOException {
-        streamFile(observer, filename, filesize, byteChannel, DEFAULT_FILE_STREAM_BUFFER_SIZE);
-    }
-
-    public static void streamFile(StreamObserver<FileStream> observer, String filename, long filesize, ReadableByteChannel byteChannel, int bufferSize) throws IOException {
-        // First message carries file metadata
-        FileStream.FileMeta fileMeta = FileStream.FileMeta.newBuilder()
-                .setFilename(filename)
-                .setSize(filesize)
-                .build();
-        observer.onNext(FileStream.newBuilder().setMeta(fileMeta).build());
-
-        // Remaining messages carry the data in chunks of the specified buffer size
-        ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
-        int position = 0;
-        while (byteChannel.read(buffer) > 0) {
-            int size = buffer.position();
-            buffer.rewind();
-            observer.onNext(FileStream.newBuilder().setChunk(FileStream.Chunk.newBuilder()
-                    .setPosition(position)
-                    .setData(ByteString.copyFrom(buffer, size))
-                    .build()).build());
-            position += buffer.position();
-            buffer.flip();
-        }
-    }
 }

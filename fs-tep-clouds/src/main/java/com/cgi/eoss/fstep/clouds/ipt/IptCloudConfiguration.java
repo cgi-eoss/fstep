@@ -59,10 +59,10 @@ public class IptCloudConfiguration {
     @Value("${fstep.clouds.ipt.node.nfsHost}")
     private String nfsHost;
     
-    @Value("${fstep.clouds.ipt.node.additionalNfsMounts}")
+    @Value("${fstep.clouds.ipt.node.additionalNfsMounts:#{null}}")
     private String additionalNfsMounts;
-    
-    @Value("${fstep.clouds.ipt.node.insecureRegistries}")
+
+    @Value("${fstep.clouds.ipt.node.insecureRegistries:#{null}}")
     private String insecureRegistries;
 
     @Bean

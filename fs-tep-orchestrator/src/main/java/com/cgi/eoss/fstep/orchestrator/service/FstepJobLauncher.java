@@ -820,15 +820,14 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 List<String> relativePathValues = relativePaths.stream()
                         .filter(path -> path.startsWith(expectedOutputId + "/"))
                         .collect(Collectors.toList());
+                //TODO Check against user defined min/max occurs 
+                //TODO Evaluate WPS compatibility issues with missing output
                 if (relativePathValues.size() > 0) {
                     outputsByRelativePath.putAll(expectedOutputId, relativePathValues);
                 } else {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.info("Service defined output with ID '{}' but no matching directory was found in the job outputs", expectedOutputId);
                     }
-                    throw new Exception(String.format(
-                            "Did not find a minimum of 1 output for '%s' in outputs list: %s",
-                            expectedOutputId, relativePathValues));
                 }
             }
         }
