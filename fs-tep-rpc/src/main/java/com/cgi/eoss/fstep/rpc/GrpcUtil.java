@@ -3,8 +3,12 @@ package com.cgi.eoss.fstep.rpc;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
+import com.google.protobuf.ByteString;
+import io.grpc.stub.StreamObserver;
 import lombok.experimental.UtilityClass;
-
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.util.List;
 
 /**
@@ -12,6 +16,9 @@ import java.util.List;
  */
 @UtilityClass
 public class GrpcUtil {
+    
+    private static final int DEFAULT_FILE_STREAM_BUFFER_SIZE = 8192;
+    
     /**
      * <p>Convert a gRPC parameters collection to a more convenient {@link Multimap}.</p>
      *
@@ -65,4 +72,5 @@ public class GrpcUtil {
                 .setDockerImageTag(service.getDockerTag())
                 .build();
     }
+    
 }

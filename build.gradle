@@ -90,13 +90,13 @@ allprojects {
                 entry 'cucumber-junit'
                 entry 'cucumber-picocontainer'
             }
-            dependencySet(group: 'io.grpc', version: '1.5.0') {
+            dependencySet(group: 'io.grpc', version: '1.9.0') {
                 entry 'grpc-netty'
                 entry 'grpc-protobuf'
                 entry 'grpc-stub'
                 entry 'protoc-gen-grpc-java'
             }
-            dependency 'io.netty:netty-tcnative-boringssl-static:2.0.5.Final'
+            dependency 'io.netty:netty-tcnative-boringssl-static:2.0.6.Final'
             dependency 'it.geosolutions:geoserver-manager:1.7.0'
             dependency 'javax.cache:cache-api:1.0.0'
             dependency 'javax.servlet:javax.servlet-api:3.1.0'

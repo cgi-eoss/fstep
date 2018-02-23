@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
@@ -110,6 +111,15 @@ public class WorkerConfig {
     @Bean
     public String workerId(@Value("${eureka.instance.metadataMap.workerId:workerId}") String workerId) {
         return workerId;
+    }
+    
+    @Bean
+    @ConditionalOnProperty("fstep.worker.dockerRegistryUrl")
+    public DockerRegistryConfig dockerRegistryConfig(
+            @Value("${fstep.worker.dockerRegistryUrl}") String dockerRegistryUrl,
+            @Value("${fstep.worker.dockerRegistryUsername}") String dockerRegistryUsername,
+            @Value("${fstep.worker.dockerRegistryPassword}") String dockerRegistryPassword) {
+        return new DockerRegistryConfig(dockerRegistryUrl, dockerRegistryUsername, dockerRegistryPassword);
     }
 
     @Bean

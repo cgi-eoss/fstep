@@ -10,6 +10,7 @@ dependencies {
     compile project(':fs-tep-model')
     compile project(':fs-tep-rpc')
 
+	compile 'commons-codec:commons-codec:1.6'
     compile 'com.google.guava:guava'
     compile 'com.querydsl:querydsl-jpa'
     compile 'com.zaxxer:HikariCP'

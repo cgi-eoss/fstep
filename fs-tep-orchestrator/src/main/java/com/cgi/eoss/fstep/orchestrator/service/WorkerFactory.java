@@ -75,6 +75,23 @@ public class WorkerFactory {
 
         return FstepWorkerGrpc.newBlockingStub(managedChannel);
     }
+    
+    /**
+     * @return An existing instance of a worker
+     */
+    public FstepWorkerGrpc.FstepWorkerBlockingStub getOne() {
+        ServiceInstance worker = discoveryClient.getInstances(workerServiceId).stream()
+                .findFirst()
+                .orElseThrow(() -> new UnsupportedOperationException("Unable to find a worker"));
+
+        LOG.info("Located worker: {}:{}", worker.getHost(), worker.getMetadata().get("grpcPort"));
+
+        ManagedChannel managedChannel = ManagedChannelBuilder.forAddress(worker.getHost(), Integer.parseInt(worker.getMetadata().get("grpcPort")))
+                .usePlaintext(true)
+                .build();
+
+        return FstepWorkerGrpc.newBlockingStub(managedChannel);
+    }
 
     public WorkersList listWorkers() {
         WorkersList.Builder result = WorkersList.newBuilder();

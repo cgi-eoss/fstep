@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.worker.docker;
 
+import com.cgi.eoss.fstep.worker.DockerRegistryConfig;
 import org.springframework.stereotype.Component;
 import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
 import shadow.dockerjava.com.github.dockerjava.api.command.DockerCmdExecFactory;
@@ -26,5 +27,25 @@ public class DockerClientFactory {
                 .withDockerCmdExecFactory(dockerCmdExecFactory)
                 .build();
     }
+    
+    public static DockerClient buildDockerClient(String dockerHostUrl, DockerRegistryConfig dockerRegistryConfig) {
+        DockerClientConfig dockerClientConfig = DefaultDockerClientConfig.createDefaultConfigBuilder()
+                .withApiVersion(RemoteApiVersion.VERSION_1_19)
+                .withDockerHost(dockerHostUrl)
+                .withRegistryUrl(dockerRegistryConfig.getDockerRegistryUrl())
+                .withRegistryUsername(dockerRegistryConfig.getDockerRegistryUsername())
+                .withRegistryPassword(dockerRegistryConfig.getDockerRegistryPassword())
+                .build();
+
+        DockerCmdExecFactory dockerCmdExecFactory = new JerseyDockerCmdExecFactory()
+                .withMaxTotalConnections(100)
+                .withMaxPerRouteConnections(10);
+
+        return DockerClientBuilder.getInstance(dockerClientConfig)
+                .withDockerCmdExecFactory(dockerCmdExecFactory)
+                .build();
+    }
+    
+   
 
 }

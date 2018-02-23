@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.model;
 
 import com.cgi.eoss.fstep.model.converters.FstepServiceDescriptorYamlConverter;
+import com.cgi.eoss.fstep.model.converters.FstepServiceDockerBuildInfoYamlConverter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.ComparisonChain;
 import javax.persistence.CascadeType;
@@ -119,6 +120,11 @@ public class FstepService implements FstepEntityWithOwner<FstepService>, Searcha
     @Column(name="target_mount_path", table = "fstep_services_mounts")
     @CollectionTable(name="fstep_services_mounts", joinColumns=@JoinColumn(name="fstep_service_id"))
     private Map<Long, String> additionalMounts = new HashMap<>();
+    
+    @Lob
+    @Convert(converter = FstepServiceDockerBuildInfoYamlConverter.class)
+    @Column(name = "docker_build_info")
+    FstepServiceDockerBuildInfo dockerBuildInfo;
     
     /**
      * <p>Create a new Service with the minimum required parameters.</p>

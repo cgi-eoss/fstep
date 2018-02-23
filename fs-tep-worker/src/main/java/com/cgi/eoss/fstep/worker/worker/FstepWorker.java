@@ -1,39 +1,18 @@
 package com.cgi.eoss.fstep.worker.worker;
 
-import java.io.IOException;
-import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.annotation.PostConstruct;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.CloseableThreadContext;
-import org.jooq.lambda.Unchecked;
-import org.lognet.springboot.grpc.GRpcService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.logging.Logging;
+import com.cgi.eoss.fstep.rpc.FileStream;
+import com.cgi.eoss.fstep.rpc.FileStreamIOException;
+import com.cgi.eoss.fstep.rpc.FileStreamServer;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExitCode;
+import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.ExitParams;
 import com.cgi.eoss.fstep.rpc.worker.ExitWithTimeoutParams;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
@@ -45,45 +24,73 @@ import com.cgi.eoss.fstep.rpc.worker.LaunchContainerResponse;
 import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
-import com.cgi.eoss.fstep.rpc.worker.OutputFileResponse;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.rpc.worker.PortBindings;
+import com.cgi.eoss.fstep.rpc.worker.PrepareDockerImageResponse;
 import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
+import com.cgi.eoss.fstep.worker.DockerRegistryConfig;
 import com.cgi.eoss.fstep.worker.docker.DockerClientFactory;
 import com.cgi.eoss.fstep.worker.docker.Log4jContainerCallback;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
-import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import javax.annotation.PostConstruct;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.CloseableThreadContext;
+import org.jooq.lambda.Unchecked;
+import org.lognet.springboot.grpc.GRpcService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
 import shadow.dockerjava.com.github.dockerjava.api.command.BuildImageCmd;
 import shadow.dockerjava.com.github.dockerjava.api.command.CreateContainerCmd;
 import shadow.dockerjava.com.github.dockerjava.api.command.InspectContainerResponse;
+import shadow.dockerjava.com.github.dockerjava.api.command.PullImageCmd;
+import shadow.dockerjava.com.github.dockerjava.api.command.PushImageCmd;
 import shadow.dockerjava.com.github.dockerjava.api.exception.DockerClientException;
+import shadow.dockerjava.com.github.dockerjava.api.exception.NotFoundException;
+import shadow.dockerjava.com.github.dockerjava.api.model.AuthConfig;
 import shadow.dockerjava.com.github.dockerjava.api.model.Bind;
 import shadow.dockerjava.com.github.dockerjava.api.model.ExposedPort;
+import shadow.dockerjava.com.github.dockerjava.api.model.Image;
 import shadow.dockerjava.com.github.dockerjava.api.model.Ports;
 import shadow.dockerjava.com.github.dockerjava.core.command.BuildImageResultCallback;
+import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
+import shadow.dockerjava.com.github.dockerjava.core.command.PushImageResultCallback;
 import shadow.dockerjava.com.github.dockerjava.core.command.WaitContainerResultCallback;
-
+import java.io.IOException;
+import java.net.URI;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 /**
  * <p>Service for executing FS-TEP (WPS) services inside Docker containers.</p>
  */
 @GRpcService
 @Log4j2
 public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
-
-    private static final int FILE_STREAM_CHUNK_BYTES = 8192;
-  
+    
     private FstepWorkerNodeManager nodeManager;
     private final JobEnvironmentService jobEnvironmentService;
     private final ServiceInputOutputManager inputOutputManager;
@@ -96,14 +103,22 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     private final Multimap<String, URI> jobInputs = MultimapBuilder.hashKeys().hashSetValues().build();
 
     private int minWorkerNodes;
+
+    private DockerRegistryConfig dockerRegistryConfig;
     
     
     @Autowired
-    public FstepWorker(FstepWorkerNodeManager nodeManager, JobEnvironmentService jobEnvironmentService, ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes) {
+    public FstepWorker(FstepWorkerNodeManager nodeManager, JobEnvironmentService jobEnvironmentService,
+            ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes) {
         this.nodeManager = nodeManager;
         this.jobEnvironmentService = jobEnvironmentService;
         this.inputOutputManager = inputOutputManager;
         this.minWorkerNodes = minWorkerNodes;
+    }
+    
+    @Autowired(required = false)
+    public void setDockerRegistryConfig(DockerRegistryConfig dockerRegistryConfig) {
+        this.dockerRegistryConfig = dockerRegistryConfig;
     }
     
     @PostConstruct
@@ -121,20 +136,27 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     
     @Override
     public void prepareEnvironment(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
-    		try {
+            try {
                 nodeManager.provisionNodeForJob(jobEnvironmentService.getBaseDir(), request.getJob().getId());
             } catch (NodeProvisioningException e) {
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             }
-		prepareInputs(request, responseObserver);
+        prepareInputs(request, responseObserver);
     }
     
-	@Override
+    @Override
     public void prepareInputs(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
             try {
                 Node node = nodeManager.getJobNode(request.getJob().getId());
-                DockerClient dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl());
+                DockerClient dockerClient;
+                if (dockerRegistryConfig != null) {
+                    dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl(), 
+                        dockerRegistryConfig);
+                }
+                else {
+                    dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl());
+                }
                 jobClients.put(request.getJob().getId(), dockerClient);
             } catch (Exception e) {
                 try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
@@ -181,6 +203,34 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
         }
     }
 
+    
+   @Override
+   public void prepareDockerImage(DockerImageConfig request, StreamObserver<PrepareDockerImageResponse> responseObserver) {
+        DockerClient dockerClient;
+        if (dockerRegistryConfig != null) {
+            dockerClient = DockerClientFactory.buildDockerClient("unix:///var/run/docker.sock", dockerRegistryConfig);
+            try {
+                String dockerImageTag = dockerRegistryConfig.getDockerRegistryUrl() + "/"+request.getDockerImage();
+                responseObserver.onNext(PrepareDockerImageResponse.newBuilder().build());
+                //Remove previous images with same name
+                removeDockerImage(dockerClient, dockerImageTag);
+                buildDockerImage(dockerClient, request.getServiceName(), dockerImageTag);
+                pushDockerImage(dockerClient, dockerImageTag);
+                dockerClient.close();
+                responseObserver.onCompleted();
+            } catch (IOException e) {
+                responseObserver.onError(e);
+            } catch (InterruptedException e) {
+                responseObserver.onError(e);
+            }
+        }
+        else {
+            String errorMessage = "No docker registry available to prepare the Docker image";
+            LOG.error(errorMessage);
+            responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(new Exception(errorMessage))));
+        }
+    }
+    
     @Override
     public void launchContainer(JobDockerConfig request, StreamObserver<LaunchContainerResponse> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
@@ -190,10 +240,29 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             String containerId = null;
 
             try {
-                buildDockerImage(dockerClient, request.getServiceName(), request.getDockerImage());
-
+                String imageTag;
+                if (dockerRegistryConfig != null) {
+                    imageTag = dockerRegistryConfig.getDockerRegistryUrl() + "/" + request.getDockerImage();
+                    //Get the image from the repository, if available
+                    try {
+                        pullDockerImage(dockerClient, imageTag);
+                    }
+                    catch(DockerClientException | NotFoundException e) {
+                        LOG.info("Failed to pull image {} from registry '{}'", imageTag, dockerRegistryConfig.getDockerRegistryUrl());
+                    }
+                }
+                
+                else {
+                    imageTag = request.getDockerImage();
+                }
+                
+                if (!isImageAvailableLocally(dockerClient, imageTag)) {
+                    LOG.info("Building image '{}' locally", imageTag);
+                    buildDockerImage(dockerClient, request.getServiceName(), imageTag);
+                }
+                
                 // Launch tag
-                try (CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(request.getDockerImage())) {
+                try (CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(imageTag)) {
                     createContainerCmd.withLabels(ImmutableMap.of(
                             "jobId", request.getJob().getId(),
                             "intJobId", request.getJob().getIntJobId(),
@@ -385,45 +454,46 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     }
 
     @Override
-    public void getOutputFile(GetOutputFileParam request, StreamObserver<OutputFileResponse> responseObserver) {
+    public void getOutputFile(GetOutputFileParam request, StreamObserver<FileStream> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
-            try {
-                Path outputFile = Paths.get(request.getPath());
-                long outputFileSize = Files.size(outputFile);
-                LOG.info("Returning output file from job {}: {} ({} bytes)", request.getJob().getId(), outputFile, outputFileSize);
-
-                // First message is the metadata
-                OutputFileResponse.FileMeta fileMeta = OutputFileResponse.FileMeta.newBuilder()
-                        .setFilename(outputFile.getFileName().toString())
-                        .setSize(outputFileSize)
-                        .build();
-                responseObserver.onNext(OutputFileResponse.newBuilder().setMeta(fileMeta).build());
-
-                // Then read the file, chunked at 8kB
-                LocalDateTime startTime = LocalDateTime.now();
-                try (SeekableByteChannel channel = Files.newByteChannel(outputFile, StandardOpenOption.READ)) {
-                    ByteBuffer buffer = ByteBuffer.allocate(FILE_STREAM_CHUNK_BYTES);
-                    int position = 0;
-                    while (channel.read(buffer) > 0) {
-                        int size = buffer.position();
-                        buffer.rewind();
-                        responseObserver.onNext(OutputFileResponse.newBuilder().setChunk(OutputFileResponse.Chunk.newBuilder()
-                                .setPosition(position)
-                                .setData(ByteString.copyFrom(buffer, size))
-                                .build()).build());
-                        position += buffer.position();
-                        buffer.flip();
+            try (FileStreamServer fileStreamServer = new FileStreamServer(Paths.get(request.getPath()), responseObserver) {
+                @Override
+                protected FileStream.FileMeta buildFileMeta() {
+                    try {
+                        return FileStream.FileMeta.newBuilder()
+                                .setFilename(getInputPath().getFileName().toString())
+                                .setSize(Files.size(getInputPath()))
+                                .build();
+                    } catch (IOException e) {
+                        throw new FileStreamIOException(e);
                     }
                 }
-                LOG.info("Transferred output file {} ({} bytes) in {}", outputFile.getFileName(), outputFileSize, Duration.between(startTime, LocalDateTime.now()));
 
-                responseObserver.onCompleted();
-            } catch (Exception e) {
+                @Override
+                protected ReadableByteChannel buildByteChannel() {
+                    try {
+                        return Files.newByteChannel(getInputPath(), StandardOpenOption.READ);
+                    } catch (IOException e) {
+                        throw new FileStreamIOException(e);
+                    }
+                }
+            }) {
+                LOG.info("Returning output file from job {}: {} ({} bytes)", request.getJob().getId(), fileStreamServer.getInputPath(), fileStreamServer.getFileMeta().getSize());
+                Stopwatch stopwatch = Stopwatch.createStarted();
+                fileStreamServer.streamFile();
+                LOG.info("Transferred output file {} ({} bytes) in {}", fileStreamServer.getInputPath().getFileName(), fileStreamServer.getFileMeta().getSize(), stopwatch.stop().elapsed());
+            } catch (IOException e) {
+                LOG.error("Failed to collect output file: {}", request.toString(), e);
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+            } catch (InterruptedException e) {
+                // Restore interrupted state
+                Thread.currentThread().interrupt();
                 LOG.error("Failed to collect output file: {}", request.toString(), e);
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             }
         }
     }
+
 
     private void cleanUpJob(String jobId) {
         jobContainers.remove(jobId);
@@ -513,6 +583,47 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             LOG.error("Failed to build Docker context for service {}", serviceName, e);
             throw e;
         }
+    }
+    
+    private void pushDockerImage(DockerClient dockerClient, String dockerImage) throws IOException, InterruptedException {
+        LOG.info("Pushing Docker image '{}' to registry {}", dockerImage, dockerRegistryConfig.getDockerRegistryUrl());
+        PushImageCmd pushImageCmd = dockerClient.pushImageCmd(dockerImage);
+        AuthConfig authConfig = new AuthConfig()
+                .withRegistryAddress(dockerRegistryConfig.getDockerRegistryUrl())
+                .withUsername(dockerRegistryConfig.getDockerRegistryUsername())
+                .withPassword(dockerRegistryConfig.getDockerRegistryPassword());
+        dockerClient.authCmd().withAuthConfig(authConfig).exec();
+        pushImageCmd = pushImageCmd.withAuthConfig(authConfig);
+        pushImageCmd.exec(new PushImageResultCallback()).awaitSuccess();
+        LOG.info("Pushed Docker image '{}' to registry {}", dockerImage, dockerRegistryConfig.getDockerRegistryUrl());
+    }
+    
+    private void pullDockerImage(DockerClient dockerClient, String dockerImage) throws IOException, InterruptedException {
+        LOG.info("Pulling Docker image '{}' from registry {}", dockerImage, dockerRegistryConfig.getDockerRegistryUrl());
+        PullImageCmd pullImageCmd = dockerClient.pullImageCmd(dockerImage);
+        AuthConfig authConfig = new AuthConfig()
+            .withRegistryAddress(dockerRegistryConfig.getDockerRegistryUrl())
+            .withUsername(dockerRegistryConfig.getDockerRegistryUsername())
+            .withPassword(dockerRegistryConfig.getDockerRegistryPassword());
+        dockerClient.authCmd().withAuthConfig(authConfig).exec();
+        pullImageCmd = pullImageCmd.withRegistry(dockerRegistryConfig.getDockerRegistryUrl()).withAuthConfig(authConfig);
+        pullImageCmd.exec(new PullImageResultCallback()).awaitSuccess();
+        LOG.info("Pulled Docker image '{}' from registry {}", dockerImage, dockerRegistryConfig.getDockerRegistryUrl());
+    }
+    
+    private void removeDockerImage(DockerClient dockerClient, String dockerImageTag) {
+        List<Image> images = dockerClient.listImagesCmd().withImageNameFilter(dockerImageTag).exec();
+        for (Image image: images) {
+            dockerClient.removeImageCmd(image.getId()).exec();
+        }
+    }
+    
+    private boolean isImageAvailableLocally(DockerClient dockerClient, String dockerImage) {
+        List<Image> images = dockerClient.listImagesCmd().withImageNameFilter(dockerImage).exec();
+        if (images.isEmpty()) {
+            return false;
+        }
+        return true;
     }
 
     @VisibleForTesting

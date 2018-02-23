@@ -65,21 +65,22 @@ public class FilesystemOutputProductService implements OutputProductService {
         }
         LOG.info("Ingesting output at {}", dest);
 
-        String geoserverUrl = null;
-        
-        if (properties.containsKey("geoServerSpec")) {
-            GeoServerSpec geoServerSpec = (GeoServerSpec) properties.get("geoServerSpec");
-            try {
-                geoserverUrl = geoserver.ingest(dest, geoServerSpec);
-            } catch (Exception e) {
-                LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+        if (geoserver.isIngestibleFile(dest.getFileName().toString())) {
+            //TODO link geoserver URL to catalogue
+            if (properties.containsKey("geoServerSpec")) {
+                GeoServerSpec geoServerSpec = (GeoServerSpec) properties.get("geoServerSpec");
+                try {
+                    geoserver.ingest(dest, geoServerSpec);
+                } catch (Exception e) {
+                    LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+                }
             }
-        }
-        else {
-            try {
-                geoserverUrl = geoserver.ingest(jobId, dest, crs);
-            } catch (Exception e) {
-                LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+            else {
+                try {
+                    geoserver.ingest(jobId, dest, crs);
+                } catch (Exception e) {
+                    LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+                }
             }
         }
  
@@ -91,11 +92,12 @@ public class FilesystemOutputProductService implements OutputProductService {
                         "filename", relativePath.toString().replaceAll(File.pathSeparator, "_")));
         long filesize = Files.size(dest);
         // Add automatically-determined properties
-        properties.put("productIdentifier", jobId + "_" + src.toString());
+        properties.put("productIdentifier", jobId + "_" + relativePath.toString());
         properties.put("fstepUrl", uri);
         // TODO Get the proper MIME type
         properties.put("resourceMimeType", "application/unknown");
         properties.put("resourceSize", Files.size(dest));
+        properties.put("filename", relativePath.toFile().getName());
         properties.put("resourceChecksum", "sha256=" + MoreFiles.asByteSource(dest).hash(Hashing.sha256()));
         // TODO Add extra properties if needed
         properties.put("extraParams", jsonMapper.writeValueAsString(ImmutableMap.of()));
