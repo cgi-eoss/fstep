@@ -14,7 +14,7 @@ import java.io.IOException;
 @Log4j2
 public class FstepServiceDockerBuildInfoYamlConverter implements AttributeConverter<FstepServiceDockerBuildInfo, String> {
 
-    private static final TypeReference FSTEP_SERVICE_DOCKER_BUILD_INFO = new TypeReference<FstepServiceDockerBuildInfo>() { };
+    private static final TypeReference<FstepServiceDockerBuildInfo> FSTEP_SERVICE_DOCKER_BUILD_INFO = new TypeReference<FstepServiceDockerBuildInfo>() { };
 
     private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory());
 

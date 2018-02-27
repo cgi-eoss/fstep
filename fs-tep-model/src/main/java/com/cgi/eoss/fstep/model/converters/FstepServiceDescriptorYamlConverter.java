@@ -15,7 +15,7 @@ import java.io.IOException;
 @Log4j2
 public class FstepServiceDescriptorYamlConverter implements AttributeConverter<FstepServiceDescriptor, String> {
 
-    private static final TypeReference FSTEP_SERVICE_DESCRIPTOR = new TypeReference<FstepServiceDescriptor>() { };
+    private static final TypeReference<FstepServiceDescriptor> FSTEP_SERVICE_DESCRIPTOR = new TypeReference<FstepServiceDescriptor>() { };
 
     private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory());
 

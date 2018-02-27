@@ -1,27 +1,5 @@
 package com.cgi.eoss.fstep.worker;
 
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URI;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
-import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import com.cgi.eoss.fstep.clouds.CloudsConfig;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
@@ -32,12 +10,28 @@ import com.cgi.eoss.fstep.io.download.DownloaderFacade;
 import com.cgi.eoss.fstep.queues.QueuesConfig;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
 import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
-import com.cgi.eoss.fstep.worker.metrics.QueueMetric;
-import com.cgi.eoss.fstep.worker.metrics.QueueMetricsRepository;
 import com.cgi.eoss.fstep.worker.worker.FstepWorkerNodeManager;
 import com.cgi.eoss.fstep.worker.worker.JobEnvironmentService;
 import com.google.common.base.Strings;
 import okhttp3.OkHttpClient;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Configuration
 @ComponentScan(
@@ -47,15 +41,10 @@ import okhttp3.OkHttpClient;
 @Import({
 		QueuesConfig.class,
         CloudsConfig.class,
-        InProcessRpcConfig.class,
-        HibernateJpaAutoConfiguration.class,
-        DataSourceAutoConfiguration.class
+        InProcessRpcConfig.class
 })
 @EnableEurekaClient
 @EnableScheduling
-@EnableJpaRepositories(basePackageClasses = QueueMetricsRepository.class)
-@EntityScan(basePackageClasses = QueueMetric.class)
-
 public class WorkerConfig {
 
     @Bean
@@ -168,6 +157,7 @@ public class WorkerConfig {
         scheduler.setPoolSize(10);
         return scheduler;
     }
+
 
 
 }
