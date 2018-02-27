@@ -30,6 +30,11 @@ message JobSpec {
 	int32 timeoutValue = 5;
 	repeated string exposedPorts = 6;
 	repeated string userBinds = 7;
+	ResourceRequest resourceRequest = 8;
+}
+
+message ResourceRequest{
+	int32 storage = 1;
 }
 
 message JobInputs {

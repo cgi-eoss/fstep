@@ -5,18 +5,16 @@ import static org.awaitility.Duration.FIVE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Duration.FIVE_MINUTES;
 import static org.awaitility.Duration.FIVE_SECONDS;
 import static org.awaitility.Duration.TWO_SECONDS;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import com.cgi.eoss.fstep.clouds.ipt.persistence.KeypairRepository;
+import com.cgi.eoss.fstep.clouds.service.Node;
+import com.cgi.eoss.fstep.clouds.service.NodeFactory;
+import com.cgi.eoss.fstep.clouds.service.NodePoolStatus;
+import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
+import com.cgi.eoss.fstep.clouds.service.SSHSession;
+import com.cgi.eoss.fstep.clouds.service.StorageProvisioningException;
+import com.google.common.base.Strings;
+import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 import org.openstack4j.api.Builders;
 import org.openstack4j.api.OSClient.OSClientV3;
 import org.openstack4j.api.client.IOSClientBuilder;
@@ -29,15 +27,27 @@ import org.openstack4j.model.compute.Keypair;
 import org.openstack4j.model.compute.Server;
 import org.openstack4j.model.compute.ServerCreate;
 import org.openstack4j.model.compute.ServerUpdateOptions;
+import org.openstack4j.model.compute.VolumeAttachment;
+import org.openstack4j.model.identity.v3.Token;
 import org.openstack4j.model.network.Network;
-import com.cgi.eoss.fstep.clouds.service.Node;
-import com.cgi.eoss.fstep.clouds.service.NodeFactory;
-import com.cgi.eoss.fstep.clouds.service.NodePoolStatus;
-import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
-import com.cgi.eoss.fstep.clouds.service.SSHSession;
-import com.google.common.base.Strings;
-import lombok.Getter;
-import lombok.extern.log4j.Log4j2;
+import org.openstack4j.model.storage.block.Volume;
+import org.openstack4j.model.storage.block.Volume.Status;
+import org.openstack4j.openstack.OSFactory;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 
 /**
  * <p>This service may be used to provision and tear down FS-TEP compute nodes in the IPT cloud context.</p>
@@ -48,7 +58,8 @@ public class IptNodeFactory implements NodeFactory {
     private static final int DEFAULT_DOCKER_PORT = 2375;
     private static final String SERVER_NAME_PREFIX = "fstep_node_";
     private static final int SERVER_STARTUP_TIMEOUT_MILLIS = Math.toIntExact(Duration.ofMinutes(10).toMillis());
-
+    public static final org.awaitility.Duration VOLUME_STARTUP_TIMEOUT_DURATION = new org.awaitility.Duration(5, TimeUnit.MINUTES);
+    public static final org.awaitility.Duration VOLUME_DETACH_TIMEOUT_DURATION = new org.awaitility.Duration(5, TimeUnit.MINUTES);
     @Getter
     private final Set<Node> currentNodes = new HashSet<>();
 
@@ -57,14 +68,21 @@ public class IptNodeFactory implements NodeFactory {
     private final IOSClientBuilder.V3 osClientBuilder;
 
     private final ProvisioningConfig provisioningConfig;
+    
+    private KeypairRepository keypairRepository;
 
-    IptNodeFactory(int maxPoolSize, IOSClientBuilder.V3 osClientBuilder, ProvisioningConfig provisioningConfig) {
+    IptNodeFactory(int maxPoolSize, IOSClientBuilder.V3 osClientBuilder, ProvisioningConfig provisioningConfig, KeypairRepository keypairRepository) {
         this.maxPoolSize = maxPoolSize;
         this.osClientBuilder = osClientBuilder;
         this.provisioningConfig = provisioningConfig;
-        currentNodes.addAll(loadExistingNodes());
+        this.keypairRepository = keypairRepository;
+        
     }
 
+    public void init() {
+        currentNodes.addAll(loadExistingNodes());
+    }
+    
     private Set<Node> loadExistingNodes() {
         OSClientV3 osClient = osClientBuilder.authenticate();
         Map<String, String> filteringParams = new HashMap<String, String>();
@@ -141,6 +159,8 @@ public class IptNodeFactory implements NodeFactory {
                 prepareServer(ssh, environmentBaseDir, dataBaseDir);
             }
 
+            keypairRepository.save(new com.cgi.eoss.fstep.clouds.ipt.persistence.Keypair(server.getId(), keypair.getPrivateKey(), keypair.getPublicKey()));
+            
             Node node = Node.builder()
                     .id(server.getId())
                     .name(server.getName())
@@ -205,6 +225,17 @@ public class IptNodeFactory implements NodeFactory {
                 }
                 
             }
+            
+            if (provisioningConfig.getInsecureRegistries() != null){
+                String[] insecureRegistriesList = provisioningConfig.getInsecureRegistries().split(",");
+                for (String insecureRegistry: insecureRegistriesList) {
+                    InetAddress ipAddress = InetAddress.getByName(insecureRegistry);
+                    ssh.exec("echo -e \"" + ipAddress.getHostAddress() + "\\t" + insecureRegistry + "\" | sudo tee -a /etc/cloud/templates/hosts.redhat.tmpl");
+                    ssh.exec("echo -e \"" + ipAddress.getHostAddress() + "\\t" + insecureRegistry + "\" | sudo tee -a /etc/hosts");
+                    
+                }
+            }
+            
             // TODO Use/create a certificate authority for secure docker communication
             LOG.info("Launching dockerd listening on tcp://0.0.0.0:{}", DEFAULT_DOCKER_PORT);
             with().pollInterval(FIVE_HUNDRED_MILLISECONDS)
@@ -240,12 +271,16 @@ public class IptNodeFactory implements NodeFactory {
     }
 
     private SSHSession openSshSession(Keypair keypair, Server server) throws IOException {
+        return openSshSession(keypair.getPrivateKey(), keypair.getPublicKey(), server);
+    }
+    
+    private SSHSession openSshSession(String privateKey, String publicKey,  Server server) throws IOException {
         // Wait until port 22 is open on the server...
         with().pollInterval(TWO_SECONDS)
                 .and().atMost(FIVE_MINUTES)
                 .await("SSH socket open")
                 .until(() -> {
-                    try (SSHSession ssh = new SSHSession(server.getAccessIPv4(), provisioningConfig.getSshUser(), keypair.getPrivateKey(), keypair.getPublicKey())) {
+                    try (SSHSession ssh = new SSHSession(server.getAccessIPv4(), provisioningConfig.getSshUser(), privateKey, publicKey)) {
                         return true;
                     } catch (Exception e) {
                         LOG.debug("SSH connection not available for server {}", server.getId(), e);
@@ -253,7 +288,7 @@ public class IptNodeFactory implements NodeFactory {
                     }
                 });
         // ...then make the SSH connection
-        return new SSHSession(server.getAccessIPv4(), provisioningConfig.getSshUser(), keypair.getPrivateKey(), keypair.getPublicKey());
+        return new SSHSession(server.getAccessIPv4(), provisioningConfig.getSshUser(), privateKey, publicKey);
     }
 
     @Override
@@ -262,6 +297,7 @@ public class IptNodeFactory implements NodeFactory {
 
         LOG.info("Destroying IPT node: {} ({})", node.getId(), node.getName());
         Server server = osClient.compute().servers().get(node.getId());
+        List<String> additionalVolumes = server.getOsExtendedVolumesAttached();
         String keyname = server.getKeyName();
         ActionResponse response = osClient.compute().servers().delete(server.getId());
         if (response.isSuccess()) {
@@ -270,12 +306,17 @@ public class IptNodeFactory implements NodeFactory {
         } else {
             LOG.warn("Failed to destroy IPT node {}: [{}] {}", node.getId(), response.getCode(), response.getFault());
         }
+        
+        for (String additionalVolume: additionalVolumes) {
+            osClient.blockStorage().volumes().delete(additionalVolume);
+        }
+        
         // Check for floating IP
         Optional<? extends FloatingIP> floatingIP = osClient.compute().floatingIps().list().stream().filter(ip -> ip.getFloatingIpAddress().equals(server.getAccessIPv4())).findFirst();
         floatingIP.ifPresent(ip -> osClient.compute().floatingIps().deallocateIP(ip.getId()));
         //Remove the keypair
         osClient.compute().keypairs().delete(keyname);
-        
+        keypairRepository.delete(server.getId());
     }
 
     @Override
@@ -291,4 +332,81 @@ public class IptNodeFactory implements NodeFactory {
        return currentNodes.stream().filter(node -> node.getTag().equals(tag)).collect(Collectors.toSet());
     }
 
+    @Override
+    public String allocateStorageForNode(Node node, int storageGB, String mountPoint) throws StorageProvisioningException {
+        OSClientV3 osClient = osClientBuilder.authenticate();
+        Server server = osClient.compute().servers().get(node.getId());
+        com.cgi.eoss.fstep.clouds.ipt.persistence.Keypair kp = keypairRepository.findOne(server.getId()); 
+        Volume volume = createAdditionalVolume(osClient, storageGB);
+        VolumeAttachment volumeAttachment = osClient.compute().servers().attachVolume(server.getId(), volume.getId(), null);
+        String additionalVolumeDevice = volumeAttachment.getDevice();
+        LOG.info("Attached volume to server: {} to {}", volume.getId(), server.getId());
+        try {
+            SSHSession ssh = openSshSession(kp.getPrivateKey(), kp.getPublicKey(), server);
+            ssh.exec("sudo parted -s -a optimal " + additionalVolumeDevice + " mklabel gpt -- mkpart primary ext4 1 -1");
+            ssh.exec("sudo mkfs.ext4 " + additionalVolumeDevice +"1");
+            ssh.exec("sudo mkdir -p " + mountPoint);
+            ssh.exec("sudo mount " + additionalVolumeDevice +"1 " + mountPoint);
+            return volume.getId();
+        } catch (IOException e) {
+            throw new StorageProvisioningException("Cannot allocate required storage");
+        }
+    }
+   
+    @Override
+    public void removeStorageForNode(Node node, String storageId) throws StorageProvisioningException {
+        OSClientV3 osClient = osClientBuilder.authenticate();
+        LOG.debug("Removing volume: {}", storageId);
+        Volume volume = osClient.blockStorage().volumes().get(storageId);
+        List<? extends org.openstack4j.model.storage.block.VolumeAttachment> volumeAttachments = volume.getAttachments();
+        try {
+            for (org.openstack4j.model.storage.block.VolumeAttachment volumeAttachment: volumeAttachments) {
+                Server server = osClient.compute().servers().get(volumeAttachment.getServerId());
+                com.cgi.eoss.fstep.clouds.ipt.persistence.Keypair kp = keypairRepository.findOne(server.getId()); 
+                SSHSession ssh = openSshSession(kp.getPrivateKey(), kp.getPublicKey(), server);
+                LOG.debug("Unmounting volume from server: {} to {}", volume.getId(), server.getId());
+                ssh.exec("sudo umount " + volumeAttachment.getDevice() +"1 ");
+                LOG.debug("Detaching volume from server: {} to {}", volume.getId(), server.getId());
+                ActionResponse detachResponse = osClient.compute().servers().detachVolume(volumeAttachment.getServerId(), volumeAttachment.getId());
+                if (detachResponse.isSuccess()) {
+                    LOG.debug("Detached volume from server: {} to {}", volume.getId(), server.getId());
+                }
+                else {
+                    LOG.error("Error detaching volume from server: {} to {} - error: {}", volume.getId(), server.getId(), detachResponse.getFault());
+                }
+            }
+            LOG.debug("Deleting volume: {}", storageId);
+            Token token = osClient.getToken();
+            with().pollInterval(FIVE_SECONDS)
+            .and().atMost(VOLUME_DETACH_TIMEOUT_DURATION)
+            .await("Volume available")
+            .until(() -> {OSClientV3 threadClient = OSFactory.clientFromToken(token); return threadClient.blockStorage().volumes().get(storageId).getStatus() == Status.AVAILABLE;});
+            ActionResponse deleteResponse = osClient.blockStorage().volumes().delete(storageId);
+            if (deleteResponse.isSuccess()) {
+                LOG.debug("Deleted volume: {}", volume.getId());
+            }
+            else {
+                LOG.error("Error deleting volume {} - error: {}", volume.getId(), deleteResponse.getFault());
+            }
+        }
+        catch (IOException e) {
+            throw new StorageProvisioningException("Cannot remove storage");
+        }
+    }
+
+    private Volume createAdditionalVolume(OSClientV3 osClient, int volumeSize) {
+        Volume additionalVolume = Builders.volume()
+        .bootable(false)
+        .size(volumeSize)
+        .build();
+        Volume createdVolume = osClient.blockStorage().volumes().create(additionalVolume);
+        Token token = osClient.getToken();
+        with().pollInterval(FIVE_SECONDS)
+        .and().atMost(VOLUME_STARTUP_TIMEOUT_DURATION)
+        .await("Volume available")
+        .until(() -> {OSClientV3 threadClient = OSFactory.clientFromToken(token); return threadClient.blockStorage().volumes().get(createdVolume.getId()).getStatus() == Status.AVAILABLE;});
+        return createdVolume;
+    }
+    
+    
 }
