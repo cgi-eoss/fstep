@@ -2,6 +2,7 @@ package com.cgi.eoss.fstep.model;
 
 import com.cgi.eoss.fstep.model.converters.FstepServiceDescriptorYamlConverter;
 import com.cgi.eoss.fstep.model.converters.FstepServiceDockerBuildInfoYamlConverter;
+import com.cgi.eoss.fstep.model.converters.FstepServiceResourcesYamlConverter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.ComparisonChain;
 import javax.persistence.CascadeType;
@@ -125,6 +126,11 @@ public class FstepService implements FstepEntityWithOwner<FstepService>, Searcha
     @Convert(converter = FstepServiceDockerBuildInfoYamlConverter.class)
     @Column(name = "docker_build_info")
     FstepServiceDockerBuildInfo dockerBuildInfo;
+    
+    @Lob
+    @Convert(converter = FstepServiceResourcesYamlConverter.class)
+    @Column(name = "required_resources")
+    FstepServiceResources requiredResources;
     
     /**
      * <p>Create a new Service with the minimum required parameters.</p>
