@@ -15,7 +15,7 @@ import java.io.IOException;
 @Log4j2
 public class StringListMultimapYamlConverter implements AttributeConverter<ListMultimap<String, String>, String> {
 
-    private static final TypeReference STRING_LISTMULTIMAP = new TypeReference<ListMultimap<String,String>>() { };
+    private static final TypeReference<ListMultimap<String,String>> STRING_LISTMULTIMAP = new TypeReference<ListMultimap<String,String>>() { };
 
     private final ObjectMapper mapper;
 

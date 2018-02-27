@@ -9,8 +9,10 @@ import java.util.Set;
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
+import com.cgi.eoss.fstep.clouds.service.StorageProvisioningException;
 import lombok.Synchronized;
-
+import lombok.extern.log4j.Log4j2;
+@Log4j2
 public class FstepWorkerNodeManager {
 
     private NodeFactory nodeFactory;
@@ -76,8 +78,10 @@ public class FstepWorkerNodeManager {
     }
     
     public void releaseJobNode(String jobId) {
+        LOG.debug("Releasing node for job {}", jobId);
         Node jobNode = jobNodes.remove(jobId);
         if (jobNode != null) {
+            LOG.debug("Releasing node {} for job {}", jobNode.getId(), jobId);
             if (jobNode.getTag().equals(dedicatedWorkerTag)) {
                 nodeFactory.destroyNode(jobNode);
             } else {
@@ -115,6 +119,19 @@ public class FstepWorkerNodeManager {
             }
         }
         return scaleDownNodes;
+    }
+
+    public String allocateStorageForJob(String jobId, int requiredStorage, String mountPoint) throws StorageProvisioningException{
+        Node jobNode = jobNodes.get(jobId);
+        if (jobNode != null) {
+            return nodeFactory.allocateStorageForNode(jobNode, requiredStorage, mountPoint);
+        }
+        else return null;
+    }
+
+    public void releaseStorageForJob(Node jobNode, String jobId, String storageId) throws StorageProvisioningException {
+         LOG.info("Removing device {} for job {}", storageId, jobId);
+         nodeFactory.removeStorageForNode(jobNode, storageId);
     }
 
 }
