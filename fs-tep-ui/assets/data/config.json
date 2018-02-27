@@ -3,5 +3,79 @@
     "geoserver": {
         "url": "/geoserver",
         "products_workspace": "fs-prods"
+    },
+    "products": {
+        "vista_lai": {
+            "domain": {
+                "scale": 0.001,
+                "offset": 0,
+                "nodata": -999,
+                "special_values": {
+                    "-910": "Clouds",
+                    "-911": "Cirrus",
+                    "-920": "Cloudshadow",
+                    "-930": "Snow",
+                    "-940": "Water"
+                },
+                "units": "m&sup2;/m&sup2;"
+            },
+            "legend": {
+                "height": 20
+            }
+        },
+        "vista_cab": {
+            "domain": {
+                "scale": 0.01,
+                "offset": 0,
+                "nodata": -999,
+                "special_values": {
+                    "-910": "Clouds",
+                    "-911": "Cirrus",
+                    "-920": "Cloudshadow",
+                    "-930": "Snow",
+                    "-940": "Water",
+                    "-950": "Soil",
+                    "-961": "Coniferous"
+                }
+            },
+            "legend": {
+                "height": 20
+            }
+        },
+        "vito_fapar": {
+            "domain": {
+                "scale": 0.005 ,
+                "offset": 0,
+                "nodata": 255
+            },
+            "thumb": "assets/data/previews/vito_fapar.jpg",
+            "legend": {
+                "height": 20
+            }
+        },
+        "vito_fcover": {
+            "domain": {
+                "scale": 0.005,
+                "offset": 0,
+                "nodata": 255
+            },
+            "thumb": "assets/data/previews/vito_fcover.jpg"
+        },
+        "vito_lai": {
+            "domain": {
+                "scale": 0.04,
+                "offset": 0,
+                "nodata": 255
+            },
+            "thumb": "assets/data/previews/vito_lai.jpg"
+        },
+        "vito_ndvi": {
+            "domain": {
+                "scale": 0.004,
+                "offset": -0.08,
+                "nodata": 255
+            },
+            "thumb": "assets/data/previews/vito_ndvi.jpg"
+        }
     }
 }
