@@ -3,6 +3,7 @@ package com.cgi.eoss.fstep.worker;
 import com.cgi.eoss.fstep.worker.metrics.QueueMetric;
 import com.cgi.eoss.fstep.worker.metrics.QueueMetricsRepository;
 import javax.sql.DataSource;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -15,6 +16,7 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
+@ConditionalOnProperty(name="fstep.worker.autoscaler.enabled", havingValue="true", matchIfMissing = false)
 @EnableJpaRepositories(basePackageClasses = QueueMetricsRepository.class,
 entityManagerFactoryRef = "queueMetricsEntityManager", 
 transactionManagerRef = "queueMetricsTransactionManager")

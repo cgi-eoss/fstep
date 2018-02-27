@@ -3,10 +3,12 @@ package com.cgi.eoss.fstep.worker.metrics;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import lombok.extern.log4j.Log4j2;
 
 @Service
+@ConditionalOnProperty(name="fstep.worker.autoscaler.enabled", havingValue="true", matchIfMissing = false)
 @Log4j2
 public class QueueMetricsService {
 

@@ -59,7 +59,7 @@ public class IptNodeFactory implements NodeFactory {
     private static final String SERVER_NAME_PREFIX = "fstep_node_";
     private static final int SERVER_STARTUP_TIMEOUT_MILLIS = Math.toIntExact(Duration.ofMinutes(10).toMillis());
     public static final org.awaitility.Duration VOLUME_STARTUP_TIMEOUT_DURATION = new org.awaitility.Duration(5, TimeUnit.MINUTES);
-   
+    public static final org.awaitility.Duration VOLUME_DETACH_TIMEOUT_DURATION = new org.awaitility.Duration(5, TimeUnit.MINUTES);
     @Getter
     private final Set<Node> currentNodes = new HashSet<>();
 
@@ -376,6 +376,11 @@ public class IptNodeFactory implements NodeFactory {
                 }
             }
             LOG.debug("Deleting volume: {}", storageId);
+            Token token = osClient.getToken();
+            with().pollInterval(FIVE_SECONDS)
+            .and().atMost(VOLUME_DETACH_TIMEOUT_DURATION)
+            .await("Volume available")
+            .until(() -> {OSClientV3 threadClient = OSFactory.clientFromToken(token); return threadClient.blockStorage().volumes().get(storageId).getStatus() == Status.AVAILABLE;});
             ActionResponse deleteResponse = osClient.blockStorage().volumes().delete(storageId);
             if (deleteResponse.isSuccess()) {
                 LOG.debug("Deleted volume: {}", volume.getId());
