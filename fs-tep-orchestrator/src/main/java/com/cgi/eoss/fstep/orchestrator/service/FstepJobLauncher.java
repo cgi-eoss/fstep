@@ -17,6 +17,7 @@ import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepService.Type;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.FstepServiceDockerBuildInfo;
+import com.cgi.eoss.fstep.model.FstepServiceResources;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.JobConfig;
@@ -61,6 +62,7 @@ import com.cgi.eoss.fstep.rpc.worker.JobSpec;
 import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
+import com.cgi.eoss.fstep.rpc.worker.ResourceRequest;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -459,6 +461,13 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             String targetPath = additionalMounts.get(userMountId);
             String bind = userMount.getMountPath() + ":" + targetPath + ":" + userMount.getType().toString().toLowerCase();
             jobSpecBuilder.addUserBinds(bind);
+        }
+        
+        //TODO Add CPU, RAM Management
+        //TODO Add per job requests
+        if (service.getRequiredResources() != null) {
+            FstepServiceResources requiredResources = service.getRequiredResources();
+            jobSpecBuilder.setResourceRequest(ResourceRequest.newBuilder().setStorage(Integer.valueOf(requiredResources.getStorage())));
         }
         
         JobSpec jobSpec = jobSpecBuilder.build();
@@ -865,7 +874,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                         outputFileMetadata = outputFileMetadataBuilder.outputProductMetadata(outputProduct)
                                 .build();
 
-                        setOutputPath(catalogueService.provisionNewOutputProduct(outputProduct, fileMeta.getFilename()));
+                        setOutputPath(catalogueService.provisionNewOutputProduct(outputProduct, relativePath.toString()));
                         LOG.info("Writing output file for job {}: {}", job.getExtId(), getOutputPath());
                         return new BufferedOutputStream(Files.newOutputStream(getOutputPath(), CREATE, TRUNCATE_EXISTING, WRITE));
                     }

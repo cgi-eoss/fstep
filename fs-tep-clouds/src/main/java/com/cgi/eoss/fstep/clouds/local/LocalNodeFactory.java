@@ -65,4 +65,14 @@ public class LocalNodeFactory implements NodeFactory {
        return currentNodes.stream().filter(node -> node.getTag().equals(tag)).collect(Collectors.toSet());
     }
 
+    @Override
+    public String allocateStorageForNode(Node jobNode, int storage, String mountPoint) {
+        throw new UnsupportedOperationException("Storage allocation not available locally");
+    }
+
+    @Override
+    public void removeStorageForNode(Node node, String storageId) {
+        throw new UnsupportedOperationException("Storage deallocation not available locally");
+    }
+
 }

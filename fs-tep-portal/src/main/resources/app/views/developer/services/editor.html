@@ -72,23 +72,22 @@
         </div>
         <div class="row build-status">
             <label >Container build status:</label>
-            <md-content layout="row" layout-align="start center" flex="50" ng-switch on="serviceParams.selectedService.buildStatus.status">
-
-                <md-content ng-switch-when="NOT_STARTED" layout="row" layout-align="start center" flex style="{{getColorForStatus('Warning')}}">
-                    <i class="material-icons">warning</i>
-                    <span>Build required</span>
+            <md-content layout="row" layout-align="start center" flex="50">
+                <md-content ng-if="serviceParams.selectedService.buildStatus.status == 'ERROR'" layout="row" layout-align="start center" flex style="{{getColorForStatus('ERROR')}}">
+                    <i class="material-icons">error</i>
+                    <span>Build error</span>
                 </md-content>
-                <md-content ng-switch-when="ONGOING" layout="row" layout-align="start center" flex style="{{getColorForStatus('RUNNING')}}">
+                <md-content ng-if="serviceParams.selectedService.buildStatus.status == 'ONGOING'" layout="row" layout-align="start center" flex style="{{getColorForStatus('RUNNING')}}">
                     <md-progress-circular md-diameter="20px" md-mode="indeterminate"></md-progress-circular>
                     <span>Build running</span>
                 </md-content>
-                <md-content ng-switch-when="COMPLETED" layout="row" layout-align="start center" flex style="{{getColorForStatus('COMPLETED')}}">
+                <md-content ng-if="serviceParams.selectedService.buildStatus.needsBuild && serviceParams.selectedService.buildStatus.status != 'ERROR'" layout="row" layout-align="start center" flex style="{{getColorForStatus('Warning')}}">
+                    <i class="material-icons">warning</i>
+                    <span>Build required</span>
+                </md-content>
+                <md-content ng-if="!serviceParams.selectedService.buildStatus.needsBuild && serviceParams.selectedService.buildStatus.status == 'COMPLETED'" layout="row" layout-align="start center" flex style="{{getColorForStatus('COMPLETED')}}">
                     <i class="material-icons">check</i>
                     <span>Build success</span>
-                </md-content>
-                <md-content ng-switch-when="ERROR" layout="row" layout-align="start center" flex style="{{getColorForStatus('ERROR')}}">
-                    <i class="material-icons">error</i>
-                    <span>Build error</span>
                 </md-content>
                 <md-button
                     class="md-icon-button"
@@ -104,7 +103,7 @@
                 <md-button
                     class="md-icon-button"
                     aria-label="Build"
-                    ng-if="serviceParams.selectedService.buildStatus.needsBuild && serviceParams.selectedService.buildStatus.status != 'ONGOING'"
+                    ng-if="serviceParams.selectedService.buildStatus.status == 'ERROR' || serviceParams.selectedService.buildStatus.needsBuild"
                     ng-click="rebuildServiceContainer(serviceParams.selectedService)"
                     uib-tooltip="Build container"
                     tooltip-placement="top"

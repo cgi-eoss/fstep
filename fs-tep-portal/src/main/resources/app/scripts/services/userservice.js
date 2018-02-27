@@ -69,7 +69,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 if(attemptCount < 0) {
                     _this.params.activeUser = "Guest";
                     $rootScope.$broadcast('no.user');
-                    updateHeartbeat(10000);
+                    clearInterval(sessionHeartbeat);
                 } else if (attemptCount === 0) {
                     $rootScope.$broadcast('no.user');
                     MessageService.addError('Session timed out', error);

@@ -35,4 +35,9 @@ public interface NodeFactory {
      */
     NodePoolStatus getNodePoolStatus();
 
+    String allocateStorageForNode(Node node, int storageGB, String mountPoint) throws StorageProvisioningException;
+
+    void removeStorageForNode(Node node, String storageId) throws StorageProvisioningException;
+
+
 }
