@@ -1,2 +1,4 @@
-<span *ngIf="coords != null" class="mouse_coord latitude">{{ coords.lat | latitude:format }}</span>
-<span *ngIf="coords != null" class="mouse_coord longitude">{{ coords.lon | longitude:format }}</span>
+<div>
+    <span *ngIf="coords != null" class="mouse_coord latitude">{{ coords.lat | latitude:format }}</span>
+    <span *ngIf="coords != null" class="mouse_coord longitude">{{ coords.lon | longitude:format }}</span>
+</div>

@@ -6,7 +6,9 @@
     </div>
     <div class="popup-content">
         <a (click)="closePopup()" class="delete"></a>
-        <div>{{position[0] | longitude:'dms' }} {{position[1] | latitude:'dms'}}</div>
+        <ng-container *ngIf="(getGeoCoordinates(position)) as coords">
+            <div>{{coords[0] | longitude:'dms' }} {{coords[1] | latitude:'dms'}}</div>
+        </ng-container>
         <div>
             <i *ngIf="data.status == 'loading'" class="fa fa-refresh fa-spin"></i>
             <div *ngIf="data.status == 'ready'">

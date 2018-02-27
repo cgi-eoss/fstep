@@ -1,17 +1,35 @@
-.time_selector {
-    cursor: pointer;
-    position: relative;
-}
+:host {
+    height: 50px;
+    padding: 0 20px;
 
-.time_selector > span {
-    display: inline-block;
-    margin-right: 8px;
-}
+    &:hover {
+        background: rgba(black, 0.5);
+    }
 
-#date_in {
-    position: absolute;
-    top: 0;
-    left: 0;
-    visibility: hidden;
-    width: 100%;
+    .time_selector {
+        cursor: pointer;
+        position: relative;
+        top: 50%;
+        transform: translateY(-50%);
+
+        > span {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 1.1rem;
+            vertical-align: middle;
+        }
+
+        .fa {
+            font-size: 1.2rem;
+            vertical-align: middle;
+        }
+
+        #date_in {
+            position: absolute;
+            top: 0;
+            left: 0;
+            visibility: hidden;
+            width: 100%;
+        }
+    }
 }

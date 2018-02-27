@@ -31,9 +31,14 @@
 }
 
 .card-content {
+    
     min-height: 150px;
-}
-.card-content figure {
-    margin-right: 15px;
+
+    figure {
+        margin-right: 15px;
+        .image {
+            max-width: 50%;
+        }
+    }
 }
 

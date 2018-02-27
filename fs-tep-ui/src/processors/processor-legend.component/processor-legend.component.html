@@ -1,4 +1,4 @@
-<div class="processor_legend" [ngClass]="{'has-colormap': hasColormap}">
+<div class="processor_legend" [ngClass]="{'has-colormap': hasColormap}" *ngIf="legendUrl">
     <svg class="legend" #svg>
         <defs></defs>
     </svg>

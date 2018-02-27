@@ -1,6 +1,7 @@
 import { Component, AfterViewInit, OnDestroy, ViewChild, ElementRef, Input } from "@angular/core";
 
 import Overlay from 'ol/overlay';
+import Proj from 'ol/proj';
 
 import { MapService } from '../../map/map.service';
 import {TimeService} from '../../app/time.service';
@@ -16,6 +17,7 @@ import { ProcessorLayer } from '../processor-layer';
 export class ProcessorInfoComponent implements AfterViewInit, OnDestroy {
     @ViewChild("container") container: ElementRef;
     private popup;
+    private viewer;
     public position = [0,0];
     public showTimeseriesButton;
 
@@ -50,6 +52,9 @@ export class ProcessorInfoComponent implements AfterViewInit, OnDestroy {
         });
 
         this.mapService.getViewer().then((viewer) => {
+
+            this.viewer = viewer;
+
             viewer.addOverlay(overlay);
             viewer.on('singleclick', this.onMapClick, this);
 
@@ -96,11 +101,14 @@ export class ProcessorInfoComponent implements AfterViewInit, OnDestroy {
 
     }
 
-    private onMapClick(evt) {
-        let coordinate = evt.coordinate;
-        this.position = coordinate;
-        this.popup.setPosition(this.position);
-        this.retrieveDataValue(coordinate);
+    getGeoCoordinates(coord) {
+        if (!this.viewer) {
+            return null;
+        }
+        if (this.viewer.getView().getProjection() != 'EPSG:4326') {
+            coord = Proj.transform(coord, this.viewer.getView().getProjection(), 'EPSG:4326');
+        }
+        return coord;
     }
 
     retrieveDataValue(coordinate) {
@@ -139,5 +147,12 @@ export class ProcessorInfoComponent implements AfterViewInit, OnDestroy {
             viewer.removeOverlay(this.popup);
             viewer.un('singleclick', this.onMapClick, this);
         });
+    }
+
+    private onMapClick(evt) {
+        let coordinate = evt.coordinate;
+        this.position = coordinate;
+        this.popup.setPosition(this.position);
+        this.retrieveDataValue(coordinate);
     }
 }
