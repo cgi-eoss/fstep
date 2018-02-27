@@ -1,12 +1,7 @@
-.field-body .field-body {
-    flex-grow: 3;
-}
-
 :host {
     display: block;
 }
 
-:host > div {
-    display: inline-flex;
-    min-width: 450px;
+input {
+    width: 15em;
 }

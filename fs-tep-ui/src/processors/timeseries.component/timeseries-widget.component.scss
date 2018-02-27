@@ -1,15 +1,24 @@
-@import "../../../css/variables.sass";
+@import "../../../css/bulma-theme.sass";
 
 :host {
     position: absolute;
     background: white;
-    bottom: 50px;
+    bottom: 70px;
     left: 20px;
     padding: 10px;
     border-radius: 5px;
     border: solid 2px $brand-dark;
     width: 70%;
     height: 300px;
+
+    @include mobile {
+        width: 100%;
+        bottom: 25px;
+        border: none;
+        border-radius: 0px;
+        left: 0px;
+    }
+    
 }
 
 .delete {

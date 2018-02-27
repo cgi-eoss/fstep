@@ -1,4 +1,4 @@
 <a (click)="closeWidget()" class="delete"></a>
 <loader-overlay [visible]="timeseries.loading"></loader-overlay>
 <timeseries-form (formsubmit)="onFormSubmit($event)"></timeseries-form>
-<timeseries-plot [width]="timeseries.width" [height]="timeseries.height" [data]="timeseries.data"></timeseries-plot>
+<timeseries-plot [width]="timeseries.width" [height]="timeseries.height" [data]="timeseries.data" [units]="timeseries.units" [title]="timeseries.title"></timeseries-plot>
