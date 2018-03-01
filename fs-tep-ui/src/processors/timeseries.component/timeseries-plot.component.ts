@@ -18,6 +18,8 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
     @Input() width: number;
     @Input() height: number;
     @Input() data: Array<SeriesItem>;
+    @Input() title: string;
+    @Input() units: string;
 
     @ViewChild("plot") container: ElementRef;
     @ViewChild("tooltip") tooltip: ElementRef;
@@ -35,14 +37,14 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
         let height = this.height;
 
         let main_position = {
-            top: 20,
+            top: 40,
             left: 50,
             width: width - 50,
-            height: height * 0.7 - 50
+            height: height * 0.7 - 70
         }
 
         let overview_position = {
-            top: height * 0.7,
+            top: height * 0.7 + 20,
             left: 50,
             width: width - 50,
             height: height * 0.3 - 20
@@ -82,6 +84,23 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
             .attr("class", "area")
             //.datum([])
             //.attr("d", main_area);;
+
+        let title = svg.append("text")
+            .attr("class", "y-label")
+            .attr("text-anchor", "start")
+            .attr("x", 10)
+            .attr("y", 20);
+
+        title.append("tspan")
+            .attr("class", "y-title")
+            .html(this.title);
+
+        title.append("tspan")
+            .attr("class", "y-units")
+            .attr("x", 20)
+            .attr("dy", "1.1em")
+            .html(this.units);
+    
         
         main_plot.append('g')
             .attr("class", "axis axis--x")
@@ -130,6 +149,10 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
             .call(x_overview_axis);
 
 
+        let pointer = main_plot.append("g")
+            .attr("class", "pointer")
+            .style("display", "none");
+
         let zoom_control = d3.zoom()
             .scaleExtent([1, Infinity])
             .translateExtent([[0, 0], [main_position.width, main_position.height]])
@@ -138,10 +161,18 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
                 if (d3.event.sourceEvent && d3.event.sourceEvent.type === "brush") return; // ignore brush-by-zoom
                 let t = d3.event.transform;
                 x_main.domain(t.rescaleX(x_overview).domain());
-                if (this.data)
+                if (this.data) {
                     main_plot.select(".area").attr("d", main_area);
+                    main_plot.selectAll(".dot")
+                        .data(this.data)
+                        .attr("cx", (d) => { 
+                            return x_main(d3.isoParse(d.ts)); 
+                        })
+                }
                 main_plot.select(".axis--x").call(x_main_axis);
                 overview_plot.select(".brush").call(brush_control.move, x_main.range().map(t.invertX, t));
+
+                pointer.style("display", "none"); 
             });
 
         svg.append("rect")
@@ -158,12 +189,20 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
                 if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
                 let s = d3.event.selection || x_overview.range();
                 x_main.domain(s.map(x_overview.invert, x_overview));
-                if (this.data)
+                if (this.data) {
                     main_plot.select(".area").attr("d", main_area);
+                    main_plot.selectAll(".dot")
+                    .data(this.data)
+                    .attr("cx", (d) => { 
+                        return x_main(d3.isoParse(d.ts)); 
+                    })
+                }
                 main_plot.select(".axis--x").call(x_main_axis);
                 svg.select(".zoom").call(zoom_control.transform, d3.zoomIdentity
                     .scale((this.width - 50) / (s[1] - s[0]))
                     .translate(-s[0], 0));
+
+                pointer.style("display", "none"); 
             });
         
         overview_plot.append("g")
@@ -171,9 +210,7 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
         
 
         
-        let pointer = main_plot.append("g")
-            .attr("class", "pointer")
-            .style("display", "none");
+
 
         pointer.append("circle")
             .attr("r", 4.5);
@@ -186,21 +223,19 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
         let bisectDate = d3.bisector(function(d) { return d3.isoParse(d.ts); }).left;
 
         svg.select('.zoom').on("mouseover", () => {
-                if (!this.data) {
+                if (!this.data || !this.data.length) {
                     return;
                 }
                 pointer.style("display", null); 
             })
             .on("mouseout", () => { 
-                if (!this.data) {
-                    return;
-                }
                 pointer.style("display", "none"); 
             })
             .on("mousemove", () => {
-                if (!this.data) {
+                if (!this.data || !this.data.length) {
                     return;
                 }
+                pointer.style("display", null); 
                 let x0 = x_main.invert(d3.mouse(svg.select('.zoom').node())[0]);
                 let i = bisectDate(this.data, x0, 1);
                 let d0 = this.data[i - 1];
@@ -263,7 +298,7 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
             top: 20,
             left: 50,
             width: width - 50,
-            height: height * 0.7 - 50
+            height: height * 0.7 - 70
         }
 
         let overview_position = {
@@ -325,22 +360,46 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
             let data = changes.data.currentValue;
 
             if (data) {
-                this.d3_plot_.main.x.domain(d3.extent(data, (d) => {
-                    return d3.isoParse(d.ts);
-                }));
-                this.d3_plot_.main.y.domain([0, d3.max(data, (d) => {return d.value;}) * 1.05]);
-                // this.d3_plot_.main.y.domain(d3.extent(data, (d) => {
-                //     return d.value;
-                // }));
 
-                this.d3_plot_.overview.x.domain(this.d3_plot_.main.x.domain());
-                this.d3_plot_.overview.y.domain(this.d3_plot_.main.y.domain());
-                
+                if (data.length) {
+                    let time_extent = d3.extent(data, (d) => {
+                        return d3.isoParse(d.ts);
+                    });
+
+                   
+                    let time_range = (time_extent[1].getTime() - time_extent[0].getTime());
+                    this.d3_plot_.main.x.domain([time_extent[0], new Date(time_extent[0].getTime() + time_range * 1.05)]);
+
+                    this.d3_plot_.main.y.domain([0, d3.max(data, (d) => {return d.value;}) * 1.05]);
+
+                    
+                    // this.d3_plot_.main.y.domain(d3.extent(data, (d) => {
+                    //     return d.value;
+                    // }));
+
+                    this.d3_plot_.overview.x.domain(this.d3_plot_.main.x.domain());
+                    this.d3_plot_.overview.y.domain(this.d3_plot_.main.y.domain());
+                }
                 this.d3_plot_.main.plot.select('path').datum(data)
                 this.d3_plot_.main.plot.select('path').transition().attr("d", this.d3_plot_.main.area);
                 this.d3_plot_.main.plot.select('g.axis--x').transition().call(this.d3_plot_.main.x_axis);
                 this.d3_plot_.main.plot.select('g.axis--y').transition().call(this.d3_plot_.main.y_axis);
 
+                let dots = this.d3_plot_.main.plot.selectAll(".dot")
+                    .data(data);
+                
+                dots.exit().remove();
+
+                dots.attr("cx", (d) => { return this.d3_plot_.main.x(d3.isoParse(d.ts)); })
+                    .attr("cy", (d) => { return this.d3_plot_.main.y(d.value); });
+                
+                dots.enter().append("circle")
+                    .attr('class', 'dot')
+                    .attr("r", 3.5)
+                    .attr("cx", (d) => { return this.d3_plot_.main.x(d3.isoParse(d.ts)); })
+                    .attr("cy", (d) => { return this.d3_plot_.main.y(d.value); });
+                
+                
                 this.d3_plot_.overview.plot.select('path').datum(data)
                 this.d3_plot_.overview.plot.select('path').transition().attr("d", this.d3_plot_.overview.area);
                 this.d3_plot_.overview.plot.select('g.axis--x').transition().call(this.d3_plot_.overview.x_axis);
@@ -365,6 +424,14 @@ export class TimeseriesPlot implements AfterViewInit, OnChanges {
         }
         if (changes.width || changes.height) {
             this.updateChartSize();
+        }
+        if (changes.title) {
+            if (this.d3_plot_.svg)
+                this.d3_plot_.svg.select('.y-title').html(changes.title.currentValue);
+        }
+        if (changes.units) {
+            if (this.d3_plot_.svg)
+                this.d3_plot_.svg.select('.y-units').html(changes.units.currentValue);
         }
     }
 };

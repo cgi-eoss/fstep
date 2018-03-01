@@ -1,19 +1,12 @@
-<div class="field is-horizontal">
-    <div class="field-body">
-        <div class="field is-horizontal">
-            <div class="field-label is-normal">
-                <label class="label">Start date:</label>
-            </div>
-            <div class="field-body">
-                <input #timeRangeField class="input" type="text" id="time_range_in">
-            </div>
-        </div>
-        <p class="field is-horizontal">
-            <a class="button" (click)="onSubmitClick()">
-                <span class="icon is-small">
-                    <i class="fa fa-search"></i>
-                </span>
-            </a>
-        </p>
+<div class="field has-addons">
+    <div class="control">
+        <input #timeRangeField class="input" type="text" id="time_range_in">
     </div>
+    <p class="control">
+        <a class="button" (click)="onSubmitClick()">
+            <span class="icon is-small">
+                <i class="fa fa-search"></i>
+            </span>
+        </a>
+    </p>
 </div>
