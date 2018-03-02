@@ -7,6 +7,8 @@ export class Processor {
     description: string;
     thumb: string;
     mapSource;
+    domainConfig;
+    legendConfig;
     timeRange: {start: moment.Moment, end: moment.Moment, frequency: moment.Duration, list: Array<moment.Moment>}
 
     constructor(config) {
@@ -22,13 +24,33 @@ export class Processor {
                 return moment(ts);
             }) : null
         }
+        this.domainConfig = config.domain;
+        this.legendConfig = config.legend;
         this.mapSource = this.createMapSource(config.layer);
+    }
+
+    getNearestTime(dt) {
+        if (this.timeRange.end.isBefore(dt)) {
+            return this.timeRange.end.toDate();
+        }
+        else if (this.timeRange.start.isAfter(dt)) {
+            return this.timeRange.start.toDate();
+        }
+        else {
+            let times = this.timeRange.list;
+
+            let nearestIdx = 0;
+            while (dt.getTime() >= times[nearestIdx + 1]) {
+                nearestIdx++;
+            }
+            return times[nearestIdx].toDate();
+        }
     }
 
 
     private createMapSource(params) {
         if (params.type == 'WMS') {
-            return new ProcessorWMSSource(params.config, this.timeRange);
+            return new ProcessorWMSSource(params.config, this.timeRange, this.domainConfig, this.legendConfig);
         }
     }
 }

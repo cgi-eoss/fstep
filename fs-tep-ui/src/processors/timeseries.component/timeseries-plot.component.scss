@@ -1,4 +1,4 @@
-@import "../../../css/variables.sass";
+@import "../../../css/bulma-theme.sass";
 
 :host /deep/ .area {
     fill: none;
@@ -24,4 +24,15 @@
       display: none;
   }
   
-  
+  :host /deep/ {  
+    .overview {
+      @include mobile {
+        display: none;
+      }
+    }
+
+    .y-label {
+      font-weight: bold;
+      font-size: 0.8rem;
+    }
+  }

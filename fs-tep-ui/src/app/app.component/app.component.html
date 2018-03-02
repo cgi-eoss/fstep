@@ -3,10 +3,12 @@
     <nav-bar></nav-bar>
     <breadcrumb></breadcrumb>
     <div class="main-content">
-        <router-outlet></router-outlet>
+        <router-outlet>
+        </router-outlet>
     </div>
     <statusbar>
+        <processor-legend [width]=200 [height]=20></processor-legend>
         <time-selector class="is-pulled-right"></time-selector>
-        <mouse-coords class="is-pulled-right"></mouse-coords>
+        <mouse-coords class="is-pulled-right is-hidden-touch"></mouse-coords>
     </statusbar>
 </div>

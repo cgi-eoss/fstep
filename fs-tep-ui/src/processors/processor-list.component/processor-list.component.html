@@ -12,8 +12,8 @@
                             </header>
 
                             <div class="card-content">
-                                <figure class="image is-96x96 is-pulled-left">
-                                    <img src="http://bulma.io/images/placeholders/96x96.png" alt="Image">
+                                <figure class="image is-pulled-left" *ngIf="processor.thumb">
+                                    <img src="{{processor.thumb}}" alt="Image">
                                 </figure>
                                 <p>{{processor.description}}</p>
                             </div>

@@ -23,7 +23,9 @@ export class ProcessorsService {
         enabled: false,
         coordinates: [0, 0],
         start: new Date(), 
-        end: new Date
+        end: new Date,
+        units: '',
+        title: ''
     });
     
     constructor(private http: Http, private timeService: TimeService, breadcrumbService: BreadcrumbService, private appConfig: AppConfig) {
@@ -72,6 +74,8 @@ export class ProcessorsService {
 
                             let times = timeDimension.values.split(',');
 
+                            let additionalConfig = config.products[layer.Name] || {}
+
                             let processor = null;
 
                             try {
@@ -79,20 +83,21 @@ export class ProcessorsService {
                                     id: layer.Name.toLowerCase(),
                                     name: layer.Title,
                                     description: layer.Abstract,
-                                    thumb: layer.Name,
                                     layer: {
                                         type: "WMS",
                                         config: {
                                             url: config.geoserver.url + '/'  + config.geoserver.products_workspace + '/wms',
                                             layers: layer.Name,
-                                            legend: true
+                                            legend: true,
+                                            srs: 'EPSG:900913'
                                         }
                                     },
                                     time_range: {
                                         start: times[0],
                                         end: times[times.length - 1],
                                         list: times
-                                    }
+                                    },
+                                    ...additionalConfig
                                 });
                             }
                             catch(e) {
@@ -142,27 +147,21 @@ export class ProcessorsService {
             });
 
             let dt = this.timeService.getCurrentDate();
-            if (processor.timeRange.end.isBefore(dt)) {
-                this.timeService.setSelectedDate(processor.timeRange.end.toDate());
-            }
-            else if (processor.timeRange.start.isAfter(dt)) {
-                this.timeService.setSelectedDate(processor.timeRange.start.toDate());
-            }
 
+            this.timeService.setSelectedDate(processor.getNearestTime(dt));
 
-
-            let outOfRange = false;
             let tsState = this.timeSeriesState.value;
             if (processor.timeRange.end.isBefore(tsState.end)) {
                 tsState.end = processor.timeRange.end.toDate();
-                outOfRange = true;
             }
             if (processor.timeRange.start.isAfter(tsState.start)) {
                 tsState.start = processor.timeRange.start.toDate();
-                outOfRange = true;
             }
-            if (outOfRange)
-                this.setTimeSeriesState(tsState);
+
+            tsState.units = processor.domainConfig.units;
+            tsState.title = processor.domainConfig.title || processor.name;
+            
+            this.setTimeSeriesState(tsState);
         }
     }
 

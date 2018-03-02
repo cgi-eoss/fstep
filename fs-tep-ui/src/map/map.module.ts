@@ -10,11 +10,12 @@ import {LongitudePipe} from './longitude.pipe';
 import {LatitudePipe} from './latitude.pipe';
 
 import {MouseCoordsComponent} from './mouse-coords.component/mouse-coords.component';
+import { WmtsDomainDiscoveryService } from './services';
 
 @NgModule({
   declarations: [MapComponent, MouseCoordsComponent, LongitudePipe, LatitudePipe],
   imports: [CommonModule],
   exports: [MapComponent, MouseCoordsComponent, LongitudePipe, LatitudePipe],
-  providers: [MapService, AoiLayer, CoordService, MapDrawControl]
+  providers: [MapService, AoiLayer, CoordService, MapDrawControl, WmtsDomainDiscoveryService]
 })
 export class MapModule {}

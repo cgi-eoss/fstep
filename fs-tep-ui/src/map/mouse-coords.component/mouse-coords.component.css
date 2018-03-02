@@ -1,4 +1,19 @@
+:host {
+    height: 50px;
+}
+
+:host > div {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
 .mouse_coord {
     display: inline-block;
     min-width: 80px;
+    font-size: 1rem;
+}
+
+.mouse_coord:first-child {
+    margin-right: 0.5em;
 }

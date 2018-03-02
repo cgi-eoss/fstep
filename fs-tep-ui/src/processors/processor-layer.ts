@@ -6,6 +6,7 @@ import {BehaviorSubject} from 'rxjs/BehaviorSubject';
 import {MapService} from '../map/map.service';
 import {UserService} from '../app/user/user.service';
 import {TimeService} from '../app/time.service';
+import {WmtsDomainDiscoveryService} from '../map/services/wmts-domain-discovery.service';
 
 import TileLayer from 'ol/layer/tile';
 import ImageLayer from 'ol/layer/image';
@@ -24,7 +25,13 @@ export class ProcessorLayer {
     
     private state = new BehaviorSubject({visible: false, loading: false, dataSource: null});
 
-    constructor(mapService: MapService, userService: UserService, private timeService: TimeService, private http: Http) {
+    constructor(
+        private mapService: MapService, 
+        userService: UserService,
+        private wmtsDomainDiscoveryService: WmtsDomainDiscoveryService,
+        private timeService: TimeService, 
+        private http: Http
+    ) {
         mapService.getViewer().then((viewer) => {
             this.viewer = viewer;
             this.initLayer();
@@ -38,8 +45,114 @@ export class ProcessorLayer {
             let ds = this.state.value.dataSource;
             if (ds) {
                 ds.updateSourceTime(dt);
+                this.centerOnMap();
             }
         })
+    }
+
+
+
+    setDataSource(source) {
+        
+        this.state.next(Object.assign({}, this.state.value, {
+            dataSource: source
+        }));
+
+
+        if (this.layer) {
+            if (source && source.isTiled() && this.layer instanceof ImageLayer)  {
+                this.viewer.getLayers().remove(this.layer);
+                this.initLayer();
+            }
+            else if (source && !source.isTiled() && this.layer instanceof TileLayer) {
+                this.viewer.getLayers().remove(this.layer);
+                this.initLayer();
+            }
+            else {
+                this.layer.setSource(source ? source.getOLSource() : null);
+            }
+        }
+
+        if (source) {
+            source.updateSourceTime(this.timeService.getCurrentDate());
+            this.centerOnMap();
+        }
+
+    }
+
+    setVisible(visible: boolean) {
+        this.state.next(Object.assign({}, this.state.value, {
+            visible: visible
+        }));
+        if (this.layer) {
+            this.layer.setVisible(visible);
+        }
+    }
+
+    getCurrentState() {
+        return this.state.value;
+    }
+
+    getState() {
+        return this.state.asObservable();
+    }
+
+    getSourceValue(coordinate) {
+
+        let dataSource = this.state.value.dataSource;
+        let url = dataSource.getFeatureInfo(coordinate, this.viewer.getView().getResolution(), this.viewer.getView().getProjection());
+
+        return this.http.get(url)
+            .toPromise()
+            .then((response)=>{
+                let features =  response.json().features;
+                if (features.length) {
+                    let val =  dataSource.scaleValue(features[0].properties.GRAY_INDEX);
+                    if (typeof(val) === "number") {
+                        return val.toFixed(2);
+                    } else {
+                        return val;
+                    }
+                }
+                else {
+                    return 'No data';
+                }
+            })
+            .catch((error)=>{
+                return Promise.reject(error.message || error);
+            });
+    }
+
+    getSourceTimeSeries(coordinate, start, end) {
+
+        let dataSource = this.state.value.dataSource;
+
+        let url = dataSource.getFeatureInfo(coordinate, this.viewer.getView().getResolution(), this.viewer.getView().getProjection());
+
+        url = url.replace('GetFeatureInfo', 'GetTimeSeries').replace('INFO_FORMAT=application%2Fjson', 'INFO_FORMAT=application/csv');
+
+        url = url + '&time=' + start + '/' + end;
+
+        return this.http.get(url)
+        .toPromise()
+            .then((response)=>{
+                let csv =  response.text();
+                let rows = csv.split('\n');
+                let records = rows.map((r)=>{
+                    return r.split(',');
+                });
+
+                return records.slice(3, records.length - 1).map((value) => {
+                    return [value[0], dataSource.scaleValue(parseFloat(value[1]))];
+                }).filter((value) => {
+                    return typeof(value[1]) == "number";
+                });
+
+                
+            })
+            .catch((error)=>{
+                return Promise.reject(error.message || error);
+            });
     }
 
     private initLayer() {
@@ -116,93 +229,32 @@ export class ProcessorLayer {
         ctx.restore();
     }
 
-    setDataSource(source) {
-        
-        this.state.next(Object.assign({}, this.state.value, {
-            dataSource: source
-        }));
+    private centerOnMap() {
 
-
-        if (this.layer) {
-            if (source && source.isTiled() && this.layer instanceof ImageLayer)  {
-                this.viewer.getLayers().remove(this.layer);
-                this.initLayer();
-            }
-            else if (source && !source.isTiled() && this.layer instanceof TileLayer) {
-                this.viewer.getLayers().remove(this.layer);
-                this.initLayer();
-            }
-            else {
-                this.layer.setSource(source ? source.getOLSource() : null);
-            }
+        if (!this.layer) {
+            return;
         }
 
-        if (source)
-            source.updateSourceTime(this.timeService.getCurrentDate());
+        let wmsSource = this.layer.getSource()
+        let url = wmsSource.getUrls()[0].replace('wms', 'gwc/service/wmts');
+        let params = wmsSource.getParams();
 
-
+        this.wmtsDomainDiscoveryService.describeDomains({
+            url: url,
+            layer: params['LAYERS'],
+            tileMatrix: 'EPSG:4326',
+            restrictions: [{
+                dimension: 'time',
+                range: params['TIME']
+            }]
+        }).then((domains) => {
+            if (domains && domains.bbox) {
+                this.mapService.fitExtent([domains.bbox.minx, domains.bbox.miny, domains.bbox.maxx, domains.bbox.maxy])
+            }
+            console.log(domains);
+        });
     }
 
-    setVisible(visible: boolean) {
-        this.state.next(Object.assign({}, this.state.value, {
-            visible: visible
-        }));
-        if (this.layer) {
-            this.layer.setVisible(visible);
-        }
-    }
-
-    getCurrentState() {
-        return this.state.value;
-    }
-
-    getState() {
-        return this.state.asObservable();
-    }
-
-    getSourceValue(coordinate) {
-        let url = this.state.value.dataSource.getFeatureInfo(coordinate, this.viewer.getView().getResolution());
-
-        return this.http.get(url)
-            .toPromise()
-            .then((response)=>{
-                let features =  response.json().features;
-                if (features.length) {
-                    return features[0].properties.GRAY_INDEX;
-                }
-                else {
-                    return 'No data';
-                }
-            })
-            .catch((error)=>{
-                return Promise.reject(error.message || error);
-            });
-    }
-
-    getSourceTimeSeries(coordinate, start, end) {
-        let url = this.state.value.dataSource.getFeatureInfo(coordinate, this.viewer.getView().getResolution());
-
-        url = url.replace('GetFeatureInfo', 'GetTimeSeries').replace('INFO_FORMAT=application%2Fjson', 'INFO_FORMAT=application/csv');
-
-        url = url + '&time=' + start + '/' + end;
-
-        return this.http.get(url)
-        .toPromise()
-            .then((response)=>{
-                let csv =  response.text();
-                let rows = csv.split('\n');
-                let records = rows.map((r)=>{
-                    return r.split(',');
-                });
-
-                return records.slice(3, records.length - 1);
-
-                
-            })
-            .catch((error)=>{
-                return Promise.reject(error.message || error);
-            });
-    }
 
 
 };

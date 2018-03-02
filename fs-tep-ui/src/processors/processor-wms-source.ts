@@ -14,11 +14,15 @@ export class ProcessorWMSSource {
     private colorMap;
 
     private timeRange: {start: moment.Moment, end: moment.Moment, frequency: moment.Duration}
+    private domainConfig;
+    private legendConfig;
 
-    constructor(config, timeRange) {
+    constructor(config, timeRange, domainConfig, legendConfig) {
 
         this.config = config;
         this.timeRange = timeRange;
+        this.domainConfig = domainConfig;
+        this.legendConfig = legendConfig || {};
 
         let source =  new TileWMS({
             url: config.url,
@@ -91,6 +95,8 @@ export class ProcessorWMSSource {
             return this.config.url + '?service=WMS&version=1.3.0&request=getLegendGraphic&format=image/png&transparent=true'
                 + '&layer=' + this.config.layers
                 + '&style=' + (this.config.styles || '')
+                + '&legend_options=layout:horizontal;fontColor:ffffff;dx:5;fontAntiAliasing:true'
+                + '&width=15&height=' + (this.legendConfig.height || 10)
         }
         else {
             return null;
@@ -98,8 +104,8 @@ export class ProcessorWMSSource {
     }
 
 
-    getFeatureInfo(coordinates, viewRes) {
-        return this.source.getGetFeatureInfoUrl(coordinates, viewRes, 'EPSG:4326', {
+    getFeatureInfo(coordinates, viewRes, viewProj) {
+        return this.source.getGetFeatureInfoUrl(coordinates, viewRes, viewProj || 'EPSG:4326', {
             INFO_FORMAT: 'application/json'
         })
     }
@@ -114,6 +120,23 @@ export class ProcessorWMSSource {
 
     getDomain() {
         return this.config.domain;
+    }
+
+    scaleValue(value) {
+        let domain = this.domainConfig;
+        if (domain) {
+            if (value === domain.nodata) {
+                return "No data";
+            } else if (domain.special_values) {
+                let sv = domain.special_values[value];
+                if (sv) {
+                    return sv;
+                }
+            }
+            return domain.offset  + (value * domain.scale); 
+        }
+
+        return value;
     }
 
     getTimeRange() {

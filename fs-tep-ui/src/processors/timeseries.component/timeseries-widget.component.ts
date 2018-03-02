@@ -27,6 +27,8 @@ export class TimeSeriesWidget implements AfterViewInit {
     this.computeChartSize();
 
     this.processorService.getTimeSeriesState().subscribe((value)=>{
+      this.timeseries.title = value.title;
+      this.timeseries.units = value.units;
       if (value.enabled)
         setTimeout(()=>this.onFormSubmit(value), 0);
     });

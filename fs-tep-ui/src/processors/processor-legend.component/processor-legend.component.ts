@@ -43,10 +43,16 @@ export class ProcessorLegendComponent implements AfterViewInit, OnDestroy {
     ngAfterViewInit() {
         this.layerObserver = this.processorLayer.getState().subscribe((state) => {
             this.dataSource = state.dataSource;
-            this.hasColormap = this.createColorGradient();
-            if (this.hasColormap)
-                this.colorToDomain = this.dataSource.getColorMap().getInverseMap();
-            this.legendUrl = this.dataSource ? this.dataSource.getLegendUrl() : null;
+
+            if (state.visible) {
+                this.hasColormap = this.createColorGradient();
+                if (this.hasColormap) {
+                    this.colorToDomain = this.dataSource.getColorMap().getInverseMap();
+                }
+                this.legendUrl = this.dataSource ? this.dataSource.getLegendUrl() : null;
+            } else {
+                this.legendUrl = null;
+            }
         });
 
         let w = this.width;
