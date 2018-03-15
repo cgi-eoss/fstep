@@ -14,7 +14,8 @@ classes:
 #  - fstep::webapp
 #  - fstep::worker
 #  - fstep::wps
-
+#  - fstep::broker
+#  - fstep::ui
 # MANDATORY PARAMETER. The example here should work for Vagrant environments
 #fstep::repo::location: file:///vagrant/.dist/repo
 
@@ -44,6 +45,10 @@ classes:
 #    ip: 127.0.0.1
 #  fstep-wps:
 #    ip: 127.0.0.1
+#  fstep-broker:
+#    ip: 127.0.0.1  
+#  fstep-ui:
+#    ip: 127.0.0.1  
 
 # Note that fstep::workers are self-registering with the fstep::server but the remoting IP can be controlled:
 #fstep::server::custom_config_properties:

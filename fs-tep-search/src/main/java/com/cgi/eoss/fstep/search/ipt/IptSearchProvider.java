@@ -64,7 +64,7 @@ public class IptSearchProvider extends RestoSearchProvider {
     private static final Map<String, String> PARAMETER_NAME_MAPPING = ImmutableMap.<String, String>builder()
             .put("semantic", "q")
             .put("aoi", "geometry")
-            .put("s2ProcessingLevel", "processingLevel")
+            .put("s2ProcessingLevel", "productType")
             .put("s1ProductType", "productType")
             .put("productDateStart", "startDate")
             .put("productDateEnd", "completionDate")
@@ -73,7 +73,6 @@ public class IptSearchProvider extends RestoSearchProvider {
             .build();
     private static final Map<String, Function<String, String>> PARAMETER_VALUE_MAPPING = ImmutableMap.<String, Function<String, String>>builder()
             .put("identifier", v -> "%" + v + "%")
-            .put("s2ProcessingLevel", v -> "LEVEL"+ v)
             .put("maxCloudCover", v -> "[0,"+ v +"]")
             .build();
 
@@ -234,7 +233,7 @@ public class IptSearchProvider extends RestoSearchProvider {
     
     @Override
     public List<Map<String, Object>> getDynamicParameterValues(String parameter){
-        return Collections.EMPTY_LIST;
+        return Collections.<Map<String, Object>>emptyList();
     }
 
     @Override
