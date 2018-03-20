@@ -79,7 +79,7 @@ public class EstimateCostApi {
     }
     
     @PostMapping("/systematic")
-    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#jobConfig, 'read')")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or (#jobConfigTemplate.id == null) or hasPermission(#jobConfigTemplate, 'read')")
     public ResponseEntity estimateSystematicCost(HttpServletRequest request, @RequestBody JobConfig jobConfigTemplate) throws InterruptedException, JsonParseException, JsonMappingException, JsonProcessingException, IOException {
         int walletBalance = fstepSecurityService.getCurrentUser().getWallet().getBalance();
         int singleRunCost =  costingService.estimateSingleRunJobCost(jobConfigTemplate);

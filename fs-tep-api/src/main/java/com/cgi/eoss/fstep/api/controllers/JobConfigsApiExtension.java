@@ -117,7 +117,7 @@ public class JobConfigsApiExtension {
      * @throws JsonParseException 
      */
     @PostMapping("/launchSystematic")
-    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#jobConfig, 'read')")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or (#jobConfigTemplate.id == null) or hasPermission(#jobConfigTemplate, 'read')")
     public ResponseEntity<Void> launchSystematic(HttpServletRequest request, @RequestBody JobConfig jobConfigTemplate) throws InterruptedException, JsonParseException, JsonMappingException, JsonProcessingException, IOException {
         LOG.debug("Received new request for systematic processing");
         
