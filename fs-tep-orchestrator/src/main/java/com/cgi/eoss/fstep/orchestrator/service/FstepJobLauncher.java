@@ -322,6 +322,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                         List<JobParam> failedSubJobInputs = GrpcUtil.mapToParams(failedSubJob.getConfig().getInputs());
                         chargeUser(failedSubJob.getOwner(), failedSubJob);
                         failedSubJob.setStatus(Status.CREATED);
+                        failedSubJob.setStartTime(null);
+                        failedSubJob.setEndTime(null);
+                        failedSubJob.setStage(null);
+                        failedSubJob.setWorkerId(null);
                         jobDataService.save(failedSubJob);
                         submitJob(failedSubJob, GrpcUtil.toRpcJob(failedSubJob), failedSubJobInputs, getJobPriority(i));
                     }
@@ -346,6 +350,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 }
                 chargeUser(job.getOwner(), job);
                 job.setStatus(Status.CREATED);
+                job.setStartTime(null);
+                job.setEndTime(null);
+                job.setStage(null);
+                job.setWorkerId(null);
                 jobDataService.save(job);
                 submitJob(job, rpcJob, GrpcUtil.mapToParams(job.getConfig().getInputs()), SINGLE_JOB_PRIORITY);
             }

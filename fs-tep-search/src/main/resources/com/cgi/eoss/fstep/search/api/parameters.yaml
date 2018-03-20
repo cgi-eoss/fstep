@@ -59,8 +59,6 @@ s2ProcessingLevel:
     values:
       - value: ''
         title: ''
-      - value: '1C'
-        title: '1C'
       - value: 'L1C'
         title: 'L1C'
       - value: 'L2A'
