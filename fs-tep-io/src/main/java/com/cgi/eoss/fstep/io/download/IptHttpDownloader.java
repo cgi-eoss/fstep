@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.jayway.jsonpath.JsonPath;
-import lombok.Builder;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import okhttp3.HttpUrl;
@@ -29,6 +28,7 @@ import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -46,7 +46,7 @@ public class IptHttpDownloader implements Downloader {
     private final ObjectMapper objectMapper;
     private final DownloaderFacade downloaderFacade;
     private final IptHttpDownloaderProperties properties;
-
+    private static Random random = new Random();
     @Autowired
     IptHttpDownloader(OkHttpClient okHttpClient, FstepServerClient fstepServerClient, DownloaderFacade downloaderFacade, IptHttpDownloaderProperties properties) {
         this.httpClient = okHttpClient;
@@ -75,7 +75,28 @@ public class IptHttpDownloader implements Downloader {
 
     @Override
     public Path download(Path targetDir, URI uri) throws IOException {
-        LOG.info("Downloading: {}", uri);
+    	int count = 0;
+    	int maxTries = properties.getRetries();
+    	while(true) {
+    	    try {
+    	    	Path path = iptDownload(targetDir, uri);
+    	    	return path;
+    	    } catch (Exception e) {
+    	        if (++count == maxTries) { 
+    	        	throw e;
+    	        }
+    	        try {
+    	            Thread.sleep(((int) Math.round(Math.pow(2, count)) * 1000) 
+    	                + (random.nextInt(999) + 1));
+    	        } catch (InterruptedException ie) {
+    	            //Keep retrying 
+    	        }
+    	    }
+    	}
+    }
+
+	private Path iptDownload(Path targetDir, URI uri) throws IOException {
+		LOG.info("Downloading: {}", uri);
 
         // IPT downloading is three-step:
         //   1. Call an authentication endpoint to get a token
@@ -109,7 +130,7 @@ public class IptHttpDownloader implements Downloader {
 
         LOG.info("Successfully downloaded via IPT: {}", outputFile);
         return outputFile;
-    }
+	}
 
     private String getAuthToken(Credentials credentials) throws IOException {
         Request authRequest = new Request.Builder()
@@ -182,6 +203,8 @@ public class IptHttpDownloader implements Downloader {
         private String authEndpoint;
         @Value("${fstep.worker.downloader.ipt.authDomain:__secret__}")
         private String authDomain;
+        @Value("${fstep.worker.downloader.ipt.retries:3}")
+        private int retries;
     }
 
 }

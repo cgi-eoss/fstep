@@ -88,39 +88,46 @@ public class FstepWorkerAutoscaler {
         autoscalingOngoing = true;
         // We check that currentNodes are already equal or greather than minWorkerNodes to be sure that allocation of
         // minNodes has already happened
-        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
-        if (currentNodes.size() < minWorkerNodes) {
-            return;
+        try {
+	        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
+	        if (currentNodes.size() < minWorkerNodes) {
+	            return;
+	        }
+	        QueueAverage queueAverage = queueMetricsService.getMetrics(STATISTICS_WINDOW_MS/1000L);
+	        double coverageFactor = 1.0 * QUEUE_CHECK_INTERVAL_MS / STATISTICS_WINDOW_MS;
+	        double coverage = queueAverage.getCount() * coverageFactor;
+	        if (coverage > 0.75) {
+	            LOG.info("Avg queue length is {}", queueAverage.getAverageLength());
+	            int averageLengthRounded = (int) Math.ceil(queueAverage.getAverageLength());
+	            double scaleTarget = 1.0 * averageLengthRounded  / maxJobsPerNode;
+	            scaleTo((int) Math.round(scaleTarget));
+	        }
+	        else {
+	            LOG.info("Metrics coverage of {} not enough to take scaling decision", coverage);
+	        }
+	        autoscalingOngoing = false;
+
         }
-        QueueAverage queueAverage = queueMetricsService.getMetrics(STATISTICS_WINDOW_MS/1000L);
-        double coverageFactor = 1.0 * QUEUE_CHECK_INTERVAL_MS / STATISTICS_WINDOW_MS;
-        double coverage = queueAverage.getCount() * coverageFactor;
-        if (coverage > 0.75) {
-            LOG.info("Avg queue length is {}", queueAverage.getAverageLength());
-            int averageLengthRounded = (int) Math.ceil(queueAverage.getAverageLength());
-            double scaleTarget = 1.0 * averageLengthRounded  / maxJobsPerNode;
-            scaleTo((int) Math.round(scaleTarget));
+        catch (RuntimeException e) {
+            autoscalingOngoing = false;
+            throw e;
         }
-        else {
-            LOG.info("Metrics coverage of {} not enough to take scaling decision", coverage);
-        }
-        autoscalingOngoing = false;
     }
    
     public void scaleTo(int target) {
         LOG.info("Scaling to {} nodes", target);
-        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
-        if (target > currentNodes.size()) {
+        int freeNodes = nodeManager.getNumberOfFreeNodes(FstepWorkerNodeManager.pooledWorkerTag);
+        if (target > freeNodes) {
             long previousAutoScalingActionTime = lastAutoscalingActionTime;
             try {
-                scaleUp(target - currentNodes.size());
+                scaleUp(target - freeNodes);
                 lastAutoscalingActionTime = Instant.now().getEpochSecond();
             } catch (NodeProvisioningException e) {
                 LOG.debug("Autoscaling failed because of node provisioning exception");
                 lastAutoscalingActionTime = previousAutoScalingActionTime;
             }
-        } else if (target < currentNodes.size()) {
-            scaleDown(currentNodes.size() - target);
+        } else if (target < freeNodes) {
+            scaleDown(freeNodes - target);
             lastAutoscalingActionTime = Instant.now().getEpochSecond();
         }
         else {

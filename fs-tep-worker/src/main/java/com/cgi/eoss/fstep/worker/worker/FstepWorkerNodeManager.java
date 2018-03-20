@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
@@ -132,6 +134,10 @@ public class FstepWorkerNodeManager {
     public void releaseStorageForJob(Node jobNode, String jobId, String storageId) throws StorageProvisioningException {
          LOG.info("Removing device {} for job {}", storageId, jobId);
          nodeFactory.removeStorageForNode(jobNode, storageId);
+    }
+
+	public int getNumberOfFreeNodes(String tag) {
+		return nodeFactory.getCurrentNodes(tag).stream().filter(n -> jobsPerNode.getOrDefault(n, 0) == 0).collect(Collectors.toSet()).size();
     }
 
 }
