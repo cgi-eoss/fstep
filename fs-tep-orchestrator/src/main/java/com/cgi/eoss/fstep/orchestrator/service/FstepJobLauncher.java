@@ -320,7 +320,9 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     int i = 0;
                     for (Job failedSubJob : failedSubJobs) {
                         List<JobParam> failedSubJobInputs = GrpcUtil.mapToParams(failedSubJob.getConfig().getInputs());
-                        chargeUser(failedSubJob.getOwner(), failedSubJob);
+                        if (failedSubJob.getStage().equals("Step 1 of 3: Data-Fetch") == false) {
+                        	chargeUser(failedSubJob.getOwner(), failedSubJob);
+                        }
                         failedSubJob.setStatus(Status.CREATED);
                         failedSubJob.setStartTime(null);
                         failedSubJob.setEndTime(null);
@@ -348,7 +350,9 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     }
                     throw new ServiceExecutionException("User does not have read access to all requested output collections");
                 }
-                chargeUser(job.getOwner(), job);
+                if (job.getStage().equals("Step 1 of 3: Data-Fetch") == false) {
+                	chargeUser(job.getOwner(), job);
+                }
                 job.setStatus(Status.CREATED);
                 job.setStartTime(null);
                 job.setEndTime(null);
