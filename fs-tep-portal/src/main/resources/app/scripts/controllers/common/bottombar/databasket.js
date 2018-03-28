@@ -132,7 +132,10 @@ define(['../../../fstepmodules'], function(fstepmodules) {
                 });
 
                 $scope.createBasket = function() {
-                    BasketService.createDatabasket($scope.newBasket.name, $scope.newBasket.description).then(function(newBasket) {
+                    BasketService.createDatabasket({
+                        name: $scope.newBasket.name,
+                        description: $scope.newBasket.description
+                    }).then(function(newBasket) {
                         BasketService.addToDatabasket(newBasket, $scope.files);
                         BasketService.refreshDatabaskets("explorer", "Create", newBasket);
                     });
