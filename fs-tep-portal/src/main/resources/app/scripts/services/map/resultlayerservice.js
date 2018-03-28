@@ -139,7 +139,9 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                     resultsLayer.getSource().addFeature(resultItem);
                 }
                 if (zoomToPlace) {
-                    map.getView().fit(resultsLayer.getSource().getExtent(), map.getSize());
+                    map.getView().fit(resultsLayer.getSource().getExtent(), map.getSize(), {
+                        maxZoom: 10
+                    });
                 }
             }
         };

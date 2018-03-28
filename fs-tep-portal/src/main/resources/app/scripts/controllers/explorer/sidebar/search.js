@@ -61,6 +61,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         $scope.selectCatalog = function (field, catalog) {
             $scope.searchParams[field.type] = catalog.value;
             $scope.selectedCatalog = catalog;
+            this.getValues();
         };
 
         $scope.closeCatalog = function (field) {
@@ -109,7 +110,6 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                     delete $scope.enabledFields[field];
                 }
 
-                $scope.catalogues[field].optional
                 $scope.enabledFields[field] = $scope.catalogues[field].optional ? ($scope.enabledFields[field] || false): true;
 
                 if ($scope.catalogues[field].type === 'select') {
