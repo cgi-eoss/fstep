@@ -173,9 +173,9 @@ public class FstepSearchProvider extends RestoSearchProvider {
 
             Map<String, Object> extraParams = Optional.ofNullable((Map<String, Object>) f.getProperties().get("extraParams")).orElse(new HashMap<>());
             
-            Optional.ofNullable(extraParams.get("startDate"))
+            Optional.ofNullable(f.getProperty("startDate"))
             .ifPresent(startDate -> extraParams.put("fstepStartTime", startDate));
-            Optional.ofNullable(extraParams.get("completionDate"))
+            Optional.ofNullable(f.getProperty("completionDate"))
             .ifPresent(completionDate -> extraParams.put("fstepEndTime", completionDate));
             
             f.getProperties().put("extraParams", extraParams);
