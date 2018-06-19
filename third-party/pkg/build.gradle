@@ -1,5 +1,5 @@
 group 'com.cgi.eoss.fs-tep'
-version '1.1.8'
+version '1.2.0-SNAPSHOT'
 
 apply plugin: 'base'
 apply plugin: 'eclipse'
