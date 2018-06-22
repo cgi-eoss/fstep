@@ -13,8 +13,13 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -29,6 +34,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.commons.lang3.StringUtils;
@@ -49,6 +56,7 @@ import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.JobStep;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Parameter;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
@@ -94,6 +102,8 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.mysema.commons.lang.Pair;
+
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.log4j.Log4j2;
@@ -507,8 +517,64 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
                     @Override
                     public void onCompleted() {
                         super.onCompleted();
+                        Pair<OffsetDateTime, OffsetDateTime> startEndDateTimes = getStartEndDateTimes(outputId);
+                        outputFileMetadata.setStartDateTime(startEndDateTimes.getFirst());
+                        outputFileMetadata.setEndDateTime(startEndDateTimes.getSecond());
                         retrievedOutputFiles.add(new RetrievedOutputFile(outputFileMetadata, getOutputPath()));
                     }
+
+					private Pair<OffsetDateTime, OffsetDateTime> getStartEndDateTimes(String outputId) {
+						try {
+	                        //Retrieve the parameter 
+	                        Optional<Parameter> outputParameter = getServiceOutputParameter(outputId);
+	                        String regexp = outputParameter.get().getTimeRegexp();
+	                        if (regexp != null) {
+	                        	Pattern p = Pattern.compile(regexp);
+	                        	Matcher m = p.matcher(getOutputPath().getFileName().toString());
+	                        	if (m.find()) {
+	                        		if (regexp.contains("?<startEnd>")) {
+	                        			OffsetDateTime startEndDateTime = parseOffsetDateTime(m.group("startEnd"), LocalTime.MIDNIGHT);
+	                        			return new Pair<OffsetDateTime, OffsetDateTime>(startEndDateTime, startEndDateTime);
+	                        		}
+	                        		else {
+	                        			OffsetDateTime start = null, end = null;
+	                        			if (regexp.contains("?<start>")) {
+	                            			start = parseOffsetDateTime(m.group("start"), LocalTime.MIDNIGHT);
+	                            		}
+	                        			
+	                        			if (regexp.contains("?<end>")) {
+	                            			end = parseOffsetDateTime(m.group("end"), LocalTime.MIDNIGHT);
+	                            		}
+	                        			return new Pair<OffsetDateTime, OffsetDateTime>(start, end);
+	                        		}
+	                            }
+	                        }
+                        }
+                        catch(RuntimeException e) {
+                        	LOG.error("Unable to parse date from regexp");
+                        }
+						return new Pair<OffsetDateTime, OffsetDateTime> (null, null);
+					}
+
+					private Optional<Parameter> getServiceOutputParameter(String outputId) {
+						return job.getConfig().getService().getServiceDescriptor().getDataOutputs().stream().filter(p -> p.getId().equals(outputId)).findFirst();
+					}
+					
+					private OffsetDateTime parseOffsetDateTime(String startDateStr, LocalTime defaultTime) {
+						DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd[[ ]['T']HHmm[ss][.SSS][XXX]]");
+						TemporalAccessor temporalAccessor = formatter.parseBest(startDateStr, OffsetDateTime::from, LocalDate::from);
+						if (temporalAccessor instanceof OffsetDateTime) {
+							return (OffsetDateTime) temporalAccessor;
+						} 
+						else if (temporalAccessor instanceof LocalDateTime){
+							return ((LocalDateTime) temporalAccessor).atOffset(ZoneOffset.UTC);
+						} 
+						else
+						{
+							return ((LocalDate) temporalAccessor).atTime(defaultTime).atOffset(ZoneOffset.UTC);
+						}
+					}
+					
                 }) {
                     asyncWorker.getOutputFile(getOutputFileParam, fileStreamClient.getFileStreamObserver());
                     fileStreamClient.getLatch().await();
@@ -518,7 +584,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         postProcessOutputProducts(retrievedOutputFiles).forEach( Unchecked.consumer(retrievedOutputFile -> outputFiles.put(retrievedOutputFile.getOutputFileMetadata().getOutputProductMetadata().getOutputId(), catalogueService.ingestOutputProduct(retrievedOutputFile.getOutputFileMetadata(), retrievedOutputFile.getPath()))));
         return outputFiles;
     }
-
+    
     private OutputProductMetadata getOutputMetadata(Job job, Map<String, GeoServerSpec> geoServerSpecs,
             Map<String, String> collectionSpecs, String outputId) {
         OutputProductMetadataBuilder outputProductMetadataBuilder = OutputProductMetadata.builder()

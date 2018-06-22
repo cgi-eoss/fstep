@@ -109,6 +109,8 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                 outputProductMetadata.getJobId(),
                 outputFileMetadata.getCrs(),
                 outputFileMetadata.getGeometry(),
+                outputFileMetadata.getStartDateTime(),
+                outputFileMetadata.getEndDateTime(),
                 outputProductMetadata.getProductProperties(),
                 path);
         fstepFile.setDataSource(dataSourceDataService.getForService(outputProductMetadata.getService()));

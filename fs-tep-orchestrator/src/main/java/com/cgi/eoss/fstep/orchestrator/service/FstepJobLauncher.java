@@ -16,6 +16,7 @@ import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepService.Type;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
+import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Parameter;
 import com.cgi.eoss.fstep.model.FstepServiceDockerBuildInfo;
 import com.cgi.eoss.fstep.model.FstepServiceResources;
 import com.cgi.eoss.fstep.model.Job;
@@ -77,6 +78,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.SetMultimap;
+import com.mysema.commons.lang.Pair;
+
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import javax.jms.JMSException;
@@ -99,8 +102,13 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -894,8 +902,63 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     @Override
                     public void onCompleted() {
                         super.onCompleted();
+                        Pair<OffsetDateTime, OffsetDateTime> startEndDateTimes = getStartEndDateTimes(outputId);
+                        outputFileMetadata.setStartDateTime(startEndDateTimes.getFirst());
+                        outputFileMetadata.setEndDateTime(startEndDateTimes.getSecond());
                         retrievedOutputFiles.add(new RetrievedOutputFile(outputFileMetadata, getOutputPath()));
                     }
+
+					private Pair<OffsetDateTime, OffsetDateTime> getStartEndDateTimes(String outputId) {
+						try {
+	                        //Retrieve the parameter 
+	                        Optional<Parameter> outputParameter = getServiceOutputParameter(outputId);
+	                        String regexp = outputParameter.get().getTimeRegexp();
+	                        if (regexp != null) {
+	                        	Pattern p = Pattern.compile(regexp);
+	                        	Matcher m = p.matcher(getOutputPath().getFileName().toString());
+	                        	if (m.find()) {
+	                        		if (regexp.contains("?<startEnd>")) {
+	                        			OffsetDateTime startEndDateTime = parseOffsetDateTime(m.group("startEnd"), LocalTime.MIDNIGHT);
+	                        			return new Pair<OffsetDateTime, OffsetDateTime>(startEndDateTime, startEndDateTime);
+	                        		}
+	                        		else {
+	                        			OffsetDateTime start = null, end = null;
+	                        			if (regexp.contains("?<start>")) {
+	                            			start = parseOffsetDateTime(m.group("start"), LocalTime.MIDNIGHT);
+	                            		}
+	                        			
+	                        			if (regexp.contains("?<end>")) {
+	                            			end = parseOffsetDateTime(m.group("end"), LocalTime.MIDNIGHT);
+	                            		}
+	                        			return new Pair<OffsetDateTime, OffsetDateTime>(start, end);
+	                        		}
+	                            }
+	                        }
+                        }
+                        catch(RuntimeException e) {
+                        	LOG.error("Unable to parse date from regexp");
+                        }
+						return new Pair<OffsetDateTime, OffsetDateTime> (null, null);
+					}
+
+					private Optional<Parameter> getServiceOutputParameter(String outputId) {
+						return job.getConfig().getService().getServiceDescriptor().getDataOutputs().stream().filter(p -> p.getId().equals(outputId)).findFirst();
+					}
+					
+					private OffsetDateTime parseOffsetDateTime(String startDateStr, LocalTime defaultTime) {
+						DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd[[ ]['T']HHmm[ss][.SSS][XXX]]");
+						TemporalAccessor temporalAccessor = formatter.parseBest(startDateStr, OffsetDateTime::from, LocalDate::from);
+						if (temporalAccessor instanceof OffsetDateTime) {
+							return (OffsetDateTime) temporalAccessor;
+						} 
+						else if (temporalAccessor instanceof LocalDateTime){
+							return ((LocalDateTime) temporalAccessor).atOffset(ZoneOffset.UTC);
+						} 
+						else
+						{
+							return ((LocalDate) temporalAccessor).atTime(defaultTime).atOffset(ZoneOffset.UTC);
+						}
+					}
                 }) {
                     asyncWorker.getOutputFile(getOutputFileParam, fileStreamClient.getFileStreamObserver());
                     fileStreamClient.getLatch().await();
@@ -905,6 +968,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         postProcessOutputProducts(retrievedOutputFiles).forEach( Unchecked.consumer(retrievedOutputFile -> outputFiles.put(retrievedOutputFile.getOutputFileMetadata().getOutputProductMetadata().getOutputId(), catalogueService.ingestOutputProduct(retrievedOutputFile.getOutputFileMetadata(), retrievedOutputFile.getPath()))));
         return outputFiles;
     }
+    
+    
 
     private OutputProductMetadata getOutputMetadata(Job job, Map<String, GeoServerSpec> geoServerSpecs,
             Map<String, String> collectionSpecs, String outputId) {

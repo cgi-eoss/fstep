@@ -7,14 +7,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
+
 import org.geojson.Feature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
+
 import com.cgi.eoss.fstep.catalogue.CatalogueUri;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoserverService;
@@ -28,6 +31,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.Hashing;
 import com.google.common.io.MoreFiles;
+
 import lombok.extern.log4j.Log4j2;
 import okhttp3.HttpUrl;
 
@@ -53,7 +57,7 @@ public class FilesystemOutputProductService implements OutputProductService {
     }
     
     @Override
-    public FstepFile ingest(String collection, User owner, String jobId, String crs, String geometry, Map<String, Object> properties, Path src) throws IOException {
+    public FstepFile ingest(String collection, User owner, String jobId, String crs, String geometry, OffsetDateTime startDateTime, OffsetDateTime endDateTime, Map<String, Object> properties, Path src) throws IOException {
         Path dest = outputProductBasedir.resolve(jobId).resolve(src);
         if (!src.equals(dest)) {
             if (Files.exists(dest)) {
@@ -94,6 +98,12 @@ public class FilesystemOutputProductService implements OutputProductService {
         // Add automatically-determined properties
         properties.put("productIdentifier", jobId + "_" + relativePath.toString());
         properties.put("fstepUrl", uri);
+        if (startDateTime != null) {
+        	properties.put("startDate", startDateTime.toString());
+        }
+        if (endDateTime != null) {
+        	properties.put("completionDate", endDateTime.toString());
+        }
         // TODO Get the proper MIME type
         properties.put("resourceMimeType", "application/unknown");
         properties.put("resourceSize", Files.size(dest));
