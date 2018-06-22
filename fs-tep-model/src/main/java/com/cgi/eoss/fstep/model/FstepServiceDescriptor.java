@@ -1,6 +1,8 @@
 package com.cgi.eoss.fstep.model;
 
 import com.cgi.eoss.fstep.model.converters.FstepServiceDescriptorYamlConverter;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,7 +11,7 @@ import lombok.Singular;
 
 import java.util.List;
 import java.util.Map;
-
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 /**
  * <p>The detailed service configuration required to complete a WPS service definition file.</p>
  * <p>All fields are broadly aligned with the official WPS spec as configured via ZOO-Project zcfg files.</p>
@@ -70,6 +72,9 @@ public class FstepServiceDescriptor {
 
         private DataNodeType data;
 
+        @JsonInclude(Include.NON_NULL)
+        private String timeRegexp;
+        
         private Map<String, String> defaultAttrs;
 
         @Singular

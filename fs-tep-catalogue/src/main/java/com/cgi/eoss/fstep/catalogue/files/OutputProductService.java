@@ -6,12 +6,13 @@ import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import okhttp3.HttpUrl;
 
 public interface OutputProductService extends FstepFileService {
     
-    FstepFile ingest(String collection, User owner, String jobId, String crs, String geometry, Map<String, Object> properties,
+    FstepFile ingest(String collection, User owner, String jobId, String crs, String geometry, OffsetDateTime startDateTime, OffsetDateTime endDateTime, Map<String, Object> properties,
             Path path) throws IOException;
     
     public String getDefaultCollection();
