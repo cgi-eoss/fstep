@@ -43,7 +43,7 @@ public interface ServiceFilesApi extends BaseRepositoryApi<FstepServiceContextFi
 
     @Override
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#serviceFile.service, 'administration')")
-    void delete(@P("serviceFile") FstepServiceContextFile service);
+    void delete(@P("serviceFile") FstepServiceContextFile serviceFile);
 
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#service, 'read')")
     Page<FstepServiceContextFile> findByService(@Param("service") FstepService service, Pageable pageable);
