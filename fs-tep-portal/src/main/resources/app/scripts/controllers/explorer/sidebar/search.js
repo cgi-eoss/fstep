@@ -61,12 +61,14 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         $scope.selectCatalog = function (field, catalog) {
             $scope.searchParams[field.type] = catalog.value;
             $scope.selectedCatalog = catalog;
+            $scope.enabledFields['catalogue'] = true;
             this.getValues();
         };
 
         $scope.closeCatalog = function (field) {
             $scope.searchParams = {};
             $scope.selectedCatalog = {};
+            $scope.enabledFields['catalogue'] = false;
         };
 
         $scope.pastePolygon = function(identifier){

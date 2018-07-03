@@ -58,7 +58,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             .getResource()
             .result
             .then(function (user) {
-                if (user != _this.params.activeUser) {
+                if (user.id != _this.params.activeUser.id) {
                     _this.params.activeUser = user;
                     $rootScope.$broadcast('active.user', user);
                 }
