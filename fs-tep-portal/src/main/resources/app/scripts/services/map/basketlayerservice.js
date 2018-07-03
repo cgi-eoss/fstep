@@ -35,6 +35,8 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
             style: basketStyle
         });
 
+        map.addLayer(basketLayer);
+
         this.loadBasket = function(basketFiles) {
             basketLayer.getSource().clear();
             if(basketFiles && basketFiles.length > 0){

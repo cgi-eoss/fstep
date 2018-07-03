@@ -37,6 +37,8 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
 
         $scope.$on('update.geoResults', function(event, results) {
             resultLayer.setResults(results);
+            resultLayer.setVisible(true);
+            basketLayer.setVisible(false);
         });
 
         $scope.$on('results.select.all', function (event, selected) {
@@ -69,7 +71,7 @@ define(['../../fstepmodules', 'ol', 'x2js', 'clipboard'], function (fstepmodules
         $scope.$on('update.wmslayer', function(event, files) {
             productLayer.setWMSLayers(files);
         });
-        
+
 
     }]);
 });

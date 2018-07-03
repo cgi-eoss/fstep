@@ -31,7 +31,14 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.walletParams = WalletService.params.account;
 
         $scope.user = UserService.params.activeUser;
-        WalletService.refreshUserTransactions('account', $scope.user);
+
+        if ($scope.user.id)
+            WalletService.refreshUserTransactions('account', $scope.user);
+
+        $scope.$on('active.user', function(event, user) {
+            $scope.user = UserService.params.activeUser;
+            WalletService.refreshUserTransactions('account', $scope.user);
+        });
 
         $scope.hideContent = true;
         var navbar, userdetails, sidenav;
