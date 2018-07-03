@@ -1,9 +1,15 @@
 package com.cgi.eoss.fstep.api.controllers;
 
 import com.cgi.eoss.fstep.model.FstepService;
+import com.cgi.eoss.fstep.model.FstepServiceContextFile;
+import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.FstepServiceDockerBuildInfo;
+import com.cgi.eoss.fstep.model.FstepServiceTemplate;
+import com.cgi.eoss.fstep.model.FstepServiceTemplateFile;
 import com.cgi.eoss.fstep.model.FstepServiceDockerBuildInfo.Status;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
+import com.cgi.eoss.fstep.persistence.service.ServiceTemplateDataService;
+import com.cgi.eoss.fstep.persistence.service.ServiceTemplateFileDataService;
 import com.cgi.eoss.fstep.rpc.BuildServiceParams;
 import com.cgi.eoss.fstep.rpc.BuildServiceResponse;
 import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
@@ -15,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.BasePathAwareController;
+import org.springframework.hateoas.Resource;
 import org.springframework.hateoas.Resources;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +29,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -42,6 +52,8 @@ public class ServicesApiExtension {
 
     private final ServiceDataService serviceDataService;
     private final FstepSecurityService fstepSecurityService;
+    private final ServiceTemplateDataService serviceTemplateDataService;
+    private final ServiceTemplateFileDataService serviceTemplateFileDataService;
     private final LocalServiceLauncher localServiceLauncher;
     
     @GetMapping("/defaults")
@@ -83,6 +95,55 @@ public class ServicesApiExtension {
         }
         return !currentServiceFingerprint.equals(fstepService.getDockerBuildInfo().getLastBuiltFingerprint());
     }
+    
+    /**
+     * <p>Creates a new service from a template
+     */
+    
+    @PostMapping("/{serviceId}/newTemplate")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or (hasRole('EXPERT_USER') and hasPermission(#service, 'administration'))")
+    public ResponseEntity<Resource<FstepServiceTemplate>> createNewServiceTemplate(@ModelAttribute("serviceId") FstepService service, @RequestBody FstepServiceTemplate serviceTemplate) {
+    	if (serviceTemplate.getId() != null) {
+    		return new ResponseEntity<Resource<FstepServiceTemplate>>(HttpStatus.FORBIDDEN);
+    	}
+        FstepServiceDescriptor serviceDescriptor = service.getServiceDescriptor();
+        FstepServiceDescriptor templateDescriptor = serviceTemplate.getServiceDescriptor();
+        
+        if (templateDescriptor == null) {
+        	templateDescriptor = new FstepServiceDescriptor();
+    		templateDescriptor.setId(serviceTemplate.getName());
+    		templateDescriptor.setDescription(serviceTemplate.getDescription());
+    		serviceTemplate.setServiceDescriptor(templateDescriptor);
+    	}
+    	populateTemplateDescriptorFromServiceDescriptor(serviceDescriptor, templateDescriptor);
+        
+    	serviceTemplate.setType(service.getType());
+    	serviceTemplate.setRequiredResources(service.getRequiredResources());
+    	fstepSecurityService.updateOwnerWithCurrentUser(serviceTemplate);
+    	serviceTemplateDataService.save(serviceTemplate);
+    	createTemplateFilesFromContextFile(serviceTemplate, service.getContextFiles());
+    	return new ResponseEntity<Resource<FstepServiceTemplate>>(new Resource<FstepServiceTemplate>(serviceTemplate), HttpStatus.CREATED);
+    	
+    }
+
+	private void populateTemplateDescriptorFromServiceDescriptor(FstepServiceDescriptor serviceDescriptor,
+			FstepServiceDescriptor templateDescriptor) {
+		if (serviceDescriptor.getDataInputs() != null) {
+			templateDescriptor.setDataInputs(serviceDescriptor.getDataInputs());
+		}
+		if (serviceDescriptor.getDataOutputs() != null) {
+			templateDescriptor.setDataOutputs(serviceDescriptor.getDataOutputs());
+		}
+        templateDescriptor.setStatusSupported(serviceDescriptor.isStatusSupported());
+        templateDescriptor.setStoreSupported(serviceDescriptor.isStoreSupported());
+        templateDescriptor.setServiceProvider(serviceDescriptor.getServiceProvider());
+        templateDescriptor.setServiceType(serviceDescriptor.getServiceType());
+	}
+    
+    private Set<FstepServiceTemplateFile> createTemplateFilesFromContextFile(FstepServiceTemplate serviceTemplate,
+			Set<FstepServiceContextFile> contextFiles) {
+		return contextFiles.stream().map(contextFile -> serviceTemplateFileDataService.save(new FstepServiceTemplateFile(serviceTemplate, contextFile.getFilename(), contextFile.isExecutable(), contextFile.getContent()))).collect(Collectors.toSet());
+	}
     
     /**
      * <p>Builds the service docker image

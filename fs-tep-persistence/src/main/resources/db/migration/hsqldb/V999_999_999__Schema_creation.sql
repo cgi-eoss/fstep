@@ -49,7 +49,32 @@ CREATE UNIQUE INDEX fstep_services_name_idx
   ON fstep_services (name);
 CREATE INDEX fstep_services_owner_idx
   ON fstep_services (owner);
+  
+  
+CREATE TABLE fstep_service_templates (
+  id             BIGINT IDENTITY PRIMARY KEY,
+  description    CHARACTER VARYING(255),
+  name           CHARACTER VARYING(255) NOT NULL,
+  wps_descriptor CLOB,
+  required_resources CLOB,
+  type           CHARACTER VARYING(255) NOT NULL CHECK (type IN ('PROCESSOR', 'BULK_PROCESSOR', 'APPLICATION', 'PARALLEL_PROCESSOR')),
+  owner          BIGINT                 NOT NULL FOREIGN KEY REFERENCES fstep_users (uid)
+);
 
+CREATE UNIQUE INDEX fstep_service_templates_name_idx
+  ON fstep_service_templates (name);
+CREATE INDEX fstep_service_templates_owner_idx
+  ON fstep_service_templates (owner);
+
+  CREATE TABLE fstep_default_service_templates (
+  id         BIGINT IDENTITY PRIMARY KEY,
+  service_template    BIGINT  NOT NULL FOREIGN KEY REFERENCES fstep_service_templates (id),
+  type           CHARACTER VARYING(255) NOT NULL CHECK (type IN ('PROCESSOR', 'BULK_PROCESSOR', 'APPLICATION', 'PARALLEL_PROCESSOR')) 
+);  
+
+CREATE UNIQUE INDEX fstep_default_service_templates_type_idx
+  ON fstep_default_service_templates (type);
+  
 CREATE TABLE fstep_credentials (
   id               BIGINT IDENTITY PRIMARY KEY,
   certificate_path CHARACTER VARYING(255),
@@ -249,6 +274,22 @@ CREATE INDEX fstep_service_files_filename_idx
 CREATE INDEX fstep_service_files_service_idx
   ON fstep_service_files (service);
 
+-- FstepServiceContextFile table
+
+CREATE TABLE fstep_service_template_files (
+  id         BIGINT IDENTITY PRIMARY KEY,
+  service_template    BIGINT  NOT NULL FOREIGN KEY REFERENCES fstep_service_templates (id),
+  filename   CHARACTER VARYING(255),
+  executable BOOLEAN DEFAULT FALSE NOT NULL,
+  content    CLOB
+);
+CREATE UNIQUE INDEX fstep_service_template_files_filename_service_idx
+  ON fstep_service_template_files (filename, service_template);
+CREATE INDEX fstep_service_template_files_filename_idx
+  ON fstep_service_template_files (filename);
+CREATE INDEX fstep_service_template_files_service_template_idx
+  ON fstep_service_template_files (service_template);  
+  
 -- Cost expressions
 
 CREATE TABLE fstep_costing_expressions (
@@ -281,7 +322,7 @@ CREATE TABLE fstep_publishing_requests (
   status        CHARACTER VARYING(255) NOT NULL CHECK (status IN
                                                        ('REQUESTED', 'GRANTED', 'NEEDS_INFO', 'REJECTED')),
   type          CHARACTER VARYING(255) NOT NULL CHECK (type IN
-                                                       ('DATABASKET', 'DATASOURCE', 'FILE', 'SERVICE', 'GROUP', 'JOB_CONFIG', 'PROJECT')),
+                                                       ('DATABASKET', 'DATASOURCE', 'FILE', 'SERVICE', 'SERVICE_TEMPLATE', 'GROUP', 'JOB_CONFIG', 'PROJECT')),
   associated_id BIGINT                 NOT NULL
 );
 CREATE INDEX fstep_publishing_requests_owner_idx

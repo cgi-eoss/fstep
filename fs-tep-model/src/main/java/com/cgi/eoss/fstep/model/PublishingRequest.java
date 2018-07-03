@@ -22,7 +22,7 @@ import javax.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 
 /**
- * <p>A transaction adding or removing balance to or from a user's wallet.</p>
+ * <p>Tracks request of publication for several entities .</p>
  */
 @Data
 @EqualsAndHashCode(exclude = {"id"})
@@ -104,7 +104,8 @@ public class PublishingRequest implements FstepEntityWithOwner<PublishingRequest
         SERVICE(FstepService.class),
         GROUP(Group.class),
         JOB_CONFIG(JobConfig.class),
-        PROJECT(Project.class);
+        PROJECT(Project.class),
+        SERVICE_TEMPLATE(FstepServiceTemplate.class);
 
         private final Class<?> typeClass;
 
