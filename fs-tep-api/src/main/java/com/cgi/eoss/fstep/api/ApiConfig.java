@@ -6,6 +6,8 @@ import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceContextFile;
+import com.cgi.eoss.fstep.model.FstepServiceTemplate;
+import com.cgi.eoss.fstep.model.FstepServiceTemplateFile;
 import com.cgi.eoss.fstep.model.Group;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
@@ -116,7 +118,7 @@ public class ApiConfig {
                 config.setBasePath(apiBasePath);
 
                 // Ensure that the id attribute is returned for all API-mapped types
-                ImmutableList.of(Group.class, JobConfig.class, Job.class, FstepService.class, FstepServiceContextFile.class, User.class, FstepFile.class, Databasket.class, Project.class)
+                ImmutableList.of(Group.class, JobConfig.class, Job.class, FstepService.class, FstepServiceContextFile.class, FstepServiceTemplate.class, FstepServiceTemplateFile.class, User.class, FstepFile.class, Databasket.class, Project.class)
                         .forEach(config::exposeIdsFor);
             }
         };

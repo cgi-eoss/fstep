@@ -1,15 +1,20 @@
 package com.cgi.eoss.fstep.api.controllers;
 
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.cgi.eoss.fstep.model.DefaultServiceTemplate;
 import com.cgi.eoss.fstep.model.FstepService;
+import com.cgi.eoss.fstep.model.FstepServiceTemplate;
 import com.cgi.eoss.fstep.model.PublishingRequest;
 import com.cgi.eoss.fstep.orchestrator.zoo.ZooManagerClient;
+import com.cgi.eoss.fstep.persistence.service.DefaultServiceTemplateDataService;
 import com.cgi.eoss.fstep.persistence.service.PublishingRequestDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.services.DefaultFstepServices;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.BasePathAwareController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,13 +39,15 @@ public class ContentAuthorityApi {
     private final ZooManagerClient zooManagerClient;
     private final PublishingRequestDataService publishingRequestsDataService;
     private final ServiceDataService serviceDataService;
+    private final DefaultServiceTemplateDataService defaultServiceTemplateDataService;
 
     @Autowired
-    public ContentAuthorityApi(FstepSecurityService fstepSecurityService, ZooManagerClient zooManagerClient, PublishingRequestDataService publishingRequestsDataService, ServiceDataService serviceDataService) {
+    public ContentAuthorityApi(FstepSecurityService fstepSecurityService, ZooManagerClient zooManagerClient, PublishingRequestDataService publishingRequestsDataService, ServiceDataService serviceDataService, DefaultServiceTemplateDataService defaultServiceTemplateDataService) {
         this.fstepSecurityService = fstepSecurityService;
         this.zooManagerClient = zooManagerClient;
         this.publishingRequestsDataService = publishingRequestsDataService;
         this.serviceDataService = serviceDataService;
+        this.defaultServiceTemplateDataService = defaultServiceTemplateDataService;
     }
 
     @PostMapping("/services/restoreDefaults")
@@ -90,11 +97,49 @@ public class ContentAuthorityApi {
             publishingRequestsDataService.save(request);
         });
     }
-
+    
     @PostMapping("/services/unpublish/{serviceId}")
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
     public void unpublishService(@ModelAttribute("serviceId") FstepService service) {
         fstepSecurityService.unpublish(FstepService.class, service.getId());
+    }
+    
+    @PostMapping("/serviceTemplates/publish/{serviceTemplateId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public void publishServiceTemplate(@ModelAttribute("serviceTemplateId") FstepServiceTemplate serviceTemplate) {
+        fstepSecurityService.publish(FstepServiceTemplate.class, serviceTemplate.getId());
+        publishingRequestsDataService.findRequestsForPublishingServiceTemplate(serviceTemplate).forEach(request -> {
+            request.setStatus(PublishingRequest.Status.GRANTED);
+            publishingRequestsDataService.save(request);
+        });
+    }
+    
+    @PostMapping("/serviceTemplates/unpublish/{serviceTemplateId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public void unpublishServiceTemplate(@ModelAttribute("serviceTemplateId") FstepServiceTemplate serviceTemplate) {
+        fstepSecurityService.unpublish(FstepServiceTemplate.class, serviceTemplate.getId());
+    }
+    
+    /**
+     * <p>Makes the template default for its type
+     */
+    
+    @PostMapping("/serviceTemplates/makeDefault/{serviceTemplateId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public ResponseEntity<Void> makeTemplateDefault(@ModelAttribute("serviceTemplateId") FstepServiceTemplate serviceTemplate) {
+    	DefaultServiceTemplate defaultServiceTemplate = defaultServiceTemplateDataService.getByServiceType(serviceTemplate.getType());
+    	if (defaultServiceTemplate != null) {
+    		if (defaultServiceTemplate.getServiceTemplate().getId() != serviceTemplate.getId()) {
+    			defaultServiceTemplate.setServiceTemplate(serviceTemplate);
+    			defaultServiceTemplateDataService.save(defaultServiceTemplate);
+        	}
+    		return new ResponseEntity<Void>(HttpStatus.OK);
+    	}
+		defaultServiceTemplate = new DefaultServiceTemplate();
+		defaultServiceTemplate.setServiceType(serviceTemplate.getType());
+		defaultServiceTemplate.setServiceTemplate(serviceTemplate);
+		defaultServiceTemplateDataService.save(defaultServiceTemplate);
+    	return new ResponseEntity<Void>(HttpStatus.OK);
     }
 
 }
