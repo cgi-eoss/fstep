@@ -1,9 +1,13 @@
 <nav id="fstep-nav-wrapper">
 
     <ul class="fstep-nav">
-        <li ng-click="toggleSidebar(developerSideNavs.SERVICES); selected = 'services'"
-            ng-class="{'active': selected == 'services' || !selected}">
+        <li ng-click="toggleSidebar(developerSideNavs.SERVICES)"
+            ng-class="{'active':navInfo.activeSideNav === developerSideNavs.SERVICES}">
             <i class="material-icons" uib-tooltip="Services" tooltip-placement="right">settings_remote</i>
+        </li>
+        <li ng-click="toggleSidebar(developerSideNavs.TEMPLATES)"
+            ng-class="{'active': navInfo.activeSideNav === developerSideNavs.TEMPLATES}">
+            <i class="material-icons" uib-tooltip="Service templates" tooltip-placement="right">settings_ethernet</i>
         </li>
         <li ng-click="toggleBottomView()" class="notification-container bottom-link" ng-class="{'active-bottom': bottombarNavInfo.bottomViewVisible}">
             <i class="material-icons" uib-tooltip="Messages" tooltip-placement="right">message</i>

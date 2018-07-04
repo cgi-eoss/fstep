@@ -6,7 +6,7 @@
 
     <div id="navbar-container" ng-include src="'views/navbar.html'" onload="finishLoading('navbar')" ng-class="{'hidden': hideContent}"/>
 
-    <article id="developer-container" class="page-container row" ng-class="{'hidden': hideContent}" ng-controller="ServiceCtrl">
+    <article id="developer-container" class="page-container row" ng-class="{'hidden': hideContent}" >
 
         <section id="sidenav" ng-include src="'views/developer/sidenav.html'" onload="finishLoading('sidenav')" />
 
@@ -14,14 +14,31 @@
                  ng-show="navInfo.sideViewVisible" media-show="gt-sm" media-show-on="{{serviceParams.selectedService == undefined}}">
             <md-sidenav id="sidebar-left" class="md-sidenav-left md-whiteframe-4dp"
                         md-component-id="left" md-disable-backdrop md-whiteframe="4" md-is-open="navInfo.sideViewVisible">
-                <div class="panel-container">
-                    <div class="sidebar-item panel-container" ng-include src="'views/developer/services/services.html'" ng-show="navInfo.activeSideNav == developerSideNavs.SERVICES" onload="finishLoading('services')"/>
+                <div class="panel-container no-padding">
+                    <div class="panel-container"
+                        ng-include src="'views/developer/services/services.html'"
+                        ng-if="navInfo.activeSideNav == developerSideNavs.SERVICES"
+                        ng-controller="DeveloperServicesCtrl"
+                        onload="finishLoading('services')"
+                    />
+                    <div class="panel-container"
+                        ng-include src="'views/developer/services/services.html'"
+                        ng-if="navInfo.activeSideNav == developerSideNavs.TEMPLATES"
+                        ng-controller="DeveloperTemplatesCtrl"
+                        onload="finishLoading('templates')"
+                    />
                 </div>
             </md-sidenav>
         </section>
 
         <section id="service-editor" class="right-container" ng-include src="'views/developer/services/editor.html'"
-                 ng-if="serviceParams.selectedService" />
+                 ng-if="navInfo.activeSideNav == developerSideNavs.SERVICES"
+                 ng-controller="DeveloperManageServiceCtrl"
+                  />
+        <section id="service-editor" class="right-container" ng-include src="'views/developer/services/editor.html'"
+                  ng-if="navInfo.activeSideNav == developerSideNavs.TEMPLATES"
+                  ng-controller="DeveloperManageTemplateCtrl"
+                   />
 
         <section id="bottombar-container"
                  ng-class="{'col-xs-12 col-sm-12 col-md-8 col-xl-9 col-xxl-10':navInfo.sideViewVisible, 'col-md-12 wide':!navInfo.sideViewVisible, 'bottombar-tall': bottombarTall === true}"

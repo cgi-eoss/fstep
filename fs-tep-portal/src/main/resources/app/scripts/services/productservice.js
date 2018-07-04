@@ -230,6 +230,9 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         };
 
         this.setFileType = function () {
+            if (!self.params.development.openedFile) {
+                return;
+            }
             var filename = self.params.development.openedFile.filename;
             var extension = filename.slice((filename.lastIndexOf(".") - 1 >>> 0) + 2).toLowerCase();
             var modes = ['Text', 'Dockerfile', 'Javascript', 'Perl', 'PHP', 'Python', 'Properties', 'Shell', 'XML', 'YAML' ];
