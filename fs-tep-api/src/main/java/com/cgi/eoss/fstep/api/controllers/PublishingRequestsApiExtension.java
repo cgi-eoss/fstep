@@ -2,6 +2,7 @@ package com.cgi.eoss.fstep.api.controllers;
 
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.cgi.eoss.fstep.model.FstepService;
+import com.cgi.eoss.fstep.model.FstepServiceTemplate;
 import com.cgi.eoss.fstep.model.PublishingRequest;
 import com.cgi.eoss.fstep.persistence.service.PublishingRequestDataService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,28 @@ public class PublishingRequestsApiExtension {
                 .owner(fstepSecurityService.getCurrentUser())
                 .type(PublishingRequest.Type.SERVICE)
                 .associatedId(service.getId())
+                .status(PublishingRequest.Status.REQUESTED)
+                .build();
+
+        PublishingRequest persistent = dataService.findOneByExample(newRequest);
+
+        if (persistent != null) {
+            // Re-request if necessary
+            persistent.setStatus(PublishingRequest.Status.REQUESTED);
+            return ResponseEntity.noContent().location(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
+        } else {
+            persistent = dataService.save(newRequest);
+            return ResponseEntity.created(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
+        }
+    }
+    
+    @PostMapping("/requestPublishServiceTemplate/{serviceTemplateId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#serviceTemplate, 'administration')")
+    public ResponseEntity requestPublishServiceTemplate(@ModelAttribute("serviceTemplateId") FstepServiceTemplate serviceTemplate) {
+        PublishingRequest newRequest = PublishingRequest.builder()
+                .owner(fstepSecurityService.getCurrentUser())
+                .type(PublishingRequest.Type.SERVICE_TEMPLATE)
+                .associatedId(serviceTemplate.getId())
                 .status(PublishingRequest.Status.REQUESTED)
                 .build();
 

@@ -4,6 +4,7 @@ import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
+import com.cgi.eoss.fstep.model.FstepServiceTemplate;
 import com.cgi.eoss.fstep.model.Group;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
@@ -228,6 +229,22 @@ public class AclsApi {
                 .entityId(service.getId())
                 .permissions(getFstepPermissions(new ObjectIdentityImpl(FstepService.class, service.getId())))
                 .build();
+    }
+    
+    @GetMapping("/serviceTemplate/{serviceTemplateId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#serviceTemplate, 'administration')")
+    public FstepAccessControlList getServiceTemplateAcls(@ModelAttribute("serviceTemplateId") FstepServiceTemplate serviceTemplate) {
+        return FstepAccessControlList.builder()
+                .entityId(serviceTemplate.getId())
+                .permissions(getFstepPermissions(new ObjectIdentityImpl(FstepServiceTemplate.class, serviceTemplate.getId())))
+                .build();
+    }
+    
+    @PostMapping("/serviceTemplate/{serviceTemplateId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#serviceTemplate, 'administration')")
+    public void setServiceTemplateAcl(@ModelAttribute("serviceTemplateId") FstepServiceTemplate serviceTemplate, @RequestBody FstepAccessControlList acl) {
+        Preconditions.checkArgument(serviceTemplate.getId().equals(acl.getEntityId()), "ACL subject entity ID mismatch: URL %s vs BODY %s", serviceTemplate.getId(), acl.getEntityId());
+        setAcl(new ObjectIdentityImpl(FstepServiceTemplate.class, serviceTemplate.getId()), serviceTemplate.getOwner(), acl.getPermissions());
     }
 
     private List<FstepAccessControlEntry> getFstepPermissions(ObjectIdentity objectIdentity) {
