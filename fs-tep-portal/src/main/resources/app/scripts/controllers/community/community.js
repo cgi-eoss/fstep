@@ -25,6 +25,13 @@ define(['../../fstepmodules'], function (fstepmodules) {
         /* Get current user */
         $scope.user = UserService.params.activeUser;
 
+        $scope.$on('active.user', function(event, user) {
+            $scope.user = UserService.params.activeUser;
+        });
+        $scope.$on('no.user', function() {
+            $scope.user = UserService.params.activeUser;
+        });
+
         /* Active session message count */
         $scope.message = {};
         $scope.message.count = MessageService.countMessages();
@@ -104,7 +111,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         };
 
         $scope.hideContent = true;
-        var navbar, sidenav, groups, projects, collections, databaskets, jobs, services, files;
+        var navbar, sidenav, groups, projects, collections, databaskets, jobs, services, servicetemplates, files;
         $scope.finishLoading = function(component) {
             switch(component) {
                 case 'navbar':
@@ -131,12 +138,15 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 case 'services':
                     services = true;
                     break;
+                case 'servicetemplates':
+                    servicetemplates = true;
+                    break;
                 case 'files':
                     files = true;
                     break;
             }
 
-            if (navbar && sidenav && (groups || projects || collections || databaskets || jobs || services || files)) {
+            if (navbar && sidenav && (groups || projects || collections || databaskets || jobs || services || servicetemplates || files)) {
                 $scope.hideContent = false;
             }
         };

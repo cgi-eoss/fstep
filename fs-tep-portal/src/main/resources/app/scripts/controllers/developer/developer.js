@@ -35,13 +35,12 @@ define(['../../fstepmodules'], function (fstepmodules) {
         }
 
         $scope.hideSidebarArea = function () {
-            $scope.navInfo.activeSideNav = undefined;
             $scope.navInfo.sideViewVisible = false;
         };
 
         $scope.toggleSidebar = function (tab) {
             if($scope.navInfo.activeSideNav === tab) {
-                $scope.hideSidebarArea();
+                $scope.navInfo.sideViewVisible = !$scope.navInfo.sideViewVisible;
             } else {
                 $scope.navInfo.activeSideNav = tab;
                 showSidebarArea();
@@ -49,7 +48,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         };
 
         $scope.hideContent = true;
-        var navbar, sidenav, services;
+        var navbar, sidenav, services, templates;
         $scope.finishLoading = function(component) {
             switch(component) {
                 case 'navbar':
@@ -61,9 +60,12 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 case 'services':
                     services = true;
                     break;
+                case 'templates':
+                    templates = true;
+                    break;
             }
 
-            if (navbar && sidenav && services) {
+            if (navbar && sidenav && (services || templates)) {
                 $scope.hideContent = false;
             }
         };

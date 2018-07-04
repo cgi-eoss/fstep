@@ -14,11 +14,11 @@ define(['../fstepmodules'], function (fstepmodules) {
 
         var bottomNavTabs = { RESULTS: 0, DATABASKETS: 1, JOBS: 2, MESSAGES: 3 };
 
-        var communityTabs = { GROUPS: 0, PROJECTS: 1, DATABASKETS: 2, JOBS: 3, SERVICES: 4, FILES: 5, COLLECTIONS: 6};
+        var communityTabs = { GROUPS: 0, PROJECTS: 1, DATABASKETS: 2, JOBS: 3, SERVICES: 4, SERVICETEMPLATES: 5, FILES: 6, COLLECTIONS: 7};
 
         var explorerSideNavs = { SEARCH: 0, SERVICES: 1, WORKSPACE: 2 };
 
-        var developerSideNavs = { SERVICES: 0 };
+        var developerSideNavs = { SERVICES: 0, TEMPLATES: 1 };
 
         this.getTabs = function(){
             return angular.copy(tabs);

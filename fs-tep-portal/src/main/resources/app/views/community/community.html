@@ -28,6 +28,8 @@
                          ng-controller="CommunityJobsCtrl" ng-include src="'views/community/sidebar/jobs.html'" onload="finishLoading('jobs')"/>
                     <div class="panel-container" ng-if="navInfo.activeSideNav === communityTabs.SERVICES"
                          ng-controller="CommunityServicesCtrl" ng-include src="'views/community/sidebar/services.html'" onload="finishLoading('services')"/>
+                    <div class="panel-container" ng-if="navInfo.activeSideNav === communityTabs.SERVICETEMPLATES"
+                         ng-controller="CommunityServiceTemplatesCtrl" ng-include src="'views/community/sidebar/servicetemplates.html'" onload="finishLoading('servicetemplates')"/>
                     <div class="panel-container" ng-if="navInfo.activeSideNav === communityTabs.FILES"
                          ng-controller="CommunityFilesCtrl" ng-include src="'views/community/sidebar/files.html'" onload="finishLoading('files')"/>
                 </div>
@@ -63,6 +65,11 @@
                  ng-include ng-controller="CommunityManageServiceCtrl"
                  src="'views/community/manage/service.html'"
                  ng-if="serviceParams.selectedService && navInfo.activeSideNav === communityTabs.SERVICES" />
+
+        <section id="service-manage-container" class="community-item-container"
+                 ng-include ng-controller="CommunityManageServiceTemplateCtrl"
+                 src="'views/community/manage/servicetemplate.html'"
+                 ng-if="navInfo.activeSideNav === communityTabs.SERVICETEMPLATES" />
 
         <section id="file-manage-container" class="community-item-container"
                  ng-include ng-controller="CommunityManageFileCtrl"

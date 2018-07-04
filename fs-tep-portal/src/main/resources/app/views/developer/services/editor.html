@@ -1,358 +1,366 @@
-<md-button class="close toolbar-button md-secondary"
-           ng-click="serviceParams.selectedService = undefined"
-           uib-tooltip="Close"
-           tooltip-placement="top"
-           tooltip-trigger="mouseenter"
-           tooltip-append-to-body="true">
-    <i class="material-icons">close</i>
-</md-button>
+<div ng-if="serviceParams.selectedService">
+    <md-button class="close toolbar-button md-secondary"
+            ng-click="serviceParams.selectedService = undefined"
+            uib-tooltip="Close"
+            tooltip-placement="top"
+            tooltip-trigger="mouseenter"
+            tooltip-append-to-body="true">
+        <i class="material-icons">close</i>
+    </md-button>
 
-<md-button id="save-service"
-           class="save-button md-fab md-mini right"
-           ng-click="saveService()"
-           ng-disabled="serviceForm.$invalid"
-           aria-label="Save Service"
-           uib-tooltip="Save Service"
-           tooltip-placement="top"
-           tooltip-trigger="mouseenter"
-           tooltip-append-to-body="true">
-        <i class="material-icons">save</i>
-</md-button>
+    <md-button id="save-service"
+            class="save-button md-fab md-mini right"
+            ng-click="saveService()"
+            ng-disabled="serviceForm.$invalid"
+            aria-label="Save Service"
+            uib-tooltip="Save Service"
+            tooltip-placement="top"
+            tooltip-trigger="mouseenter"
+            tooltip-append-to-body="true">
+            <i class="material-icons">save</i>
+    </md-button>
 
-<form id="service-form" name="serviceForm">
+    <form id="service-form" name="serviceForm">
 
-    <section id="service-header">
-        <div class="row">
-            <div class="service-field col-md-2 no-padding">
-                <md-input-container md-no-float>
-                    <label>Service Name</label>
-                    <input ng-model="serviceParams.selectedService.name" type="text" placeholder="Name*" aria-label="Name" required>
-                </md-input-container>
-            </div>
-            <div class="service-field col-md-2 no-padding">
-                <md-input-container md-no-float>
-                    <label>Docker Tag</label>
-                    <input ng-model="serviceParams.selectedService.dockerTag" type="text" placeholder="Docker Tag" aria-label="Docker Tag" disabled>
-                </md-input-container>
-            </div>
-            <div class="col-md-7 service-field no-padding">
-                <md-input-container id="service-summary" md-no-float>
-                    <label>Title</label>
-                    <input ng-model="serviceParams.selectedService.serviceDescriptor.title" type="text" placeholder="Title" aria-label="Title">
-                </md-input-container>
-            </div>
-            <div class="col-md-1 service-field no-padding">
-            </div>
-        </div>
-        <div class="row">
-            <div class="service-field col-md-2 no-padding">
-                <md-input-container md-no-float>
-                    <label>Version</label>
-                    <input ng-model="serviceParams.selectedService.serviceDescriptor.version" type="text" placeholder="Version" aria-label="Version">
-                </md-input-container>
-            </div>
-            <div class="service-field col-md-2 no-padding">
-                <md-input-container md-no-float>
-                    <label>Service Type</label>
-                    <md-select ng-model="serviceParams.selectedService.type" ng-change="updateMissionParameters(searchParameters.mission)">
-                        <md-option ng-repeat="type in serviceTypes" ng-value="type.value">
-                            {{type.name}}
-                        </md-option>
-                    </md-select>
-                </md-input-container>
-            </div>
-            <div class="col-md-7 service-field no-padding">
-                <md-input-container id="service-description" md-no-float>
-                    <label>Description</label>
-                    <input ng-model="serviceParams.selectedService.description" type="text" placeholder="Description" aria-label="Description">
-                </md-input-container>
-            </div>
-            <div class="col-md-1 service-field no-padding">
-            </div>
-        </div>
-        <div class="row build-status">
-            <label >Container build status:</label>
-            <md-content layout="row" layout-align="start center" flex="50">
-                <md-content ng-if="serviceParams.selectedService.buildStatus.status == 'ERROR'" layout="row" layout-align="start center" flex style="{{getColorForStatus('ERROR')}}">
-                    <i class="material-icons">error</i>
-                    <span>Build error</span>
-                </md-content>
-                <md-content ng-if="serviceParams.selectedService.buildStatus.status == 'ONGOING'" layout="row" layout-align="start center" flex style="{{getColorForStatus('RUNNING')}}">
-                    <md-progress-circular md-diameter="20px" md-mode="indeterminate"></md-progress-circular>
-                    <span>Build running</span>
-                </md-content>
-                <md-content ng-if="serviceParams.selectedService.buildStatus.needsBuild && serviceParams.selectedService.buildStatus.status != 'ERROR'" layout="row" layout-align="start center" flex style="{{getColorForStatus('Warning')}}">
-                    <i class="material-icons">warning</i>
-                    <span>Build required</span>
-                </md-content>
-                <md-content ng-if="!serviceParams.selectedService.buildStatus.needsBuild && serviceParams.selectedService.buildStatus.status == 'COMPLETED'" layout="row" layout-align="start center" flex style="{{getColorForStatus('COMPLETED')}}">
-                    <i class="material-icons">check</i>
-                    <span>Build success</span>
-                </md-content>
-                <md-button
-                    class="md-icon-button"
-                    aria-label="Build"
-                    ng-click="refreshServiceStatus(serviceParams.selectedService)"
-                    uib-tooltip="Refresh status"
-                    tooltip-placement="top"
-                    tooltip-trigger="mouseenter"
-                    tooltip-append-to-body="true"
-                >
-                    <i class="material-icons">refresh</i>
-                </md-button>
-                <md-button
-                    class="md-icon-button"
-                    aria-label="Build"
-                    ng-if="serviceParams.selectedService.buildStatus.status == 'ERROR' || serviceParams.selectedService.buildStatus.needsBuild"
-                    ng-click="rebuildServiceContainer(serviceParams.selectedService)"
-                    uib-tooltip="Build container"
-                    tooltip-placement="top"
-                    tooltip-trigger="mouseenter"
-                    tooltip-append-to-body="true"
-                >
-                    <i class="material-icons">build</i>
-                </md-button>
-            </md-content>
-        </div>
-    </section>
-
-    <section>
-        <ul id="editor-area-list">
-            <li ng-class="{active: serviceParams.activeArea === formArea}" ng-repeat="formArea in serviceForms" ng-click="serviceParams.activeArea = formArea">
-                {{formArea.title | uppercase}}
-            </li>
-        </ul>
-    </section>
-
-    <section id="file-editor" ng-hide="serviceParams.activeArea !== serviceForms.files">
-
-        <ul id="file-list" class="col-md-4 col-lg-3 col-xl-2">
-            <li ng-repeat="file in serviceParams.fileTree">
-                <table ng-if="file.type == 'file'"
-                       class="file"
-                       ng-click="openFile(file.contents); updateMode()"
-                       ng-class="{'active': serviceParams.openedFile.filename == file.contents.filename}">
-                    <tr>
-                        <td class="file-icon">
-                            <i class="material-icons">insert_drive_file</i>
-                        </td>
-                        <td class="file-name" title="{{file.name}}">
-                            {{file.tree}} {{file.name}}
-                        </td>
-                        <td class="remove-file">
-                            <span ng-click="deleteFileDialog($event, file.contents)"
-                                  ng-hide="file.name === 'Dockerfile' || file.name === 'workflow.sh'"
-                                  aria-label="Delete File"
-                                  uib-tooltip="Delete File"
-                                  tooltip-placement="top"
-                                  tooltip-trigger="mouseenter"
-                                  tooltip-append-to-body="true">x
-                            </span>
-                        </td>
-                    </tr>
-                </table>
-                <table ng-if="file.type == 'folder'" class="folder">
-                    <tr>
-                        <td class="file-icon">
-                            <i class="material-icons">folder</i>
-                        </td>
-                        <td>
-                            {{file.tree}} <b>[ {{file.name}} ]</b>
-                        </td>
-                        <td>
-
-                        </td>
-                    </tr>
-                </table>
-            </li>
-            <li ng-click="createFileDialog($event)"
-                class="right add-file"
-                aria-label="Add File"
-                uib-tooltip="Add File"
-                tooltip-placement="top"
-                tooltip-trigger="mouseenter"
-                tooltip-append-to-body="true">
-                <span class="create-file">+</span>
-            </li>
-        </ul>
-
-        <md-input-container md-no-float class="md-block file-editor col-md-8 col-lg-9 col-xl-10">
-            <div class="row file-settings">
-                <div class="col-md-4 no-padding">
-                    <label class="input-label">File Language:</label>
-                    <select class="form-control"
-                            ng-model="serviceParams.activeMode"
-                            ng-options="m for m in modes"
-                            ng-change="modeChanged()" />
+        <section id="service-header">
+            <div class="row">
+                <div class="service-field col-md-2 no-padding">
+                    <md-input-container md-no-float>
+                        <label>Service Name</label>
+                        <input ng-model="serviceParams.selectedService.name" type="text" placeholder="Name*" aria-label="Name" required>
+                    </md-input-container>
                 </div>
-                <div class="col-md-4 no-padding" />
-                <div class="col-md-4 no-padding">
-                    <label class="input-label">Executable:</label>
-                    <md-checkbox class="executable"
-                                 ng-model="serviceParams.openedFile.executable"
-                                 aria-label="Executable"
-                                 ng-disabled="serviceParams.openedFile.filename === 'Dockerfile' || serviceParams.openedFile.filename === 'workflow.sh'">
-                    </md-checkbox>
+                <div class="service-field col-md-2 no-padding" ng-if="!isTemplate">
+                    <md-input-container md-no-float>
+                        <label>Docker Tag</label>
+                        <input ng-model="serviceParams.selectedService.dockerTag" type="text" placeholder="Docker Tag" aria-label="Docker Tag" disabled>
+                    </md-input-container>
+                </div>
+                <div class="col-md-7 service-field no-padding">
+                    <md-input-container id="service-summary" md-no-float>
+                        <label>Title</label>
+                        <input ng-model="serviceParams.selectedService.serviceDescriptor.title" type="text" placeholder="Title" aria-label="Title">
+                    </md-input-container>
+                </div>
+                <div class="col-md-1 service-field no-padding">
                 </div>
             </div>
-
-            <textarea class="file-contents"
-                  ui-codemirror="{ onLoad : codemirrorLoaded }"
-                  ui-codemirror-opts="editorOptions"
-                  ui-refresh="refreshMirror()"
-                  ng-change="refreshMirror()"
-                  ng-model="serviceParams.openedFile.content"
-                  md-select-on-focus
-                  placeholder="Add file content..">Loading...</textarea>
-        </md-input-container>
-
-    </section>
-
-    <section class="field-definitions" ng-repeat="key in constants.serviceFields" ng-show="serviceParams.activeArea === serviceForms[key]">
-
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Title</th>
-                <th>Description</th>
-                <th>Type</th>
-                <th>Default Value</th>
-                <th>Min Occurs</th>
-                <th>Max Occurs</th>
-                <th></th>
-            </tr>
-            <tr ng-repeat="input in serviceParams.selectedService.serviceDescriptor[key]">
-                <td>
+            <div class="row">
+                <div class="service-field col-md-2 no-padding">
                     <md-input-container md-no-float>
-                        <input ng-model="input.id" type="text" placeholder="Field id*" required aria-label="Field ID"/>
-                        <span class="error-message" ng-show="isValidFieldId(input, key) === false">Field id must be unique!</span>
+                        <label>Version</label>
+                        <input ng-model="serviceParams.selectedService.serviceDescriptor.version" type="text" placeholder="Version" aria-label="Version">
                     </md-input-container>
-                </td>
-                <td>
+                </div>
+                <div class="service-field col-md-2 no-padding">
                     <md-input-container md-no-float>
-                        <input ng-model="input.title" placeholder="Field title*" required/>
+                        <label>Service Type</label>
+                        <md-select ng-model="serviceParams.selectedService.type" ng-change="updateMissionParameters(searchParameters.mission)">
+                            <md-option ng-repeat="type in serviceTypes" ng-value="type.value">
+                                {{type.name}}
+                            </md-option>
+                        </md-select>
                     </md-input-container>
-                </td>
-                <td>
-                    <md-input-container md-no-float>
-                        <input ng-model="input.description" placeholder="Field description"/>
+                </div>
+                <div class="col-md-7 service-field no-padding">
+                    <md-input-container id="service-description" md-no-float>
+                        <label>Description</label>
+                        <input ng-model="serviceParams.selectedService.description" type="text" placeholder="Description" aria-label="Description">
                     </md-input-container>
-                </td>
-                <td>
-                    <div class="col-xs-9 no-padding">
-                        <md-input-container class="md-block" flex-gt-sm ng-if="input.data === 'LITERAL'">
-                            <md-select ng-model="input.defaultAttrs.dataType" required>
-                                <md-option ng-repeat="type in constants.literalTypes" ng-value="type.dataType">
-                                    {{type.dataType}}
-                                </md-option>
-                            </md-select>
-                        </md-input-container>
-
-                        <md-input-container class="md-block" flex-gt-sm ng-if="input.data === 'COMPLEX'" md-no-float>
-                            <input ng-model="input.defaultAttrs.mimeType" type="text" placeholder="mimeType" required aria-label="Input Type"/>
-                        </md-input-container>
-
-                        <md-input-container class="md-block" flex-gt-sm ng-if="input.data === 'BOUNDING_BOX'">
-                            <input disabled ng-model="input.defaultAttrs.dataType" ng-init="input.defaultAttrs.dataType = 'string'" type="text" placeholder="bbox"/>
-                        </md-input-container>
-                    </div>
-                    <div class="col-xs-3 no-padding">
-                        <md-button ng-click="editTypeDialog($event, input, constants)"
-                                   class="type-button"
-                                   aria-label="More"
-                                   uib-tooltip="More"
-                                   tooltip-trigger="mouseenter"
-                                   tooltip-append-to-body="true">
-                            <i class="material-icons">edit</i>
-                        </md-button>
-                    </div>
-                </td>
-                <td>
-                    <service-input ng-model="input.defaultAttrs.value" default-attrs="{{input.defaultAttrs}}" keep-watch="true"
-                            placeholder="Default value" aria-label="Default value"/>
-                </td>
-                <td>
-                    <md-input-container md-no-float>
-                        <input ng-model="input.minOccurs" type="number" min="0" placeholder="Min Occurs" aria-label="Min Occurs"/>
-                    </md-input-container>
-                </td>
-                <td>
-                    <md-input-container md-no-float>
-                        <input ng-model="input.maxOccurs" type="number" min="0" placeholder="Max Occurs" aria-label="Max Occurs"/>
-                    </md-input-container>
-                </td>
-                <td>
-                    <md-button ng-click="removeRow(serviceParams.selectedService.serviceDescriptor[key], input)"
-                               class="remove-button"
-                               aria-label="Remove Row"
-                               uib-tooltip="Remove Row"
-                               tooltip-trigger="mouseenter"
-                               tooltip-append-to-body="true">
-                        <i class="material-icons">remove</i>
+                </div>
+                <div class="col-md-1 service-field no-padding">
+                </div>
+            </div>
+            <div class="row build-status" ng-if="!isTemplate">
+                <label >Container build status:</label>
+                <md-content layout="row" layout-align="start center" flex="50">
+                    <md-content ng-if="serviceParams.selectedService.buildStatus.status == 'ERROR'" layout="row" layout-align="start center" flex style="{{getColorForStatus('ERROR')}}">
+                        <i class="material-icons">error</i>
+                        <span>Build error</span>
+                    </md-content>
+                    <md-content ng-if="serviceParams.selectedService.buildStatus.status == 'ONGOING'" layout="row" layout-align="start center" flex style="{{getColorForStatus('RUNNING')}}">
+                        <md-progress-circular md-diameter="20px" md-mode="indeterminate"></md-progress-circular>
+                        <span>Build running</span>
+                    </md-content>
+                    <md-content ng-if="serviceParams.selectedService.buildStatus.needsBuild && serviceParams.selectedService.buildStatus.status != 'ERROR'" layout="row" layout-align="start center" flex style="{{getColorForStatus('Warning')}}">
+                        <i class="material-icons">warning</i>
+                        <span>Build required</span>
+                    </md-content>
+                    <md-content ng-if="!serviceParams.selectedService.buildStatus.needsBuild && serviceParams.selectedService.buildStatus.status == 'COMPLETED'" layout="row" layout-align="start center" flex style="{{getColorForStatus('COMPLETED')}}">
+                        <i class="material-icons">check</i>
+                        <span>Build success</span>
+                    </md-content>
+                    <md-button
+                        class="md-icon-button"
+                        aria-label="Build"
+                        ng-click="refreshServiceStatus(serviceParams.selectedService)"
+                        uib-tooltip="Refresh status"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true"
+                    >
+                        <i class="material-icons">refresh</i>
                     </md-button>
-                </td>
-            </tr>
-        </table>
+                    <md-button
+                        class="md-icon-button"
+                        aria-label="Build"
+                        ng-if="serviceParams.selectedService.buildStatus.status == 'ERROR' || serviceParams.selectedService.buildStatus.needsBuild"
+                        ng-click="rebuildServiceContainer(serviceParams.selectedService)"
+                        uib-tooltip="Build container"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true"
+                    >
+                        <i class="material-icons">build</i>
+                    </md-button>
+                </md-content>
+            </div>
+        </section>
 
-        <md-button ng-click="addNewRow(key)"
-                   class="add-button"
-                   aria-label="Add New Row"
-                   uib-tooltip="Add New Row"
-                   tooltip-trigger="mouseenter"
-                   tooltip-append-to-body="true">
-            <i class="material-icons">add_box</i>
-        </md-button>
+        <section>
+            <ul id="editor-area-list">
+                <li ng-class="{active: serviceParams.activeArea === formArea}" ng-repeat="formArea in serviceForms" ng-click="serviceParams.activeArea = formArea">
+                    {{formArea.title | uppercase}}
+                </li>
+            </ul>
+        </section>
 
-    </section>
+        <section id="file-editor" ng-hide="serviceParams.activeArea !== serviceForms.files">
 
-    <section id="mount-editor" ng-hide="serviceParams.activeArea !== serviceForms.userMounts">
+            <ul id="file-list" class="col-md-4 col-lg-3 col-xl-2">
+                <li ng-repeat="file in serviceParams.fileTree">
+                    <table ng-if="file.type == 'file'"
+                        class="file"
+                        ng-click="openFile(file.contents); updateMode()"
+                        ng-class="{'active': serviceParams.openedFile.filename == file.contents.filename}">
+                        <tr>
+                            <td class="file-icon">
+                                <i class="material-icons">insert_drive_file</i>
+                            </td>
+                            <td class="file-name" title="{{file.name}}">
+                                {{file.tree}} {{file.name}}
+                            </td>
+                            <td class="remove-file">
+                                <span ng-click="deleteFileDialog($event, file.contents)"
+                                    ng-hide="file.name === 'Dockerfile' || file.name === 'workflow.sh' || file.name === 'startapp.sh'"
+                                    aria-label="Delete File"
+                                    uib-tooltip="Delete File"
+                                    tooltip-placement="top"
+                                    tooltip-trigger="mouseenter"
+                                    tooltip-append-to-body="true">x
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                    <table ng-if="file.type == 'folder'" class="folder">
+                        <tr>
+                            <td class="file-icon">
+                                <i class="material-icons">folder</i>
+                            </td>
+                            <td>
+                                {{file.tree}} <b>[ {{file.name}} ]</b>
+                            </td>
+                            <td>
+
+                            </td>
+                        </tr>
+                    </table>
+                </li>
+                <li ng-click="createFileDialog($event)"
+                    class="right add-file"
+                    aria-label="Add File"
+                    uib-tooltip="Add File"
+                    tooltip-placement="top"
+                    tooltip-trigger="mouseenter"
+                    tooltip-append-to-body="true">
+                    <span class="create-file">+</span>
+                </li>
+            </ul>
+
+            <md-input-container md-no-float class="md-block file-editor col-md-8 col-lg-9 col-xl-10" ng-if="serviceParams.openedFile">
+                <div class="row file-settings">
+                    <div class="col-md-4 no-padding">
+                        <label class="input-label">File Language:</label>
+                        <select class="form-control"
+                                ng-model="serviceParams.activeMode"
+                                ng-options="m for m in modes"
+                                ng-change="modeChanged()" />
+                    </div>
+                    <div class="col-md-4 no-padding" />
+                    <div class="col-md-4 no-padding">
+                        <label class="input-label">Executable:</label>
+                        <md-checkbox class="executable"
+                                    ng-model="serviceParams.openedFile.executable"
+                                    aria-label="Executable"
+                                    ng-disabled="serviceParams.openedFile.filename === 'Dockerfile' || serviceParams.openedFile.filename === 'workflow.sh' || serviceParams.openedFile.filename === 'startapp.sh'">
+                        </md-checkbox>
+                    </div>
+                </div>
+
+                <textarea class="file-contents"
+                    ui-codemirror="{ onLoad : codemirrorLoaded }"
+                    ui-codemirror-opts="editorOptions"
+                    ui-refresh="refreshMirror()"
+                    ng-change="refreshMirror()"
+                    ng-model="serviceParams.openedFile.content"
+                    md-select-on-focus
+                    placeholder="Add file content..">Loading...</textarea>
+            </md-input-container>
+
+        </section>
+
+        <section class="field-definitions" ng-repeat="key in constants.serviceFields" ng-show="serviceParams.activeArea === serviceForms[key]">
+
             <table>
                 <tr>
-                    <th>Mount point *</th>
-                    <th>Container location *</th>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th style="min-width: 120px">Type</th>
+                    <th ng-if="key === 'dataOutputs'">Time Regexp</th>
+                    <th>Default Value</th>
+                    <th>Min Occurs</th>
+                    <th>Max Occurs</th>
                     <th></th>
                 </tr>
-                <tr ng-repeat="mappings in serviceParams.selectedService.additionalMounts">
+                <tr ng-repeat="input in serviceParams.selectedService.serviceDescriptor[key]">
                     <td>
                         <md-input-container md-no-float>
-                            <md-select ng-model="mappings.mountId" placeholder="Mount point" required>
-                                <md-option ng-repeat="mount in userMounts" ng-value="mount.id">
-                                    {{mount.name}}
-                                </md-option>
-                            </md-select>
+                            <input ng-model="input.id" type="text" placeholder="Field id*" required aria-label="Field ID"/>
+                            <span class="error-message" ng-show="isValidFieldId(input, key) === false">Field id must be unique!</span>
                         </md-input-container>
                     </td>
                     <td>
                         <md-input-container md-no-float>
-                            <input ng-model="mappings.target" type="text" placeholder="Path *" aria-label="Path" required>
+                            <input ng-model="input.title" placeholder="Field title*" required/>
                         </md-input-container>
                     </td>
                     <td>
-                        <md-button ng-click="serviceParams.selectedService.additionalMounts.splice($index, 1)"
-                                    class="remove-button"
-                                    aria-label="Remove Mount"
-                                    uib-tooltip="Remove Mount"
+                        <md-input-container md-no-float>
+                            <input ng-model="input.description" placeholder="Field description"/>
+                        </md-input-container>
+                    </td>
+                    <td>
+                        <div class="col-xs-9 no-padding">
+                            <md-input-container class="md-block" flex-gt-sm ng-if="input.data === 'LITERAL'">
+                                <md-select ng-model="input.defaultAttrs.dataType" required>
+                                    <md-option ng-repeat="type in constants.literalTypes" ng-value="type.dataType">
+                                        {{type.dataType}}
+                                    </md-option>
+                                </md-select>
+                            </md-input-container>
+
+                            <md-input-container class="md-block" flex-gt-sm ng-if="input.data === 'COMPLEX'" md-no-float>
+                                <input ng-model="input.defaultAttrs.mimeType" type="text" placeholder="mimeType" required aria-label="Input Type"/>
+                            </md-input-container>
+
+                            <md-input-container class="md-block" flex-gt-sm ng-if="input.data === 'BOUNDING_BOX'">
+                                <input disabled ng-model="input.defaultAttrs.dataType" ng-init="input.defaultAttrs.dataType = 'string'" type="text" placeholder="bbox"/>
+                            </md-input-container>
+                        </div>
+                        <div class="col-xs-3 no-padding">
+                            <md-button ng-click="editTypeDialog($event, input, constants)"
+                                    class="type-button"
+                                    aria-label="More"
+                                    uib-tooltip="More"
                                     tooltip-trigger="mouseenter"
                                     tooltip-append-to-body="true">
+                                <i class="material-icons">edit</i>
+                            </md-button>
+                        </div>
+                    </td>
+                    <td ng-if="key === 'dataOutputs'">
+                        <md-input-container md-no-float>
+                            <input ng-model="input.timeRegexp" type="text" placeholder="Time RegExp" aria-label="Time RegExp"/>
+                        </md-input-container>
+                    </td>
+                    <td>
+                        <service-input ng-model="input.defaultAttrs.value" default-attrs="{{input.defaultAttrs}}" keep-watch="true"
+                                placeholder="Default value" aria-label="Default value"/>
+                    </td>
+                    <td>
+                        <md-input-container md-no-float>
+                            <input ng-model="input.minOccurs" type="number" min="0" placeholder="Min Occurs" aria-label="Min Occurs"/>
+                        </md-input-container>
+                    </td>
+                    <td>
+                        <md-input-container md-no-float>
+                            <input ng-model="input.maxOccurs" type="number" min="0" placeholder="Max Occurs" aria-label="Max Occurs"/>
+                        </md-input-container>
+                    </td>
+                    <td>
+                        <md-button ng-click="removeRow(serviceParams.selectedService.serviceDescriptor[key], input)"
+                                class="remove-button"
+                                aria-label="Remove Row"
+                                uib-tooltip="Remove Row"
+                                tooltip-trigger="mouseenter"
+                                tooltip-append-to-body="true">
                             <i class="material-icons">remove</i>
                         </md-button>
                     </td>
                 </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td>
-                        <md-button ng-click="serviceParams.selectedService.additionalMounts.push({})"
-                            class="remove-button"
-                            aria-label="Add Mount"
-                            uib-tooltip="Add Mount"
-                            tooltip-trigger="mouseenter"
-                            tooltip-append-to-body="true">
-                            <i class="material-icons">add</i>
-                        </md-button>
-                    </td>
-                </tr>
             </table>
-    </section>
 
-</form>
+            <md-button ng-click="addNewRow(key)"
+                    class="add-button"
+                    aria-label="Add New Row"
+                    uib-tooltip="Add New Row"
+                    tooltip-trigger="mouseenter"
+                    tooltip-append-to-body="true">
+                <i class="material-icons">add_box</i>
+            </md-button>
+
+        </section>
+
+        <section id="mount-editor" ng-hide="serviceParams.activeArea !== serviceForms.userMounts">
+                <table>
+                    <tr>
+                        <th>Mount point *</th>
+                        <th>Container location *</th>
+                        <th></th>
+                    </tr>
+                    <tr ng-repeat="mappings in serviceParams.selectedService.additionalMounts">
+                        <td>
+                            <md-input-container md-no-float>
+                                <md-select ng-model="mappings.mountId" placeholder="Mount point" required>
+                                    <md-option ng-repeat="mount in userMounts" ng-value="mount.id">
+                                        {{mount.name}}
+                                    </md-option>
+                                </md-select>
+                            </md-input-container>
+                        </td>
+                        <td>
+                            <md-input-container md-no-float>
+                                <input ng-model="mappings.target" type="text" placeholder="Path *" aria-label="Path" required>
+                            </md-input-container>
+                        </td>
+                        <td>
+                            <md-button ng-click="serviceParams.selectedService.additionalMounts.splice($index, 1)"
+                                        class="remove-button"
+                                        aria-label="Remove Mount"
+                                        uib-tooltip="Remove Mount"
+                                        tooltip-trigger="mouseenter"
+                                        tooltip-append-to-body="true">
+                                <i class="material-icons">remove</i>
+                            </md-button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td>
+                            <md-button ng-click="serviceParams.selectedService.additionalMounts.push({})"
+                                class="remove-button"
+                                aria-label="Add Mount"
+                                uib-tooltip="Add Mount"
+                                tooltip-trigger="mouseenter"
+                                tooltip-append-to-body="true">
+                                <i class="material-icons">add</i>
+                            </md-button>
+                        </td>
+                    </tr>
+                </table>
+        </section>
+
+    </form>
+</div>

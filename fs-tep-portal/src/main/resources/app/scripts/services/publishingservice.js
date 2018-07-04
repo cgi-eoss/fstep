@@ -19,7 +19,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
 
         this.publishItem = function (item, action, type) {
             return $q(function(resolve, reject) {
-                halAPI.from(rootUri + '/contentAuthority/services/' + action + '/' + item.id)
+                halAPI.from(rootUri + '/contentAuthority/' + type + '/' + action + '/' + item.id)
                     .newRequest()
                     .post(item)
                     .result
@@ -37,7 +37,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
 
         this.requestPublication = function (item, type) {
             return $q(function(resolve, reject) {
-                halAPI.from(rootUri + '/publishingRequests/requestPublishService/' + item.id)
+                halAPI.from(rootUri + '/publishingRequests/requestPublish' + type + '/' + item.id)
                     .newRequest()
                     .post()
                     .result
@@ -53,8 +53,8 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             });
         };
 
-        this.publishItemDialog = function ($event, service) {
-            function PublishItemController($scope, $mdDialog, ProductService, PublishingService) {
+        this.publishItemDialog = function ($event, item, type, onpublish) {
+            function PublishItemController($scope, $mdDialog, PublishingService) {
 
                 /* TODO: Uncomment statuses once backend implemented */
                 $scope.statusResponses = {
@@ -67,9 +67,11 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 $scope.action.value = $scope.statusResponses.GRANTED.value;
 
                 $scope.respond = function() {
-                    PublishingService.publishItem(service, $scope.action.value, 'Service').then(function (data) {
-                        ProductService.refreshServices("community");
+                    PublishingService.publishItem(item, $scope.action.value, type).then(function (data) {
                         $mdDialog.hide();
+                        if (onpublish) {
+                            onpublish();
+                        }
                     });
                 };
 
@@ -77,7 +79,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                     $mdDialog.hide();
                 };
             }
-            PublishItemController.$inject = ['$scope', '$mdDialog', 'ProductService', 'PublishingService'];
+            PublishItemController.$inject = ['$scope', '$mdDialog', 'PublishingService'];
             $mdDialog.show({
                 controller: PublishItemController,
                 templateUrl: 'views/community/templates/publishresponse.tmpl.html',

@@ -1,23 +1,23 @@
 /**
  * @ngdoc function
- * @name fstepApp.controller:ServiceCtrl
+ * @name fstepApp.controller:DeveloperManageServiceCtrl
  * @description
  * # ServiceCtrl
  * Controller of the fstepApp
  */
 'use strict';
 
-define(['../../fstepmodules'], function (fstepmodules) {
+define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('ServiceCtrl', ['$scope', 'ProductService', 'UserMountsService', 'CommonService', '$mdDialog', function ($scope, ProductService, UserMountsService, CommonService, $mdDialog) {
+    fstepmodules.controller('DeveloperManageTemplateCtrl', ['$scope', 'ProductService', 'ProductTemplateService', 'DeveloperTemplatesCtrlState', 'UserMountsService', 'CommonService', '$mdDialog', function ($scope, ProductService, ProductTemplateService, DeveloperTemplatesCtrlState, UserMountsService, CommonService, $mdDialog) {
 
-        $scope.serviceParams = ProductService.params.development;
-        $scope.serviceOwnershipFilters = ProductService.serviceOwnershipFilters;
-        $scope.serviceTypeFilters = ProductService.serviceTypeFilters;
+        $scope.isTemplate = true;
+
+        $scope.serviceParams = DeveloperTemplatesCtrlState.params;
+
         $scope.serviceForms = {
             files: {title: 'Files'},
             dataInputs: {title: 'Input Definitions'},
-            userMounts: {title: 'User Mounts'},
             dataOutputs: {title: 'Output Definitions'}
         };
         $scope.serviceParams.activeArea = $scope.serviceForms.files;
@@ -29,43 +29,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.serviceTypes = {
             APPLICATION: { id: 0, name: 'Application', value: 'APPLICATION'},
             PROCESSOR: { id: 0, name: 'Processor', value: 'PROCESSOR'},
-            BULK_PROCESSOR: { id: 0, name: 'Bulk Processor', value: 'BULK_PROCESSOR'},
             PARALLEL_PROCESSOR: { id: 0, name: 'Parallel Processor', value: 'PARALLEL_PROCESSOR'}
-        };
-
-        $scope.userMounts = [];
-        UserMountsService.getUserMounts().then(function(mounts) {
-            $scope.userMounts = mounts;
-        });
-
-        $scope.toggleServiceFilter = function(){
-            $scope.serviceParams.displayFilters = !$scope.serviceParams.displayFilters;
-        };
-
-        ProductService.refreshServices('development');
-
-        $scope.selectService = function(service) {
-            $scope.serviceParams.displayRight = true;
-            $scope.serviceParams.selectedService = service;
-            ProductService.refreshSelectedService('development');
-        };
-
-        /* Update Services when polling */
-        $scope.$on('poll.services', function (event, data) {
-            $scope.serviceParams.services = data;
-        });
-
-        $scope.$on("$destroy", function() {
-            ProductService.stopPolling();
-        });
-
-        /* Paging */
-        $scope.getPage = function(url){
-            ProductService.getServicesPage('development', url);
-        };
-
-        $scope.filter = function(){
-            ProductService.getServicesByFilter('development');
         };
 
         $scope.openFile = function(file) {
@@ -77,7 +41,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.mode = {};
 
         $scope.updateMode = function() {
-            ProductService.setFileType();
+            DeveloperTemplatesCtrlState.setFileType();
         };
 
         $scope.refreshMirror = function() {
@@ -125,78 +89,26 @@ define(['../../fstepmodules'], function (fstepmodules) {
             });
         };
 
-        $scope.removeService = function(event, service){
-            CommonService.confirm(event, 'Are you sure you want to delete this service: "' + service.name + '"?').then(function (confirmed){
-                if(confirmed === false){
-                    return;
-                }
-                ProductService.removeService(service).then(function(){
-                    ProductService.refreshServices('development', 'Remove', service);
-                });
-            });
-        };
-
-        $scope.createService = function($event) {
-                function CreateServiceController($scope, $mdDialog) {
-
-                    $scope.createService = function () {
-                        ProductService.createService($scope.newItem.name, $scope.newItem.description, $scope.newItem.title).then(function (newService) {
-                            ProductService.refreshServices('development', 'Create', newService);
-                        });
-                        $mdDialog.hide();
-                    };
-
-                    $scope.closeDialog = function () {
-                        $mdDialog.hide();
-                    };
-                }
-
-                CreateServiceController.$inject = ['$scope', '$mdDialog'];
-                $mdDialog.show({
-                    controller: CreateServiceController,
-                    templateUrl: 'views/developer/templates/createservice.tmpl.html',
-                    parent: angular.element(document.body),
-                    targetEvent: $event,
-                    clickOutsideToClose: true
-                });
-        };
-
         $scope.saveService = function(){
-            ProductService.saveService($scope.serviceParams.selectedService).then(function(service){
-                ProductService.refreshServices('development');
+            ProductTemplateService.saveTemplate($scope.serviceParams.selectedService).then(function(template){
+                //ProductService.refreshServices('development');
             });
         };
 
-        $scope.rebuildServiceContainer = function(service) {
-            service.buildStatus = {
-                needsBuild: false,
-                status: 'ONGOING'
-            };
-
-            ProductService.rebuildServiceContainer(service).then(function() {
-                ProductService.updateBuildStatus(service);
-            }, function() {
-                ProductService.updateBuildStatus(service);
-            });
-        }
-
-        $scope.refreshServiceStatus = function(service) {
-            ProductService.updateBuildStatus(service);
-        }
 
         $scope.createFileDialog = function($event){
-            function CreateFileController($scope, $mdDialog, ProductService) {
+            function CreateFileController($scope, $mdDialog, DeveloperTemplatesCtrlState, ProductTemplateService) {
 
                 $scope.addFile = function () {
                     var newFile = {
                             filename: $scope.file.filename,
                             content: btoa('# ' + $scope.file.filename),
-                            service: ProductService.params.development.selectedService._links.self.href,
+                            serviceTemplate: DeveloperTemplatesCtrlState.params.selectedService._links.self.href,
                             executable: $scope.file.executable
                     };
-                    ProductService.addFile(newFile).then(function(data){
-                        ProductService.params.development.selectedService.files.push(data);
-                        ProductService.getFileList('development');
+                    ProductTemplateService.addFile(newFile).then(function(data){
+                        DeveloperTemplatesCtrlState.params.selectedService.files.push(data);
+                        DeveloperTemplatesCtrlState.getFileList();
                     });
                     $mdDialog.hide();
                 };
@@ -206,7 +118,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 };
             }
 
-            CreateFileController.$inject = ['$scope', '$mdDialog', 'ProductService'];
+            CreateFileController.$inject = ['$scope', '$mdDialog', 'DeveloperTemplatesCtrlState', 'ProductTemplateService'];
             $mdDialog.show({
                 controller: CreateFileController,
                 templateUrl: 'views/developer/templates/createfile.tmpl.html',
@@ -221,9 +133,16 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 if (confirmed === false) {
                     return;
                 }
-                ProductService.removeServiceFile(file).then(function(){
-                    ProductService.refreshSelectedService('development');
+                ProductTemplateService.removeServiceFile(file).then(function(){
+                    let files = $scope.serviceParams.selectedService.files;
+                    for (var i=0; i < files.length; ++i) {
+                        if (files[i].id === file.id) {
+                            files.splice(i, 1);
+                            break;
+                        }
+                    }
                     $scope.serviceParams.openedFile = $scope.serviceParams.selectedService.files[0];
+                    DeveloperTemplatesCtrlState.getFileList();
                 });
             });
         };
@@ -232,8 +151,8 @@ define(['../../fstepmodules'], function (fstepmodules) {
             // Create a descriptor if none exists
             if(!$scope.serviceParams.selectedService.serviceDescriptor){
                 $scope.serviceParams.selectedService.serviceDescriptor = {
-                        id: $scope.serviceParams.selectedService.name,
-                        serviceProvider: $scope.serviceParams.selectedService.name
+                    id: $scope.serviceParams.selectedService.name,
+                    serviceProvider: $scope.serviceParams.selectedService.name
                 };
             }
 
