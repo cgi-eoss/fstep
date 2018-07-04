@@ -63,7 +63,7 @@ define([
     './services/collectionservice',
     './services/projectservice',
     './services/productservice',
-    './services/productTemplateService',
+    './services/producttemplateservice',
     './services/publishingservice',
     './services/searchservice',
     './services/systematicservice',
