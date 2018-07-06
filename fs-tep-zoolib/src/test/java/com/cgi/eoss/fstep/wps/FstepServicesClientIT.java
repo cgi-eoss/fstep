@@ -75,7 +75,7 @@ public class FstepServicesClientIT {
     private static final String RPC_SERVER_NAME = FstepServicesClientIT.class.getName();
     private static final String SERVICE_NAME = "service1";
     private static final String PARALLEL_SERVICE_NAME = "service2";
-    private static final String TEST_CONTAINER_IMAGE = "alpine:latest";
+    private static final String TEST_CONTAINER_IMAGE = "alpine:3.7";
 
     @Mock
     private FstepGuiServiceManager guiService;
