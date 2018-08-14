@@ -1,9 +1,11 @@
 package com.cgi.eoss.fstep.api.controllers;
 
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Formatter;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.cgi.eoss.fstep.model.ApiKey;
 import com.cgi.eoss.fstep.persistence.service.ApiKeyDataService;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.sun.jersey.core.util.Base64;
 
 import lombok.extern.log4j.Log4j2;
 
@@ -50,8 +53,12 @@ public class ApiKeysApi {
     	}
     	
     	String apiKeyString = generateApiKey(256);
-    	//TODO SHA-1 the api key 
-    	String encryptedApiKeyString = encryptApiKey(apiKeyString);
+    	String encryptedApiKeyString;
+		try {
+			encryptedApiKeyString = encryptApiKey(apiKeyString);
+		} catch (NoSuchAlgorithmException e) {
+			return new ResponseEntity<String>(HttpStatus.INTERNAL_SERVER_ERROR);
+		}
     	ApiKey apiKey = new ApiKey(encryptedApiKeyString);
     	fstepSecurityService.updateOwnerWithCurrentUser(apiKey);
     	apiKeyDataService.save(apiKey);
@@ -82,7 +89,12 @@ public class ApiKeysApi {
     	if (apiKey  != null){
     		String apiKeyString = generateApiKey(256);
     		//TODO SHA-1 the api key 
-    		String encryptedApiKeyString = encryptApiKey(apiKeyString);
+    		String encryptedApiKeyString;
+			try {
+				encryptedApiKeyString = encryptApiKey(apiKeyString);
+			} catch (NoSuchAlgorithmException e) {
+				return new ResponseEntity<String>(HttpStatus.INTERNAL_SERVER_ERROR);
+			}
     		apiKey.setApiKeyString(encryptedApiKeyString);
     		apiKeyDataService.save(apiKey);
     		return new ResponseEntity<String>(apiKeyString, HttpStatus.OK);
@@ -99,15 +111,8 @@ public class ApiKeysApi {
         return DatatypeConverter.printHexBinary(bytes).toLowerCase();
     }
 
-    private String encryptApiKey(String apiKey) {
-    	MessageDigest messageDigest=null;
-        try {
-            messageDigest = MessageDigest.getInstance("SHA");
-            messageDigest.update((apiKey).getBytes());
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException();
-        }
-        String encryptedPassword = (new BigInteger(messageDigest.digest())).toString(16);
-        return encryptedPassword;
-    }
+	private String encryptApiKey(String password) throws NoSuchAlgorithmException {
+		return "{SHA}" + new String(Base64.encode(java.security.MessageDigest.getInstance("SHA1").digest(password.getBytes())));
+	}
+	
 }
