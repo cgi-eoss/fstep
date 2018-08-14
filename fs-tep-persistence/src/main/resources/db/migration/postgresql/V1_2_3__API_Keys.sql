@@ -6,4 +6,5 @@
   api_key  CHARACTER VARYING(255)
   );  
   
-CREATE UNIQUE INDEX fstep_api_keys_owner_idx
+CREATE UNIQUE INDEX fstep_api_keys_owner_idx 
+ON fstep_api_keys (owner);
