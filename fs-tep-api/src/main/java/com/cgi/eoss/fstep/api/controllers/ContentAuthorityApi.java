@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.api.controllers;
 
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.DefaultServiceTemplate;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceTemplate;
@@ -140,6 +141,22 @@ public class ContentAuthorityApi {
 		defaultServiceTemplate.setServiceTemplate(serviceTemplate);
 		defaultServiceTemplateDataService.save(defaultServiceTemplate);
     	return new ResponseEntity<Void>(HttpStatus.OK);
+    }
+    
+    @PostMapping("/collections/publish/{collectionId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public void publishServiceTemplate(@ModelAttribute("collectionId") Collection collection) {
+        fstepSecurityService.publish(Collection.class, collection.getId());
+        publishingRequestsDataService.findRequestsForPublishingCollection(collection).forEach(request -> {
+            request.setStatus(PublishingRequest.Status.GRANTED);
+            publishingRequestsDataService.save(request);
+        });
+    }
+    
+    @PostMapping("/collections/unpublish/{collectionId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public void unpublishCollection(@ModelAttribute("collectionId") Collection collection) {
+        fstepSecurityService.unpublish(Collection.class, collection.getId());
     }
 
 }

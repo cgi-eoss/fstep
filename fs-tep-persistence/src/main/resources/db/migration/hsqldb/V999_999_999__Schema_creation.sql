@@ -322,7 +322,7 @@ CREATE TABLE fstep_publishing_requests (
   status        CHARACTER VARYING(255) NOT NULL CHECK (status IN
                                                        ('REQUESTED', 'GRANTED', 'NEEDS_INFO', 'REJECTED')),
   type          CHARACTER VARYING(255) NOT NULL CHECK (type IN
-                                                       ('DATABASKET', 'DATASOURCE', 'FILE', 'SERVICE', 'SERVICE_TEMPLATE', 'GROUP', 'JOB_CONFIG', 'PROJECT')),
+                                                       ('DATABASKET', 'DATASOURCE', 'FILE', 'SERVICE', 'SERVICE_TEMPLATE', 'GROUP', 'JOB_CONFIG', 'PROJECT', 'COLLECTION')),
   associated_id BIGINT                 NOT NULL
 );
 CREATE INDEX fstep_publishing_requests_owner_idx
