@@ -13,7 +13,9 @@ catalogue:
       - value: 'FSTEP_PRODUCTS'
         title: 'FS-TEP Products'
         description: 'All pre-processed data'
-        
+      - value: 'CLMS_DATA'
+        title: 'Copernicus Land Monitoring Service'
+        description: 'Collections and products of the CLMS'
 collection:
   title: 'Collection'
   type: 'dynamic'
@@ -22,6 +24,15 @@ collection:
   onlyIf:
     'catalogue':
       - 'FSTEP_PRODUCTS'
+
+clmscollection:
+  title: 'Collection'
+  type: 'dynamic'
+  allowed: 
+    values: ''
+  onlyIf:
+    'catalogue':
+      - 'CLMS_DATA'
 
 owner:
   title: 'Owner'

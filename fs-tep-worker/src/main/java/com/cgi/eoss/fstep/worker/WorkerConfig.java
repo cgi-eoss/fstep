@@ -7,6 +7,7 @@ import com.cgi.eoss.fstep.io.ServiceInputOutputManagerImpl;
 import com.cgi.eoss.fstep.io.download.CachingSymlinkDownloaderFacade;
 import com.cgi.eoss.fstep.io.download.Downloader;
 import com.cgi.eoss.fstep.io.download.DownloaderFacade;
+import com.cgi.eoss.fstep.io.download.UnzipStrategy;
 import com.cgi.eoss.fstep.queues.QueuesConfig;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
 import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
@@ -17,6 +18,7 @@ import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
 import org.springframework.context.annotation.Bean;
@@ -45,6 +47,7 @@ import java.nio.file.Paths;
 })
 @EnableEurekaClient
 @EnableScheduling
+@EnableConfigurationProperties(UnzipBySchemeProperties.class)
 public class WorkerConfig {
 
     @Bean
@@ -56,7 +59,7 @@ public class WorkerConfig {
     public Boolean unzipAllDownloads(@Value("${ftep.worker.io.unzipAllDownloads:true}") boolean unzipAllDownloads) {
         return unzipAllDownloads;
     }
-
+   
     @Bean
     public Integer cacheConcurrencyLevel(@Value("${fstep.worker.cache.concurrency:4}") int concurrencyLevel) {
         return concurrencyLevel;
@@ -134,9 +137,10 @@ public class WorkerConfig {
     @Bean
     public DownloaderFacade downloaderFacade(@Qualifier("cacheRoot") Path cacheRoot,
                                              @Qualifier("unzipAllDownloads") Boolean unzipAllDownloads,
+                                             UnzipBySchemeProperties unzipBySchemeProperties,
                                              @Qualifier("cacheConcurrencyLevel") Integer concurrencyLevel,
                                              @Qualifier("cacheMaxWeight") Integer maximumWeight) {
-        return new CachingSymlinkDownloaderFacade(cacheRoot, unzipAllDownloads, concurrencyLevel, maximumWeight);
+        return new CachingSymlinkDownloaderFacade(cacheRoot, UnzipStrategy.UNZIP_IN_SAME_FOLDER, unzipBySchemeProperties.getUnzipByScheme(), concurrencyLevel, maximumWeight);
     }
 
     @Bean

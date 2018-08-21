@@ -26,6 +26,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -55,17 +56,19 @@ public class CachingSymlinkDownloaderFacade implements DownloaderFacade {
     private static final Predicate<URI> ALWAYS_EVICT_URI = uri -> uri.toString().startsWith("fstep://databasket/") || uri.toString().startsWith("fstep://serviceContext/");
 
     private final Path cacheRoot;
-    private final boolean unzipAllDownloads;
+    private final UnzipStrategy defaultUnzipStrategy;
     private final LoadingCache<URI, Path> cache;
     private final Set<Downloader> downloaders = new HashSet<>();
+	private Map<String, UnzipStrategy> unzipByScheme;
 
     public CachingSymlinkDownloaderFacade(Path cacheRoot) {
-        this(cacheRoot, true, DEFAULT_CONCURRENCY_LEVEL, DEFAULT_MAX_WEIGHT);
+        this(cacheRoot, UnzipStrategy.UNZIP_IN_SAME_FOLDER, Collections.emptyMap(), DEFAULT_CONCURRENCY_LEVEL, DEFAULT_MAX_WEIGHT);
     }
 
-    public CachingSymlinkDownloaderFacade(Path cacheRoot, Boolean unzipAllDownloads, Integer concurrencyLevel, Integer maximumWeight) {
+    public CachingSymlinkDownloaderFacade(Path cacheRoot, UnzipStrategy defaultUnzipStrategy, Map<String, UnzipStrategy> unzipByScheme, Integer concurrencyLevel, Integer maximumWeight) {
         this.cacheRoot = cacheRoot;
-        this.unzipAllDownloads = unzipAllDownloads;
+        this.defaultUnzipStrategy = defaultUnzipStrategy;
+        this.unzipByScheme = unzipByScheme;
         this.cache = CacheBuilder.newBuilder()
                 .concurrencyLevel(concurrencyLevel)
                 .maximumWeight(maximumWeight)
@@ -228,10 +231,33 @@ public class CachingSymlinkDownloaderFacade implements DownloaderFacade {
 
                 // Download the file!
                 Path downloaded = doDownload(inProgressDir, uri);
-                if (unzipAllDownloads && downloaded.getFileName().toString().toLowerCase().endsWith(".zip")) {
-                    ZipHandler.unzip(downloaded, inProgressDir);
-                    Files.delete(downloaded);
+                //TODO distinguish between files (old behaviour and folder). If folder, do
+                //the following for each file in folder
+                Files.find(downloaded, 1, (filePath, fileAttr) -> fileAttr.isRegularFile() && filePath.getFileName().toString().toLowerCase().endsWith(".zip")).forEach( downloadedFile -> {
+                try {
+                	switch (getUnzipStrategy(uri)) {
+                		case UNZIP_IN_SAME_FOLDER : {
+	                		ZipHandler.unzip(downloadedFile, inProgressDir);
+	                        Files.delete(downloadedFile);
+	                        break;
+	                	}
+	                	
+	                	case UNZIP_IN_NEW_FOLDER: {
+	                		ZipHandler.unzip(downloadedFile, inProgressDir, true);
+	                        Files.delete(downloadedFile);
+	                        break;
+	                	}
+	                	
+	                	case DO_NOT_UNZIP: {
+	                		
+	                	}
+                	}                
                 }
+                catch (Exception e) {
+                	throw new RuntimeException (e);
+                }	
+                }
+                );
 
                 // Move the temp directory to the final location
                 Files.move(inProgressDir, cacheDir, ATOMIC_MOVE);
@@ -284,5 +310,9 @@ public class CachingSymlinkDownloaderFacade implements DownloaderFacade {
             return Optional.empty();
         }
     }
+
+	public UnzipStrategy getUnzipStrategy(URI uri) {
+		return unzipByScheme.getOrDefault(uri.getScheme(), defaultUnzipStrategy);
+	}
 
 }

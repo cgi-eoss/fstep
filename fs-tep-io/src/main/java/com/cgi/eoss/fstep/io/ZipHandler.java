@@ -12,6 +12,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
+import org.apache.commons.io.FilenameUtils;
+
 import lombok.experimental.UtilityClass;
 import lombok.extern.log4j.Log4j2;
 
@@ -30,7 +32,7 @@ public class ZipHandler {
      * @param file The zip archive to be extracted.
      * @param targetDir The directory to be used for extraction.
      */
-    public static void unzipStreaming(Path file, Path targetDir) throws IOException {
+    private static void unzipStreaming(Path file, Path targetDir, boolean createDir) throws IOException {
         LOG.debug("Unzipping file {} to {}", file, targetDir);
 
         // Read all the zip file entries to check the contents and see if we have to extract with subdir stripping ...
@@ -61,6 +63,10 @@ public class ZipHandler {
             zis.closeEntry();
         }
 
+        if (createDir) {
+        	targetDir = Files.createDirectory(targetDir.resolve(FilenameUtils.getBaseName(file.getFileName().toString())));
+        }
+        
         // ... then walk the file again to actually do the unzip operation
         try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(file))) {
             ZipEntry ze = zis.getNextEntry();
@@ -97,11 +103,15 @@ public class ZipHandler {
      */
     
     public static void unzip(Path file, Path targetDir) throws IOException {
+    	unzip(file, targetDir, false);
+    }
+    
+    public static void unzip(Path file, Path targetDir, boolean createDir) throws IOException {
     	if (isFile(file)) {
-    		unzipFile(file, targetDir);
+    		unzipFile(file, targetDir, createDir);
     	}
     	else {
-    		unzipStreaming(file, targetDir);
+    		unzipStreaming(file, targetDir, createDir);
     	}
     }
     
@@ -110,7 +120,8 @@ public class ZipHandler {
       else return path.getFileSystem().equals(FileSystems.getDefault());
     }
     
-    public static void unzipFile(Path file, Path targetDir) throws IOException {
+    
+    public static void unzipFile(Path file, Path targetDir, boolean createDir) throws IOException {
         LOG.debug("Unzipping file {} to {}", file, targetDir);
 
         // Read all the zip file entries to check the contents and see if we have to extract with subdir stripping ...
@@ -140,7 +151,12 @@ public class ZipHandler {
         
         zipFile.close();
         
-     // ... then walk the file again to actually do the unzip operation
+        // ... then walk the file again to actually do the unzip operation
+        
+        if (createDir) {
+        	targetDir = Files.createDirectory(targetDir.resolve(FilenameUtils.getBaseName(file.getFileName().toString())));
+        }
+        
         zipFile = new ZipFile(file.toFile());
         entries = zipFile.entries();
         while (entries.hasMoreElements()) {
@@ -163,7 +179,9 @@ public class ZipHandler {
         zipFile.close();
     }
 
-    /**
+    
+
+	/**
      * <p>Add the contents of dirToZip to a new zip archive. The resulting zip archive will contain dirToZip as its
      * top-level element.</p>
      *
