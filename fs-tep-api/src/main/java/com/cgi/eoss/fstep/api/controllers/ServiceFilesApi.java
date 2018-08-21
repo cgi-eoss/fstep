@@ -30,7 +30,7 @@ public interface ServiceFilesApi extends BaseRepositoryApi<FstepServiceContextFi
     List<FstepServiceContextFile> findAll();
 
     @Override
-    @PostAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(returnObject.service, 'read')")
+    @PostAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(returnObject.service, 'write')")
     FstepServiceContextFile findOne(Long id);
 
     @Override
@@ -45,7 +45,7 @@ public interface ServiceFilesApi extends BaseRepositoryApi<FstepServiceContextFi
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#serviceFile.service, 'administration')")
     void delete(@P("serviceFile") FstepServiceContextFile serviceFile);
 
-    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#service, 'read')")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#service, 'write')")
     Page<FstepServiceContextFile> findByService(@Param("service") FstepService service, Pageable pageable);
 
     @Override
