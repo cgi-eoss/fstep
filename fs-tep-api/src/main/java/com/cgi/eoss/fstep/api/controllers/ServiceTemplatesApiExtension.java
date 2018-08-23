@@ -1,5 +1,7 @@
 package com.cgi.eoss.fstep.api.controllers;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -28,6 +30,7 @@ import com.cgi.eoss.fstep.security.FstepSecurityService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Parameter;
 
 @RestController
 @BasePathAwareController
@@ -56,6 +59,8 @@ public class ServiceTemplatesApiExtension {
     	if (serviceDescriptor == null) {
     		serviceDescriptor = new FstepServiceDescriptor();
     		serviceDescriptor.setId(service.getName());
+    		serviceDescriptor.setDataInputs(Collections.<Parameter>emptyList());
+    		serviceDescriptor.setDataOutputs(Collections.<Parameter>emptyList());
     		service.setServiceDescriptor(serviceDescriptor);
     	
     	}
