@@ -78,7 +78,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         };
 
         $scope.publishService = function ($event, service) {
-            PublishingService.publishItemDialog($event, service);
+            PublishingService.publishItemDialog($event, service, 'service', function() {
+                ProductService.refreshServices("community");
+            });
         };
 
         $scope.manageServicesDialog = function ($event) {

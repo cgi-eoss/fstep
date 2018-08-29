@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityCollectionsCtrl', ['CollectionService', 'CommonService', '$scope', function (CollectionService, CommonService, $scope) {
+    fstepmodules.controller('CommunityCollectionsCtrl', ['CollectionService', 'CommonService', 'PublishingService', '$scope', function (CollectionService, CommonService, PublishingService, $scope) {
 
         $scope.collectionParams = CollectionService.params.community;
         $scope.dbOwnershipFilters = CollectionService.dbOwnershipFilters;
@@ -48,6 +48,22 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         $scope.editItemDialog = function ($event, item) {
             CommonService.editItemDialog($event, item, 'CollectionService', 'updateCollection', 'editcollection').then(function (updatedCollection) {
+                CollectionService.refreshCollections("community");
+            });
+        };
+
+        $scope.requestPublication = function ($event, collection) {
+            CommonService.confirm($event, 'Do you wish to publish this collection?').then(function (confirmed) {
+                if (confirmed !== false) {
+                    PublishingService.requestPublication(collection, 'Collection').then(function (data) {
+                        CollectionService.refreshCollections("community");
+                    });
+                }
+            });
+        };
+
+        $scope.publishCollection = function ($event, collection) {
+            PublishingService.publishItemDialog($event, collection, 'collections', function() {
                 CollectionService.refreshCollections("community");
             });
         };
