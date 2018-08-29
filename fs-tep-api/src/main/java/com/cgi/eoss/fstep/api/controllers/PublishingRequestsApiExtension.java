@@ -46,6 +46,7 @@ public class PublishingRequestsApiExtension {
         if (persistent != null) {
             // Re-request if necessary
             persistent.setStatus(PublishingRequest.Status.REQUESTED);
+            persistent = dataService.save(newRequest);
             return ResponseEntity.noContent().location(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
         } else {
             persistent = dataService.save(newRequest);
@@ -68,6 +69,7 @@ public class PublishingRequestsApiExtension {
         if (persistent != null) {
             // Re-request if necessary
             persistent.setStatus(PublishingRequest.Status.REQUESTED);
+            persistent = dataService.save(newRequest);
             return ResponseEntity.noContent().location(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
         } else {
             persistent = dataService.save(newRequest);
@@ -90,6 +92,7 @@ public class PublishingRequestsApiExtension {
         if (persistent != null) {
             // Re-request if necessary
             persistent.setStatus(PublishingRequest.Status.REQUESTED);
+            persistent = dataService.save(newRequest);
             return ResponseEntity.noContent().location(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
         } else {
             persistent = dataService.save(newRequest);
