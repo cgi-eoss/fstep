@@ -28,9 +28,13 @@ import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * <p>Downloader for accessing data from <a href="https://finder.eocloud.eu">EO Cloud</a>. Uses IPT's token
@@ -47,6 +51,9 @@ public class IptHttpDownloader implements Downloader {
     private final DownloaderFacade downloaderFacade;
     private final IptHttpDownloaderProperties properties;
     private static Random random = new Random();
+    private static final String FILENAME_HEADER = "Content-disposition";
+    private static final Pattern FILENAME_PATTERN = Pattern.compile(".*filename=(.*)");
+
     @Autowired
     IptHttpDownloader(OkHttpClient okHttpClient, FstepServerClient fstepServerClient, DownloaderFacade downloaderFacade, IptHttpDownloaderProperties properties) {
         this.httpClient = okHttpClient;
@@ -118,7 +125,7 @@ public class IptHttpDownloader implements Downloader {
             throw new ServiceIoException("Unsuccessful HTTP response: " + response);
         }
 
-        String filename = Iterables.getLast(downloadUrl.pathSegments());
+        String filename = getFilename(downloadUrl, response.headers(FILENAME_HEADER));
         Path outputFile = targetDir.resolve(filename);
 
         try (BufferedSource source = response.body().source();
@@ -131,6 +138,15 @@ public class IptHttpDownloader implements Downloader {
         LOG.info("Successfully downloaded via IPT: {}", outputFile);
         return outputFile;
 	}
+	
+	 private String getFilename(HttpUrl httpUrl, List<String> headers) {
+	        return headers.stream()
+	                .map(FILENAME_PATTERN::matcher)
+	                .filter(Matcher::matches)
+	                .map(m -> m.group(1))
+	                .findAny()
+	                .orElse(Iterables.getLast(httpUrl.pathSegments()));
+	    }
 
     private String getAuthToken(Credentials credentials) throws IOException {
         Request authRequest = new Request.Builder()
@@ -176,7 +192,7 @@ public class IptHttpDownloader implements Downloader {
             String productPath = JsonPath.read(responseBody, "$.features[0].properties.productIdentifier");
 
             return HttpUrl.parse(properties.getIptDownloadUrl()).newBuilder()
-                    .addPathSegments(productPath.replaceFirst("^/eodata/", "eorepo/") + ".zip")
+                    .addPathSegments(productPath.replaceFirst("^/eodata/", ""))
                     .addQueryParameter("token", authToken)
                     .build();
         }
@@ -197,7 +213,7 @@ public class IptHttpDownloader implements Downloader {
     private static final class IptHttpDownloaderProperties {
         @Value("${fstep.worker.downloader.ipt.searchUrl:https://finder.eocloud.eu/resto/}")
         private String iptSearchUrl;
-        @Value("${ftep.worker.downloader.ipt.downloadBaseUrl:https://static.eocloud.eu/v1/AUTH_8f07679eeb0a43b19b33669a4c888c45}")
+        @Value("${fstep.worker.downloader.ipt.downloadBaseUrl:https://static.eocloud.eu/v1/AUTH_8f07679eeb0a43b19b33669a4c888c45}")
         private String iptDownloadUrl;
         @Value("${fstep.worker.downloader.ipt.authEndpoint:https://finder.eocloud.eu/resto/api/authidentity}")
         private String authEndpoint;
