@@ -176,7 +176,7 @@ public class IptHttpDownloader implements Downloader {
             String productPath = JsonPath.read(responseBody, "$.features[0].properties.productIdentifier");
 
             return HttpUrl.parse(properties.getIptDownloadUrl()).newBuilder()
-                    .addPathSegments(productPath.replaceFirst("^/eodata/", "") + ".zip")
+                    .addPathSegments(productPath.replaceFirst("^/eodata/", ""))
                     .addQueryParameter("token", authToken)
                     .build();
         }
@@ -197,7 +197,7 @@ public class IptHttpDownloader implements Downloader {
     private static final class IptHttpDownloaderProperties {
         @Value("${fstep.worker.downloader.ipt.searchUrl:https://finder.eocloud.eu/resto/}")
         private String iptSearchUrl;
-        @Value("${ftep.worker.downloader.ipt.downloadBaseUrl:https://static.eocloud.eu/v1/AUTH_8f07679eeb0a43b19b33669a4c888c45}")
+        @Value("${fstep.worker.downloader.ipt.downloadBaseUrl:https://static.eocloud.eu/v1/AUTH_8f07679eeb0a43b19b33669a4c888c45}")
         private String iptDownloadUrl;
         @Value("${fstep.worker.downloader.ipt.authEndpoint:https://finder.eocloud.eu/resto/api/authidentity}")
         private String authEndpoint;
