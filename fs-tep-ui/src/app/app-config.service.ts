@@ -10,11 +10,26 @@ export class AppConfig {
 
     constructor(private http: Http) {
         this.config = new Promise((resolve, reject)=>{
-            this.http.get('assets/data/config.json').toPromise().then((response)=>{
-                resolve(response.json());
-            },
-            (error) => {
-                reject(error);
+
+            let configUrls = [
+                'assets/data/config.json',
+                '../config/analyst.json'
+            ]
+
+            Promise.all(configUrls.map((url) => {
+                return this.http.get(url).toPromise().then((response)=>{
+                    return response.json();
+                }).catch((err) => {
+                    return null;
+                })
+            })).then((configs) => {
+                if (!configs[0] && !configs[1]) {
+                    reject();
+                }
+                resolve({
+                    ...(configs[0] || {}),
+                    ...(configs[1] || {})
+                });
             });
         });
 

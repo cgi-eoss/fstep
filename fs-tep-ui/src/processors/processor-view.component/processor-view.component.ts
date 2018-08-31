@@ -44,7 +44,7 @@ export class ProcessorViewComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.route.paramMap
       .switchMap((params: ParamMap) => {
-        return this.processorsService.getProcessor(params.get('id'));
+        return this.processorsService.getProcessor(params.get('service'), params.get('id'));
       }).subscribe((processor: Processor) => {
         this.processorLayer.setDataSource(processor.mapSource);
         this.processorLayer.setVisible(true);

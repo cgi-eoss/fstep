@@ -11,8 +11,11 @@
     </div>
     <div class="navbar-menu" id="navMenu" [ngClass]="{'is-active': menuVisible}">
         <div class="navbar-start">
-            <a class="navbar-item is-tab" [ngClass]="{'is-active': activeTab == 'products'}" routerLink="/processor">
-                Products
+            <a *ngFor="let service of services" 
+                class="navbar-item is-tab" 
+                [ngClass]="{'is-active': activeTab == service.id}" 
+                [routerLink]="['/products', service.id]">
+                {{service.name}}
             </a>
         </div>
         <div class="navbar-end">

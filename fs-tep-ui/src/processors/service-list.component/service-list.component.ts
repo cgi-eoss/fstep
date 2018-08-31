@@ -2,17 +2,13 @@ import { Component, EventEmitter, OnInit, ViewChild, ElementRef, HostBinding } f
 import { trigger, state, style, animate, group, stagger, query, transition } from '@angular/animations';
 import { Router, ActivatedRoute, ParamMap } from '@angular/router';
 
-import { ResizeSensor } from 'css-element-queries';
-
 import { ProcessorsService } from '../processors.service';
-import {Processor} from '../processor';
 
-import * as GeminiScrollbar from 'gemini-scrollbar';
 
 @Component({
-  selector: 'processor-list',
-  templateUrl: './processor-list.component.html',
-  styleUrls: ['./processor-list.component.scss'],
+  selector: 'service-list',
+  templateUrl: './service-list.component.html',
+  styleUrls: ['./service-list.component.scss'],
   animations: [
     trigger('fadeIn', [
       transition('* => *', [
@@ -41,7 +37,6 @@ import * as GeminiScrollbar from 'gemini-scrollbar';
           ], { optional: true })
         ])
       ]),
-
       transition(':enter', [
         query('.card', [
           style({ opacity: 0, transform: 'translateX(-100%) rotateZ(-90deg)' }),
@@ -54,11 +49,11 @@ import * as GeminiScrollbar from 'gemini-scrollbar';
     ])
   ]
 })
-export class ProcessorListComponent implements OnInit {
+export class ServiceListComponent implements OnInit {
   @HostBinding('@routeAnimation') routeAnimation = true;
   @ViewChild("container") container: ElementRef;
-  public service: string;
-  public processors = [];
+  public services = [];
+  public selectedService = null;
 
   constructor(
     private processorsService: ProcessorsService, 
@@ -71,18 +66,16 @@ export class ProcessorListComponent implements OnInit {
   ngOnInit() {
     this.route.paramMap
       .switchMap((params: ParamMap) => {
-        this.service = params.get('service');
-        return this.processorsService.getProcessorsList(params.get('service'));
-      }).subscribe((processorList: Processor[]) => {
-        this.processors.length = 0;
-        Array.prototype.push.apply(this.processors, processorList);
-        this.processorsService.setActiveProcessor(null);
+        return this.processorsService.getServiceList();
+      }).subscribe((serviceList) => {
+        this.services.length = 0;
+        Array.prototype.push.apply(this.services, serviceList);
       });
   }
 
-  onProcessorSelect(processor) {
-    this.processorsService.setActiveProcessor(processor);
-    setTimeout(() => this.router.navigate(['/products', this.service, processor.id]), 0);
+  onServiceSelect(service) {
+    this.selectedService = service;
+    setTimeout(() => this.router.navigate(['/products', service.id]), 0);
   }
 
 }

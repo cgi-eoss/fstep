@@ -6,7 +6,7 @@ export class BreadcrumbService {
     private routesFriendlyNames: Map<string, string> = new Map<string, string>();
     private routesFriendlyNamesRegex: Map<string, string> = new Map<string, string>();
     private routesWithCallback: Map<string, (string:string) => string> = new Map<string, (string:string) => string>();
-    private routesWithCallbackRegex: Map<string, (string:string) => string> = new Map<string, (string:string) => string>();
+    private routesWithCallbackRegex: Map<string, (matches:Array<string>) => string> = new Map<string, (matches:Array<string>) => string>();
     private hideRoutes: any = new Array<string>();
     private hideRoutesRegex: any = new Array<string>();
 
@@ -42,7 +42,7 @@ export class BreadcrumbService {
      * Specify a callback for the corresponding route matching a regular expression.
      * When a mathing url is navigatedd to, the callback function is invoked to get the name to be displayed in the breadcrumb.
      */
-    addCallbackForRouteRegex(routeRegex: string, callback: (id: string) => string): void {
+    addCallbackForRouteRegex(routeRegex: string, callback: (matches: Array<string>) => string): void {
         this.routesWithCallbackRegex.set(routeRegex, callback);
     }
 
@@ -75,8 +75,9 @@ export class BreadcrumbService {
         });
         
         this.routesWithCallbackRegex.forEach((value, key, map) => {
-            if (new RegExp(key).exec(route)) {
-                name = value(routeEnd);
+            let matches = new RegExp(key).exec(route);
+            if (matches) {
+                name = value(matches);
             }
         });
 
