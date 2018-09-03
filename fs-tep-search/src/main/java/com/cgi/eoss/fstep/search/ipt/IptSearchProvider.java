@@ -169,7 +169,7 @@ public class IptSearchProvider extends RestoSearchProvider {
     @SuppressWarnings("unchecked")
     private void addFstepProperties(Feature feature, SearchParameters parameters) {
         String collection = feature.getProperty("collection");
-        String productSource = SUPPORTED_MISSIONS.inverse().get(collection).getMission();
+        String productSource = collection.toLowerCase();
         String productIdentifier = feature.getProperty("title");
         URI fstepUri = externalProductService.getUri(productSource, productIdentifier);
 
