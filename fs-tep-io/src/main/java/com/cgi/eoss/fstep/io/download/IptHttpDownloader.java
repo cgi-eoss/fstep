@@ -77,7 +77,7 @@ public class IptHttpDownloader implements Downloader {
 
     @Override
     public Set<String> getProtocols() {
-        return ImmutableSet.of("sentinel1", "sentinel2", "sentinel3", "landsat", "envisat");
+        return ImmutableSet.of("sentinel1", "sentinel2", "sentinel3", "landsat5", "landsat7", "landsat8", "envisat");
     }
 
     @Override
@@ -172,8 +172,9 @@ public class IptHttpDownloader implements Downloader {
     private HttpUrl getDownloadUrl(URI uri, String authToken) throws IOException {
         // Trim the leading slash from the path and get the search URL
         String productId = uri.getPath().substring(1);
+        String collection = getCollection(uri);
         HttpUrl searchUrl = HttpUrl.parse(properties.getIptSearchUrl()).newBuilder()
-                .addPathSegments("api/collections/search.json")
+                .addPathSegments("api/collections/" + collection + "/search.json")
                 .addQueryParameter("maxRecords", "1")
                 .addQueryParameter("productIdentifier", "%" + productId + "%")
                 .build();
@@ -198,7 +199,21 @@ public class IptHttpDownloader implements Downloader {
         }
     }
 
-    @Data
+    private String getCollection(URI uri) {
+		switch (uri.getScheme()) {
+			case "sentinel1": return "Sentinel1";
+			case "sentinel2": return "Sentinel2";
+			case "sentinel3": return "Sentinel3";
+			case "envisat": return "Envisat";
+			case "landsat5": return "Landsat5";
+			case "landsat7": return "Landsat7";
+			case "Landsat8": return "Landsat8";
+			default: throw new ServiceIoException("Unsupported collection");
+			
+		}
+	}
+
+	@Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static final class IptTokenResponse {
         private String token;
