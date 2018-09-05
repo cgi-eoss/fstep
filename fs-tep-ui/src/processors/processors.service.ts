@@ -16,8 +16,8 @@ import {Processor} from './processor';
 @Injectable()
 export class ProcessorsService {
 
-    private serviceUrl = 'assets/data/';
-    private processors: Array<Processor> = null;
+    private serviceNames = {};
+    private processors: Map<string, Array<Processor>> = new Map();
     private activeProcessor: BehaviorSubject<Processor> = new BehaviorSubject(null);
     private timeSeriesState = new BehaviorSubject({
         enabled: false,
@@ -32,20 +32,38 @@ export class ProcessorsService {
         this.timeSeriesState.value.start.setMonth(this.timeSeriesState.value.start.getMonth() - 6);
 
         
-        breadcrumbService.addFriendlyNameForRoute('/processor', 'Products');
-        breadcrumbService.addCallbackForRouteRegex('^/processor/.*$', this.getProcessorName.bind(this));
+        breadcrumbService.addFriendlyNameForRoute('/products', 'Products');
+        breadcrumbService.addCallbackForRouteRegex('^^/products/([^/]*)/?$', (matches) => {
+            return this.getServiceName(matches[1]);
+        });
+        breadcrumbService.addCallbackForRouteRegex('^/products/([^/]*)/([^/]*)/?$', (matches) => {
+            return this.getProcessorName(matches[1], matches[2]);
+        });
+
+        this.appConfig.getConfig().then((config) => {
+            config.categories.forEach((service) => {
+                this.serviceNames[service.id] = service;
+            });
+        });
     }
 
+    getServiceList() {
+        return this.appConfig.getConfig().then((config) => {
+            return config.categories;
+        });
+    }
 
-    getProcessorsList() : Promise<Array<Processor>> {
+    getProcessorsList(service: string) : Promise<Array<Processor>> {
         return new Promise((resolve, reject)=>{
-            if (this.processors) {
-                resolve(this.processors);
+            if (this.processors.get(service)) {
+                resolve(this.processors.get(service));
             }
             else {
                 this.appConfig.getConfig().then((config) => {
+
+                    let geoserverUrl = this.serviceNames[service].url;
                     
-                    this.http.get(config.geoserver.url + '/' + config.geoserver.products_workspace + '/ows', {
+                    this.http.get(geoserverUrl + '/ows', {
                         params: {
                             request: 'getCapabilities',
                             version: '1.3.0',
@@ -58,7 +76,11 @@ export class ProcessorsService {
                         let layers = capabilities.Capability.Layer.Layer;
 
                         console.log(layers);
-                        this.processors  = layers.map((layer) => {
+                        this.processors.set(service, this.serviceNames[service].products.map((product) => {
+
+                            let layer = layers.find((layer) => {
+                                return layer.Name === product.layer
+                            });
 
                             let timeDimension = layer.Dimension.find((dim)=>{
                                 return dim.name == 'time'
@@ -74,19 +96,17 @@ export class ProcessorsService {
 
                             let times = timeDimension.values.split(',');
 
-                            let additionalConfig = config.products[layer.Name] || {}
-
                             let processor = null;
 
                             try {
                                 processor =  new Processor({
-                                    id: layer.Name.toLowerCase(),
+                                    ...product,
                                     name: layer.Title,
                                     description: layer.Abstract,
                                     layer: {
                                         type: "WMS",
                                         config: {
-                                            url: config.geoserver.url + '/'  + config.geoserver.products_workspace + '/wms',
+                                            url: geoserverUrl + '/wms',
                                             layers: layer.Name,
                                             legend: true,
                                             srs: 'EPSG:900913'
@@ -96,8 +116,7 @@ export class ProcessorsService {
                                         start: times[0],
                                         end: times[times.length - 1],
                                         list: times
-                                    },
-                                    ...additionalConfig
+                                    }
                                 });
                             }
                             catch(e) {
@@ -108,30 +127,38 @@ export class ProcessorsService {
 
                         }).filter((processor) => {
                             return processor != null;
-                        });
+                        }));
                         
-                        resolve(this.processors);
+                        resolve(this.processors.get(service));
                     });
                 });
             }
         })
     }
 
-    getProcessor(id): Promise<Processor>{
-        return this.getProcessorsList().then((processors)=>{
+    getProcessor(service, id): Promise<Processor>{
+        return this.getProcessorsList(service).then((processors)=>{
             return processors.find((el)=>{
                 return el.id == id;
             })
         })
     }
 
-    getProcessorName(id) {
-        let processor =  this.processors ? this.processors.find((el)=>{
-            return el.id == id;
-        }) : null;
-        return processor ? processor.name : id;
+    getProcessorName(serviceId, productId) {
+        let product = null;
+        let service = this.processors.get(serviceId);
+        if (service) {
+            product = service.find((el)=>{
+                return el.id == productId;
+            });
+        }
+
+        return product ? product.name : productId;
     }
 
+    getServiceName(service) {
+        return this.serviceNames[service] ? this.serviceNames[service].name : service;
+    }
     
     setActiveProcessor(processor) {
         this.activeProcessor.next(processor);

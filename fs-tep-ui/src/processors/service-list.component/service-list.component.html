@@ -1,0 +1,26 @@
+<div #container class="list_container">
+    <section>
+        <div [@fadeIn]="services.length">
+            <div class="tile is-ancestor">
+                <div class="tile is-3 is-parent" *ngFor="let service of services" >
+                    <div class="tile is-child" >
+                        <div class="card" (click)="onServiceSelect(service)" [ngClass]="{'is-active': service == selectedService}">
+                            <header class="card-header">
+                                <p class="card-header-title">
+                                    {{service.name}}
+                                </p>
+                            </header>
+
+                            <div class="card-content">
+                                <figure class="image is-pulled-left" *ngIf="service.thumb">
+                                    <img src="{{service.thumb}}" alt="Image">
+                                </figure>
+                                <p>{{service.description}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>

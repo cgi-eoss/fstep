@@ -105,7 +105,8 @@ public class PublishingRequest implements FstepEntityWithOwner<PublishingRequest
         GROUP(Group.class),
         JOB_CONFIG(JobConfig.class),
         PROJECT(Project.class),
-        SERVICE_TEMPLATE(FstepServiceTemplate.class);
+        SERVICE_TEMPLATE(FstepServiceTemplate.class), 
+        COLLECTION(Collection.class);
 
         private final Class<?> typeClass;
 

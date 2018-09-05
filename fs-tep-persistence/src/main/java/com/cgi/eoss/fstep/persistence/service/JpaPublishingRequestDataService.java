@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.persistence.service;
 
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceTemplate;
 import com.cgi.eoss.fstep.model.PublishingRequest;
@@ -51,6 +52,11 @@ public class JpaPublishingRequestDataService extends AbstractJpaDataService<Publ
     @Override
     public List<PublishingRequest> findRequestsForPublishingServiceTemplate(FstepServiceTemplate serviceTemplate) {
         return findOpenByAssociated(FstepServiceTemplate.class, serviceTemplate.getId());
+    }
+    
+    @Override
+    public List<PublishingRequest> findRequestsForPublishingCollection(Collection collection) {
+        return findOpenByAssociated(Collection.class, collection.getId());
     }
 
     @Override

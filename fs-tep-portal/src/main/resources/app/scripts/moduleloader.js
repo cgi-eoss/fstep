@@ -53,6 +53,7 @@ define([
     './controllers/helpdesk/helpdesk',
 
     //services
+    './services/apikeyservice',
     './services/basketservice',
     './services/commonservice',
     './services/communityservice',

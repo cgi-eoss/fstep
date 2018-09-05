@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.api.controllers;
 
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceTemplate;
 import com.cgi.eoss.fstep.model.PublishingRequest;
@@ -45,6 +46,7 @@ public class PublishingRequestsApiExtension {
         if (persistent != null) {
             // Re-request if necessary
             persistent.setStatus(PublishingRequest.Status.REQUESTED);
+            persistent = dataService.save(newRequest);
             return ResponseEntity.noContent().location(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
         } else {
             persistent = dataService.save(newRequest);
@@ -67,6 +69,30 @@ public class PublishingRequestsApiExtension {
         if (persistent != null) {
             // Re-request if necessary
             persistent.setStatus(PublishingRequest.Status.REQUESTED);
+            persistent = dataService.save(newRequest);
+            return ResponseEntity.noContent().location(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
+        } else {
+            persistent = dataService.save(newRequest);
+            return ResponseEntity.created(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
+        }
+    }
+    
+    @PostMapping("/requestPublishCollection/{collectionId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#collection, 'administration')")
+    public ResponseEntity requestPublishCollection(@ModelAttribute("collectionId") Collection collection) {
+        PublishingRequest newRequest = PublishingRequest.builder()
+                .owner(fstepSecurityService.getCurrentUser())
+                .type(PublishingRequest.Type.COLLECTION)
+                .associatedId(collection.getId())
+                .status(PublishingRequest.Status.REQUESTED)
+                .build();
+
+        PublishingRequest persistent = dataService.findOneByExample(newRequest);
+
+        if (persistent != null) {
+            // Re-request if necessary
+            persistent.setStatus(PublishingRequest.Status.REQUESTED);
+            persistent = dataService.save(newRequest);
             return ResponseEntity.noContent().location(URI.create(entityLinks.linkToSingleResource(persistent).expand().getHref())).build();
         } else {
             persistent = dataService.save(newRequest);
