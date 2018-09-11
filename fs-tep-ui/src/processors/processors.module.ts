@@ -6,6 +6,7 @@ import {MapModule} from '../map/map.module';
 import {CommonComponentsModule} from '../common/common-components.module';
 
 import {ProcessorsRoutingModule} from  './processors-routing.module';
+import {ServiceListComponent} from './service-list.component/service-list.component';
 import {ProcessorListComponent} from './processor-list.component/processor-list.component';
 import {ProcessorViewComponent} from './processor-view.component/processor-view.component';
 import {ProcessorInfoComponent} from './processor-info.component/processor-info.component';
@@ -28,9 +29,9 @@ import {ProcessorLayer} from './processor-layer';
       CommonComponentsModule
   ],
   declarations: [
-    ProcessorListComponent, ProcessorViewComponent, ProcessorLegendComponent, ProcessorInfoComponent, TimeseriesPlot, TimeseriesForm, TimeSeriesWidget
+    ServiceListComponent, ProcessorListComponent, ProcessorViewComponent, ProcessorLegendComponent, ProcessorInfoComponent, TimeseriesPlot, TimeseriesForm, TimeSeriesWidget
   ],
-  exports: [ProcessorListComponent, ProcessorViewComponent, ProcessorLegendComponent, ProcessorInfoComponent, TimeseriesPlot, TimeseriesForm, TimeSeriesWidget],
+  exports: [ServiceListComponent, ProcessorListComponent, ProcessorViewComponent, ProcessorLegendComponent, ProcessorInfoComponent, TimeseriesPlot, TimeseriesForm, TimeSeriesWidget],
   providers: [ProcessorsService, ProcessorLayer, ProbaVService]
 })
 export class ProcessorsModule {}

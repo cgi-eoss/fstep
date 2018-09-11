@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.persistence.service;
 
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceTemplate;
 import com.cgi.eoss.fstep.model.PublishingRequest;
@@ -14,6 +15,8 @@ public interface PublishingRequestDataService extends
     List<PublishingRequest> findRequestsForPublishing(FstepService service);
     
     List<PublishingRequest> findRequestsForPublishingServiceTemplate(FstepServiceTemplate serviceTemplate);
+    
+    List<PublishingRequest> findRequestsForPublishingCollection(Collection collection);
 
     List<PublishingRequest> findOpenByAssociated(Class<?> objectClass, Long identifier);
 }

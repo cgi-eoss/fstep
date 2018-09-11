@@ -1,10 +1,11 @@
-import { Component, EventEmitter, AfterViewInit, ViewChild, ElementRef, HostBinding } from "@angular/core";
+import { Component, EventEmitter, OnInit, ViewChild, ElementRef, HostBinding } from "@angular/core";
 import { trigger, state, style, animate, group, stagger, query, transition } from '@angular/animations';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute, ParamMap } from '@angular/router';
 
 import { ResizeSensor } from 'css-element-queries';
 
 import { ProcessorsService } from '../processors.service';
+import {Processor} from '../processor';
 
 import * as GeminiScrollbar from 'gemini-scrollbar';
 
@@ -15,12 +16,6 @@ import * as GeminiScrollbar from 'gemini-scrollbar';
   animations: [
     trigger('fadeIn', [
       transition('* => *', [
-        // query(':enter', [
-        //   style({ transform: 'translateX(-100vh) rotateZ(90deg)', opacity: 0}),
-        //   stagger(200, [
-        //     animate('0.5s ease-out', style({ transform: 'translateX(0px) rotateZ(0deg)', opacity: 1 }))
-        //   ])
-        // ], { optional: true },)
         query(':enter', [
           style({ opacity: 0, transform: 'translateX(-100%) rotateZ(-90deg)' }),
           stagger(200, [
@@ -35,17 +30,15 @@ import * as GeminiScrollbar from 'gemini-scrollbar';
     ]),
     trigger('routeAnimation', [
       transition(':leave', [
-        //style({opacity: '1'}),
-        //animate('1s ease-out', style({opacity: '0'}))
         group([
           query('.card.is-active', [
             style({ transform: 'scale(1)', opacity: '1', 'tranform-origin': 'center' }),
             animate('1s ease-out', style({ transform: 'scale(2)', opacity: '0' }))
-          ]),
+          ], { optional: true }),
           query('.card:not(.is-active)', [
             style({ transform: 'scale(1)', opacity: '1' }),
             animate('1s ease-out', style({ transform: 'scale(0)', opacity: '0' }))
-          ])
+          ], { optional: true })
         ])
       ]),
 
@@ -61,27 +54,35 @@ import * as GeminiScrollbar from 'gemini-scrollbar';
     ])
   ]
 })
-export class ProcessorListComponent implements AfterViewInit {
+export class ProcessorListComponent implements OnInit {
   @HostBinding('@routeAnimation') routeAnimation = true;
-  //@HostBinding('style.display')   display = 'block';
-  //@HostBinding('style.position')  position = 'absolute';
   @ViewChild("container") container: ElementRef;
+  public service: string;
   public processors = [];
 
-  constructor(private processorsService: ProcessorsService, private router: Router) {
+  constructor(
+    private processorsService: ProcessorsService, 
+    private router: Router,
+    private route: ActivatedRoute
+  ) {
 
-    processorsService.setActiveProcessor(null);
-    processorsService.getProcessorsList().then((data) => {
-      Array.prototype.push.apply(this.processors, data);
-    });
   }
 
-  ngAfterViewInit() {
+  ngOnInit() {
+    this.route.paramMap
+      .switchMap((params: ParamMap) => {
+        this.service = params.get('service');
+        return this.processorsService.getProcessorsList(params.get('service'));
+      }).subscribe((processorList: Processor[]) => {
+        this.processors.length = 0;
+        Array.prototype.push.apply(this.processors, processorList);
+        this.processorsService.setActiveProcessor(null);
+      });
   }
 
   onProcessorSelect(processor) {
     this.processorsService.setActiveProcessor(processor);
-    setTimeout(() => this.router.navigate(['/processor', processor.id]), 0);
+    setTimeout(() => this.router.navigate(['/products', this.service, processor.id]), 0);
   }
 
 }

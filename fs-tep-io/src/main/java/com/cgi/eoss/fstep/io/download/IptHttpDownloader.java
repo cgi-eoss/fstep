@@ -207,7 +207,7 @@ public class IptHttpDownloader implements Downloader {
 			case "envisat": return "Envisat";
 			case "landsat5": return "Landsat5";
 			case "landsat7": return "Landsat7";
-			case "Landsat8": return "Landsat8";
+			case "landsat8": return "Landsat8";
 			default: throw new ServiceIoException("Unsupported collection");
 			
 		}

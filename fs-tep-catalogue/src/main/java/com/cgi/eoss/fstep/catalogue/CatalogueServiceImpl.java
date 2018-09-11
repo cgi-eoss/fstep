@@ -126,11 +126,11 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     }
 
     private void createOutputCollection(String collectionIdentifier) {
-       if (collectionIdentifier.equals("fstepOutputs")) {
-           Collection collection = new Collection("fstepOutputs", userDataService.getDefaultUser());
-           collection.setDescription("FS-TEP Output Products");
+       if (collectionIdentifier.equals(getDefaultOutputProductCollection())) {
+           Collection collection = new Collection(getDefaultOutputProductCollection(), userDataService.getDefaultUser());
+           collection.setDescription("Output Products");
            collection.setProductsType("Misc");
-           collection.setIdentifier("fstepOutputs");
+           collection.setIdentifier(getDefaultOutputProductCollection());
            collectionDataService.save(collection);
            securityService.publish(Collection.class, collection.getId());
        }

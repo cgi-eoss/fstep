@@ -5,10 +5,10 @@
 
 html {
     overflow: hidden;
+    font-size: 14px;
 }
 
 body {
-    font-family: roboto;
     font-size: 14px;
     overflow: hidden;
 }
@@ -28,3 +28,48 @@ breadcrumb {
 .flatpickr-day.selected {
     background-color: $brand-dark;
 }
+
+@font-face {
+    font-family: 'Roboto-Black';
+    src: url(../../../assets/fonts/Roboto-Black.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-Bold';
+    src: url(../../../assets/fonts/Roboto-Bold.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-BoldItalic';
+    src: url(../../../assets/fonts/Roboto-BoldItalic.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-Italic';
+    src: url(../../../assets/fonts/Roboto-Italic.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-Light';
+    src: url(../../../assets/fonts/Roboto-Light.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-LightItalic';
+    src: url(../../../assets/fonts/Roboto-LightItalic.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-Medium';
+    src: url(../../../assets/fonts/Roboto-Medium.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-MediumItalic';
+    src: url(../../../assets/fonts/Roboto-MediumItalic.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-Regular';
+    src: url(../../../assets/fonts/Roboto-Regular.woff2) format('woff2'), url(../../../assets/fonts/Roboto-Regular.ttf) format('truetype');
+  }
+  @font-face {
+    font-family: 'Roboto-Thin';
+    src: url(../../../assets/fonts/Roboto-Thin.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto-ThinItalic';
+    src: url(../../../assets/fonts/Roboto-ThinItalic.woff2) format('woff2');
+  }

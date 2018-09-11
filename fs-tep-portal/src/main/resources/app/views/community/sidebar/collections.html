@@ -47,6 +47,33 @@
             </div>
 
             <md-button class="toolbar-button md-secondary"
+                ng-if="user && user.role === 'ADMIN' && collection.access.published === false && collection.access.publishRequested === true"
+                ng-click="publishCollection($event, collection)"
+                aria-label="Publish Request"
+                uib-tooltip="Publish Request"
+                tooltip-placement="top"
+                tooltip-trigger="'mouseenter'"
+                tooltip-append-to-body="true">
+                <i class="material-icons alert-text">notifications_active</i>
+            </md-button>
+
+            <md-button class="toolbar-button status-icon md-secondary" ng-if="collection.access.published === false && collection.access.publishRequested === false"
+                aria-label="Private" uib-tooltip="Private" tooltip-placement="top" tooltip-trigger="'mouseenter'" tooltip-append-to-body="true">
+                <i class="material-icons error-text">face</i>
+            </md-button>
+
+            <md-button class="toolbar-button status-icon md-secondary" ng-if="user && user.role !== 'ADMIN' && collection.access.published === false && collection.access.publishRequested === true"
+                aria-label="Pending Publication" uib-tooltip="Pending Publication" tooltip-placement="top" tooltip-trigger="'mouseenter'" tooltip-append-to-body="true">
+                <i class="material-icons warning-text">autorenew</i>
+            </md-button>
+
+            <md-button class="toolbar-button status-icon md-secondary" ng-if="collection.access.published === true"
+                aria-label="Public" uib-tooltip="Public" tooltip-placement="top" tooltip-trigger="'mouseenter'" tooltip-append-to-body="true">
+                <i class="material-icons success-text">public</i>
+            </md-button>
+
+
+            <md-button class="toolbar-button md-secondary"
                        aria-label="Collection Info"
                        uib-popover-template="'views/common/templates/collectioninfo.tmpl.html'"
                        popover-placement="right"
@@ -65,6 +92,19 @@
                         tooltip-append-to-body="true">
                 <i class="material-icons">create</i>
             </md-button>
+
+            <md-button class="toolbar-button md-secondary"
+                        ng-if="collection.access.published === false && collection.access.publishRequested === false"
+                        has-permission="ADMIN" permission-source="{{collection}}"
+                        ng-click="requestPublication($event, collection)"
+                        aria-label="Request Publication"
+                        uib-tooltip="Request Publication"
+                        tooltip-placement="top"
+                        tooltip-trigger="'mouseenter'"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">publish</i>
+            </md-button>
+
 
         </md-list-item>
 
