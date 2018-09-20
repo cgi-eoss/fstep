@@ -30,10 +30,13 @@ import static org.junit.Assert.assertThat;
 @ContextConfiguration(classes = {OrchestratorConfig.class, OrchestratorTestConfig.class})
 @TestPropertySource("classpath:test-orchestrator.properties")
 @Transactional
-public class FstepGuiServiceManagerTest {
+public class FstepGuiProxyTest {
 
     @Autowired
     private FstepGuiServiceManager fstepGuiServiceManager;
+
+    @Autowired
+    private DynamicProxyService dynamicProxyService;
 
     @Autowired
     private InProcessServerBuilder serverBuilder;
@@ -61,8 +64,9 @@ public class FstepGuiServiceManagerTest {
     @Test
     public void getGuiUrl() throws Exception {
         PortBinding guiPortBinding = fstepGuiServiceManager.getGuiPortBinding(worker, Job.getDefaultInstance());
-        assertThat(guiPortBinding.getBinding().getIp(), is("127.0.0.1"));
-        assertThat(guiPortBinding.getBinding().getPort(), is(12345));
+        ReverseProxyEntry proxyEntry = dynamicProxyService.getProxyEntry(Job.getDefaultInstance(),guiPortBinding.getBinding().getIp(), guiPortBinding.getBinding().getPort());
+        assertThat(proxyEntry.getPath(), is("/gui/:12345/"));
+        
     }
 
     private class WorkerStub extends FstepWorkerGrpc.FstepWorkerImplBase {

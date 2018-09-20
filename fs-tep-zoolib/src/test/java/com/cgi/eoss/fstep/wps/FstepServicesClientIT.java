@@ -42,6 +42,7 @@ import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
+import com.cgi.eoss.fstep.orchestrator.service.DynamicProxyService;
 import com.cgi.eoss.fstep.orchestrator.service.FstepGuiServiceManager;
 import com.cgi.eoss.fstep.orchestrator.service.FstepServiceLauncher;
 import com.cgi.eoss.fstep.orchestrator.service.WorkerFactory;
@@ -88,6 +89,9 @@ public class FstepServicesClientIT {
 
     @Mock
     private CostingService costingService;
+    
+    @Mock
+    private DynamicProxyService dynamicProxyService;
 
     private Path workspace;
     private Path dataDir;
@@ -150,7 +154,7 @@ public class FstepServicesClientIT {
         WorkerFactory workerFactory = mock(WorkerFactory.class);
         FstepSecurityService securityService = mock(FstepSecurityService.class);
 
-        FstepServiceLauncher fstepServiceLauncher = new FstepServiceLauncher(workerFactory, jobDataService, guiService, catalogueService, costingService, securityService);
+        FstepServiceLauncher fstepServiceLauncher = new FstepServiceLauncher(workerFactory, jobDataService, guiService, catalogueService, costingService, securityService, dynamicProxyService);
         FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 0);
 
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));

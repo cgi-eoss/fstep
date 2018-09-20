@@ -85,6 +85,8 @@ import com.cgi.eoss.fstep.rpc.worker.JobInputs;
 import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
+import com.cgi.eoss.fstep.rpc.worker.PortBinding;
+import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -128,15 +130,17 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
     private final CatalogueService catalogueService;
     private final CostingService costingService;
     private final FstepSecurityService securityService;
-
+    private final DynamicProxyService dynamicProxyService;
+    
     @Autowired
-    public FstepServiceLauncher(WorkerFactory workerFactory, JobDataService jobDataService, FstepGuiServiceManager guiService, CatalogueService catalogueService, CostingService costingService, FstepSecurityService securityService) {
+    public FstepServiceLauncher(WorkerFactory workerFactory, JobDataService jobDataService, FstepGuiServiceManager guiService, CatalogueService catalogueService, CostingService costingService, FstepSecurityService securityService, DynamicProxyService dynamicProxyService) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.guiService = guiService;
         this.catalogueService = catalogueService;
         this.costingService = costingService;
         this.securityService = securityService;
+        this.dynamicProxyService = dynamicProxyService;
     }
 
     @Override
@@ -319,6 +323,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         job.setStage(JobStep.OUTPUT_LIST.getText());
         job.setEndTime(LocalDateTime.now());
         job.setGuiUrl(null);
+        job.setGuiEndpoint(null);
         job.setOutputs(jobOutputFiles.entries().stream().collect(toMultimap(
                 e -> e.getKey(),
                 e -> e.getValue().getUri().toString(),
@@ -344,10 +349,13 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
 
         // Update GUI endpoint URL for client access
         if (service.getType() == FstepService.Type.APPLICATION) {
-            String guiUrl = guiService.getGuiUrl(worker, rpcJob);
-            LOG.info("Updating GUI URL for job {} ({}): {}", zooId, job.getConfig().getService().getName(), guiUrl);
-            job.setGuiUrl(guiUrl);
+        	PortBinding portBinding = guiService.getGuiPortBinding(worker, rpcJob);
+            ReverseProxyEntry guiEntry = dynamicProxyService.getProxyEntry(rpcJob, portBinding.getBinding().getIp(), portBinding.getBinding().getPort());
+            LOG.info("Updating GUI URL for job {} ({}): {}", zooId,
+                    job.getConfig().getService().getName(), guiEntry.getPath());
+            job.setGuiUrl(guiEntry.getPath());
             jobDataService.save(job);
+            dynamicProxyService.update();
         }
 
         // Wait for exit, with timeout if necessary
@@ -403,8 +411,11 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
 
         if (service.getType() == FstepService.Type.APPLICATION) {
             dockerConfigBuilder.addPorts(FstepGuiServiceManager.GUACAMOLE_PORT);
+            if (dynamicProxyService.supportsProxyRoute()) {
+            	dockerConfigBuilder.putEnvironmentVariables("PLATFORM_REVERSE_PROXY_PREFIX", dynamicProxyService.getProxyRoute(rpcJob));
+        	}
         }
-
+        
         LOG.info("Launching docker container for job {}", job.getExtId());
         job.setStage(JobStep.PROCESSING.getText());
         jobDataService.save(job);
@@ -438,6 +449,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
         job.setStage(JobStep.OUTPUT_LIST.getText());
         job.setEndTime(LocalDateTime.now()); // End time is when processing ends
         job.setGuiUrl(null); // Any GUI services will no longer be available
+        job.setGuiEndpoint(null);
         jobDataService.save(job);
     }
 

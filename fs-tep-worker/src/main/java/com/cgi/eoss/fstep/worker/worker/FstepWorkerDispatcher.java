@@ -125,6 +125,9 @@ public class FstepWorkerDispatcher {
             binds.add(jobEnvironment.getInputDir() + ":" + "/home/worker/workDir/inDir:ro");
             binds.add(jobEnvironment.getOutputDir() + ":" + "/home/worker/workDir/outDir:rw");
             binds.addAll(jobSpec.getUserBindsList());
+            Map<String, String> environmentVariables = jobSpec.getEnvironmentVariablesMap();
+            
+            
             
             if (jobSpec.hasResourceRequest()) {
                 ResourceRequest resourceRequest = jobSpec.getResourceRequest();
@@ -138,7 +141,7 @@ public class FstepWorkerDispatcher {
             
             JobDockerConfig request =
                     JobDockerConfig.newBuilder().setJob(jobSpec.getJob()).setServiceName(jobSpec.getService().getName())
-                            .setDockerImage(jobSpec.getService().getDockerImageTag()).addAllBinds(binds).addAllPorts(ports).build();
+                            .setDockerImage(jobSpec.getService().getDockerImageTag()).addAllBinds(binds).addAllPorts(ports).putAllEnvironmentVariables(environmentVariables).build();
             localWorker.launchContainer(request);
             jobUpdateListener.jobUpdate(JobEvent.newBuilder().setJobEventType(JobEventType.PROCESSING_STARTED).build());
             int exitCode;
