@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -54,8 +55,13 @@ public class SearchApi {
     }
 
     @GetMapping("/parameters")
-    public Map<String, Object> getAvailableParameters(HttpServletRequest request) throws IOException, URISyntaxException {
-        return searchFacade.getParametersSchema();
+    public Map<String, Object> getAvailableParameters(HttpServletRequest request, @RequestParam (value = "resolveAll", defaultValue = "true") boolean resolveAll) throws IOException, URISyntaxException {
+        return searchFacade.getParametersSchema(resolveAll);
+    }
+    
+    @GetMapping("/parameter/{parameterName}")
+    public Object getDynamicParameter(@PathVariable String parameterName) throws IOException, URISyntaxException {
+        return searchFacade.getDynamicParameter(parameterName);
     }
 
     @GetMapping
