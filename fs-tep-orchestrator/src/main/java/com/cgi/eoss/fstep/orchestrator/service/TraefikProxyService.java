@@ -103,7 +103,6 @@ public class TraefikProxyService implements DynamicProxyService{
 			else {
 				route.put("rule", "PathPrefix:" + path);
 			}
-			route.put("rule", "PathPrefix:" + path);
 			Map<String, Object> routes = new HashMap<>();
 			routes.put("route-" + proxiedJob.getExtId(), route);
 			Map<String, Object> frontendDef = new HashMap<>();
