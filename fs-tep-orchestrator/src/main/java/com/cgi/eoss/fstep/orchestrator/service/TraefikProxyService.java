@@ -75,7 +75,7 @@ public class TraefikProxyService implements DynamicProxyService{
 	
 	@Override
 	public ReverseProxyEntry getProxyEntry(com.cgi.eoss.fstep.rpc.Job job, String host, int port) {
-		return new ReverseProxyEntry(baseUrl + guiUrlPrefix + job.getId(), "http://" + host + ":" + port);
+		return new ReverseProxyEntry(baseUrl + guiUrlPrefix + job.getId() + "/", "http://" + host + ":" + port);
 	}
 	
 
@@ -108,6 +108,7 @@ public class TraefikProxyService implements DynamicProxyService{
 			Map<String, Object> frontendDef = new HashMap<>();
 			frontendDef.put("routes", routes);
 			frontendDef.put("backend", "backend-" + proxiedJob.getExtId());
+			frontendDef.put("passHostHeader", true);
 			pc.getFrontends().put("frontend-" + proxiedJob.getExtId(), frontendDef);
 			Map<String, String> server = new HashMap<>();
 			server.put("url", httpEndpoint.toString());
