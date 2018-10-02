@@ -89,7 +89,7 @@ public class FstepGuiTraefikProxyTestIT {
         jobDataService = mock(JobDataService.class);
         TraefikProxyService dynamicProxyService = new TraefikProxyService(webServer.url("").toString(), "test", "test", "http://fstep", "/gui/", jobDataService);
         ReverseProxyEntry proxyEntry = dynamicProxyService.getProxyEntry(job,guiPortBinding.getBinding().getIp(), guiPortBinding.getBinding().getPort());
-        assertThat(proxyEntry.getPath(), is("http://fstep/gui/test-id"));
+        assertThat(proxyEntry.getPath(), is("http://fstep/gui/test-id/"));
         assertThat(proxyEntry.getEndpoint(), is("http://" + guiPortBinding.getBinding().getIp() + ":"  + guiPortBinding.getBinding().getPort()));
     }
     
