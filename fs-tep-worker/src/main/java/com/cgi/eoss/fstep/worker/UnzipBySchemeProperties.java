@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import com.cgi.eoss.fstep.io.download.UnzipStrategy;
 
 @Configuration
-@ConfigurationProperties(prefix="unzipScheme")
+@ConfigurationProperties(prefix="fstep.worker")
 public class UnzipBySchemeProperties {
 	
 	private final Map<String, UnzipStrategy> unzipByScheme = new HashMap<>();
