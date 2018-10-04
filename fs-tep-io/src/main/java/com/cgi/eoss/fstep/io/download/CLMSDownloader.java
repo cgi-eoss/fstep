@@ -257,7 +257,7 @@ public class CLMSDownloader implements Downloader {
     @Data
     @Component
     static final class CLMSDownloaderProperties {
-        @Value("${fstep.worker.downloader.clms.searchUrl://https://land.copernicus.vgt.vito.be/opensearch/}")
+        @Value("${fstep.worker.downloader.clms.searchUrl:https://land.copernicus.vgt.vito.be/openSearch/}")
         private String clmsSearchUrl;
         @Value("${fstep.worker.downloader.clms.retries:3}")
         private int retries;
