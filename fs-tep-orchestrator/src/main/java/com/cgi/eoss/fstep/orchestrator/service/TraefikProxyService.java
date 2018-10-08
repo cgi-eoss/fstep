@@ -1,19 +1,33 @@
 package com.cgi.eoss.fstep.orchestrator.service;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.acls.domain.GrantedAuthoritySid;
+import org.springframework.security.acls.domain.ObjectIdentityImpl;
+import org.springframework.security.acls.model.AccessControlEntry;
+import org.springframework.security.acls.model.Acl;
 import org.springframework.stereotype.Service;
 
+import com.cgi.eoss.fstep.model.Group;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
+import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.persistence.service.GroupDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.security.FstepPermission;
+import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.log4j.Log4j2;
@@ -28,6 +42,9 @@ import okhttp3.Response;
 @ConditionalOnProperty(value = "fstep.orchestrator.proxy.traefik.enabled", havingValue = "true", matchIfMissing = false)
 @Log4j2
 public class TraefikProxyService implements DynamicProxyService{
+	
+	private static final Collector<AccessControlEntry, ?, FstepPermission> SPRING_FSTEP_ACL_SET_COLLECTOR =
+            Collectors.collectingAndThen(Collectors.mapping(AccessControlEntry::getPermission, Collectors.toSet()), FstepPermission::getFstepPermission);
 
 	private static final long PROXY_UPDATE_PERIOD_MS = 10* 60 * 1000;
 	
@@ -36,6 +53,10 @@ public class TraefikProxyService implements DynamicProxyService{
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 	
 	private final JobDataService jobDataService;
+	
+	private final FstepSecurityService securityService;
+	
+	private final GroupDataService groupDataService;
 	
 	private HttpUrl traefikUrl;
 	
@@ -48,21 +69,33 @@ public class TraefikProxyService implements DynamicProxyService{
 	private String baseUrl;
 	
 	private String guiUrlPrefix;
+
+	private boolean enableSSOHeaders;
 	
+	private String usernameSSOHeader;
+
 	@Autowired
 	public TraefikProxyService(@Value("${fstep.orchestrator.traefik.url:}") String traefikUrlString, 
 			@Value("${fstep.orchestrator.traefik.user:}") String traefikUser, 
 			@Value("${fstep.orchestrator.traefik.password:}") String traefikPassword, 
 			@Value("${fstep.orchestrator.gui.baseUrl:}") String baseUrl,
 			@Value("${fstep.orchestrator.gui.urlPrefix:/gui/}") String guiUrlPrefix,
-			JobDataService jobDataService) {
+			@Value("${fstep.orchestrator.traefik.enableSSOHeaders:true}") boolean enableSSOHeaders,
+			@Value("${fstep.api.security.username-request-header:REMOTE_USER}") String usernameSSOHeader,
+			JobDataService jobDataService,
+			GroupDataService groupDataService,
+			FstepSecurityService securityService) {
 		this.jobDataService = jobDataService;
+		this.groupDataService = groupDataService;
+		this.securityService = securityService;
 		this.httpClient = new OkHttpClient.Builder().build();
 		traefikUrl = HttpUrl.parse(traefikUrlString);
 		this.traefikUser = traefikUser;
 		this.traefikPassword = traefikPassword;
 		this.baseUrl = baseUrl;
 		this.guiUrlPrefix = guiUrlPrefix;
+		this.enableSSOHeaders = enableSSOHeaders;
+		this.usernameSSOHeader = usernameSSOHeader;
 	}
 	
 	public boolean supportsProxyRoute() {
@@ -105,6 +138,26 @@ public class TraefikProxyService implements DynamicProxyService{
 			}
 			Map<String, Object> routes = new HashMap<>();
 			routes.put("route-" + proxiedJob.getExtId(), route);
+			if (enableSSOHeaders) {
+				Map<String, String> routeAuth = new HashMap<>();
+				Acl acl = securityService.getAcl(new ObjectIdentityImpl(Job.class, proxiedJob.getId()));
+				Set<User> allowedUsers = new HashSet<>();
+	            allowedUsers.add(proxiedJob.getOwner());
+				Set<Entry<Group, FstepPermission>> groupPermissions = acl.getEntries().stream()
+	                    .filter(ace -> ace.getSid() instanceof GrantedAuthoritySid && ((GrantedAuthoritySid) ace.getSid()).getGrantedAuthority().startsWith("GROUP_"))
+	                    .collect(Collectors.groupingBy(this::getGroup, SPRING_FSTEP_ACL_SET_COLLECTOR))
+	                    .entrySet();
+	            for (Entry<Group, FstepPermission> groupPermission: groupPermissions) {
+	            	if (groupPermission.getValue().equals(FstepPermission.ADMIN)) {
+	            		allowedUsers.addAll(groupPermission.getKey().getMembers());
+	            	}
+	            }        
+	            String allowedUsersString = allowedUsers.stream().map(u -> u.getName()).collect(Collectors.joining("|"));
+				routeAuth.put("rule", "HeadersRegexp: " + usernameSSOHeader + "," + allowedUsersString);
+				routes.put("route-" + proxiedJob.getExtId() + "-auth", routeAuth);
+				
+			}
+			
 			Map<String, Object> frontendDef = new HashMap<>();
 			frontendDef.put("routes", routes);
 			frontendDef.put("backend", "backend-" + proxiedJob.getExtId());
@@ -140,6 +193,11 @@ public class TraefikProxyService implements DynamicProxyService{
 			LOG.error("Error updating proxy: "  + e);
 		}
 	}
+	
+	private Group getGroup(AccessControlEntry ace) {
+        return groupDataService.getById(Long.parseLong(((GrantedAuthoritySid) ace.getSid()).getGrantedAuthority().replaceFirst("^GROUP_", "")));
+    }
+
 	
 	@Scheduled(fixedRate = PROXY_UPDATE_PERIOD_MS, initialDelay = 10000L)
 	private void scheduledUpdate() {

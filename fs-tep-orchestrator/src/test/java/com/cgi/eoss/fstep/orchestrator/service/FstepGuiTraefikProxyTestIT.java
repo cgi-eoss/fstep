@@ -23,6 +23,7 @@ import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.orchestrator.OrchestratorConfig;
 import com.cgi.eoss.fstep.orchestrator.OrchestratorTestConfig;
+import com.cgi.eoss.fstep.persistence.service.GroupDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
@@ -30,6 +31,7 @@ import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.rpc.worker.PortBindings;
+import com.cgi.eoss.fstep.security.FstepSecurityService;
 
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
@@ -61,6 +63,9 @@ public class FstepGuiTraefikProxyTestIT {
     
 	private JobDataService jobDataService;
 
+	private GroupDataService groupDataService;
+	
+	private FstepSecurityService securityService;
 
     @Before
     public void setUp() throws IOException {
@@ -87,7 +92,9 @@ public class FstepGuiTraefikProxyTestIT {
     	Job job =  Job.newBuilder().setId("test-id").build();
         PortBinding guiPortBinding = fstepGuiServiceManager.getGuiPortBinding(worker,job);
         jobDataService = mock(JobDataService.class);
-        TraefikProxyService dynamicProxyService = new TraefikProxyService(webServer.url("").toString(), "test", "test", "http://fstep", "/gui/", jobDataService);
+        groupDataService = mock(GroupDataService.class);
+        securityService = mock(FstepSecurityService.class);
+        TraefikProxyService dynamicProxyService = new TraefikProxyService(webServer.url("").toString(), "test", "test", "http://fstep", "/gui/", false, null, jobDataService, groupDataService, securityService);
         ReverseProxyEntry proxyEntry = dynamicProxyService.getProxyEntry(job,guiPortBinding.getBinding().getIp(), guiPortBinding.getBinding().getPort());
         assertThat(proxyEntry.getPath(), is("http://fstep/gui/test-id/"));
         assertThat(proxyEntry.getEndpoint(), is("http://" + guiPortBinding.getBinding().getIp() + ":"  + guiPortBinding.getBinding().getPort()));
@@ -101,7 +108,7 @@ public class FstepGuiTraefikProxyTestIT {
     	com.cgi.eoss.fstep.model.Job job = new com.cgi.eoss.fstep.model.Job(jobConfig, "test-id", testUser);
     	 jobDataService = mock(JobDataService.class);
          when(jobDataService.findByStatusAndGuiUrlNotNull(Status.RUNNING)).thenReturn(Collections.singletonList(job));
-     	TraefikProxyService dynamicProxyService = new TraefikProxyService(webServer.url("").toString(), "test", "test", "http://fstep", "/gui/", jobDataService);
+     	TraefikProxyService dynamicProxyService = new TraefikProxyService(webServer.url("").toString(), "test", "test", "http://fstep", "/gui/", false, null, jobDataService, groupDataService, securityService);
     	PortBinding guiPortBinding = fstepGuiServiceManager.getGuiPortBinding(worker,GrpcUtil.toRpcJob(job));
         ReverseProxyEntry proxyEntry = dynamicProxyService.getProxyEntry(GrpcUtil.toRpcJob(job),guiPortBinding.getBinding().getIp(), guiPortBinding.getBinding().getPort());
         job.setGuiUrl(proxyEntry.getPath());
