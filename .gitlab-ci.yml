@@ -1,0 +1,77 @@
+# This file is a template, and might need editing before it works on your project.
+# This is the Gradle build system for JVM applications
+# https://gradle.org/
+# https://github.com/gradle/gradle
+image: nimmis/java-centos:openjdk-8-jdk
+
+# Disable the Gradle daemon for Continuous Integration servers as correctness
+# is usually a priority over speed in CI environments. Using a fresh
+# runtime for each build is more reliable since the runtime is completely
+# isolated from any previous builds.
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  GIT_SUBMODULE_STRATEGY: recursive
+   
+before_script:
+  - export JAVA_HOME=/usr/lib/jvm/java
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+  - export LANG=en_US.UTF-8
+  - yum install -y createrepo
+
+stages:
+  - build
+  - test
+  - deploy
+  
+build:
+  stage: build
+  script: ./gradlew build buildDist
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      - build
+      - .gradle
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - ./distribution/target/repo
+      - ./distribution/target/yumrepo
+test:
+  stage: test
+  script: ./gradlew check
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}"
+    paths:
+      - build
+      - .gradle
+
+sonarqube_master_job:
+  stage: test
+  only:
+    - master
+  script:
+    - ./gradlew sonarqube -Dsonar.host.url=$SONAR_URL -Dsonar.login=$SONAR_LOGIN
+
+    
+deployRpmsToHetzner:
+  stage: deploy
+  only:
+    - environment/hetzner
+  before_script:
+    - mkdir ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$HETZNER__UPLOAD_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - echo "$HETZNER_UPLOAD_IDENTITY" > ~/.ssh/hetzner_id
+    - chmod 600 ~/.ssh/hetzner_id
+    - export HETZNER_UPLOAD_IDENTITY_PATH=~/.ssh/hetzner_id
+    - export HETZNER_UPLOAD_KNOWN_HOSTS_PATH=~/.ssh/known_hosts
+    - export JAVA_HOME=/usr/lib/jvm/java
+    - export GRADLE_USER_HOME=`pwd`/.gradle
+    - export LANG=en_US.UTF-8
+  script: 
+    - ./gradlew  -Pupload.uploadDir=$HETZNER_UPLOAD_DIR -Pupload.uploadHost=$HETZNER_UPLOAD_HOST -Pupload.uploadUser=$HETZNER_UPLOAD_USER -Pupload.uploadIdentity=$HETZNER_UPLOAD_IDENTITY_PATH -Pupload.uploadKnownHosts=$HETZNER_UPLOAD_KNOWN_HOSTS_PATH :distribution:deployRpms
+  
+  
+  
+  

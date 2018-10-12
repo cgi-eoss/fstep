@@ -190,6 +190,7 @@ def depVersions = [
         querydslPlugin               : '1.0.9',
         shadowPlugin                 : '2.0.1',
         shadowLog4j2TransformerPlugin: '2.1.1',
+        sshPlugin                    : '2.9.0',
         springBootPlugin             : '1.5.6.RELEASE'
 ]
 
@@ -202,7 +203,8 @@ ext.pl = [
         shadowLog4j2Transformer: 'de.sebastianboegl.gradle.plugins:shadow-log4j-transformer:' + depVersions.shadowLog4j2TransformerPlugin,
         springBoot             : 'org.springframework.boot:spring-boot-gradle-plugin:' + depVersions.springBootPlugin,
         osDetector             : 'com.google.gradle:osdetector-gradle-plugin:' + depVersions.osDetectorPlugin,
-        querydsl               : 'gradle.plugin.com.ewerk.gradle.plugins:querydsl-plugin:' + depVersions.querydslPlugin
+        querydsl               : 'gradle.plugin.com.ewerk.gradle.plugins:querydsl-plugin:' + depVersions.querydslPlugin,
+        ssh                    : 'org.hidetake:gradle-ssh-plugin:' + depVersions.sshPlugin
 ]
 
 buildscript {
@@ -215,6 +217,7 @@ buildscript {
         classpath 'org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:2.5'
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.15.0'
         classpath 'io.spring.gradle:dependency-management-plugin:1.0.3.RELEASE'
+        classpath 'org.hidetake:gradle-ssh-plugin:2.9.0'
     }
 }
 

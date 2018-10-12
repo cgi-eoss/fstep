@@ -5,6 +5,7 @@ group 'com.cgi.eoss.fs-tep'
 version '1.2.0-SNAPSHOT'
 
 apply plugin: 'base'
+apply plugin: 'org.hidetake.ssh'
 
 configurations {
     packages
@@ -56,6 +57,22 @@ task createrepo(type: Exec) {
         Files.createDirectories(repoDir)
     }
 }
+ssh.settings {
+  def knownHostsFile=project.hasProperty('upload.knownHosts') ? project.getProperty('upload.knownHosts'): 'knownHosts'
+  knownHosts = addHostKey(file("${knownHostsFile}"))
+}
+
+remotes {
+  ext.uploadHost=project.hasProperty('upload.uploadHost') ? project.getProperty('upload.uploadHost'): 'host'
+  ext.uploadUser=project.hasProperty('upload.uploadUser') ? project.getProperty('upload.uploadUser'): 'user'
+  def uploadIdentity=project.hasProperty('upload.uploadIdentity') ? project.getProperty('upload.uploadIdentity'): 'identity'
+  upload {
+    host = uploadHost
+    user = uploadUser
+    identity = file("${uploadIdentity}")
+  }
+}
+
 
 task distPuppet(type: Sync) {
     dependsOn configurations.puppetModules
@@ -85,6 +102,21 @@ task buildDist(type: Sync) {
         from distPuppet
     }
 }
+
+task deployRpms {
+   ext.uploadDir=project.hasProperty('upload.uploadDir') ? project.getProperty('upload.uploadDir'): '/dev/null'
+   doLast{
+       ssh.run {
+        session(remotes.upload) {
+          remove uploadDir + '/6'
+          remove uploadDir + '/repodata'
+          put from: "${buildDir}/yumrepo/repodata", into: uploadDir
+          put from: "${buildDir}/repo/6", into: uploadDir
+        }
+      }
+    }
+}
+
 
 sonarqube {
     skipProject = true
