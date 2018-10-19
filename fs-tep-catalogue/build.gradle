@@ -4,6 +4,11 @@ version '1.2.0-SNAPSHOT'
 apply plugin: 'java'
 apply plugin: 'jacoco'
 
+// TODO Remove this when the dependency management plugin correctly excludes in >=4.0
+configurations {
+    compile.exclude group: 'javax.media', module: 'jai_core'
+}
+
 dependencies {
     compileOnly 'org.projectlombok:lombok'
 
