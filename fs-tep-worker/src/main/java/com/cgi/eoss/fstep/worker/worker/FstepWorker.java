@@ -124,10 +124,10 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     
     @PostConstruct
     public void allocateMinNodes() {
-        int currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag).size();
+        int currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.POOLED_WORKER_TAG).size();
         if (currentNodes < minWorkerNodes) {
             try {
-                nodeManager.provisionNodes(minWorkerNodes - currentNodes, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir());
+                nodeManager.provisionNodes(minWorkerNodes - currentNodes, FstepWorkerNodeManager.POOLED_WORKER_TAG, jobEnvironmentService.getBaseDir());
             } catch (NodeProvisioningException e) {
                 LOG.error("Failed initial node provisioning: {}", e.getMessage());
             }

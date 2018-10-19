@@ -1,11 +1,7 @@
 package com.cgi.eoss.fstep.api.controllers;
 
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Formatter;
 
 import javax.xml.bind.DatatypeConverter;
 

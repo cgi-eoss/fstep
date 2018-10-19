@@ -166,7 +166,7 @@ public class FstepWorkerDispatcher {
                     try {
                         nodeManager.releaseStorageForJob(jobNode, jobSpec.getJob().getId(), deviceId);
                     } catch (StorageProvisioningException e) {
-                        e.printStackTrace();
+                       LOG.error("Exception releasing storage", e);
                     }
                 }
             }
