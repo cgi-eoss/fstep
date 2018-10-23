@@ -1,16 +1,21 @@
 package com.cgi.eoss.fstep.queues.service;
 
 import java.util.Map;
+
 import javax.jms.JMSException;
 import javax.jms.MapMessage;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Queue;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessagePostProcessor;
 
+import lombok.extern.log4j.Log4j2;
+
+@Log4j2
 public class FstepJMSQueueService implements FstepQueueService {
 
 
@@ -49,7 +54,7 @@ public class FstepJMSQueueService implements FstepQueueService {
                     try {
                         message.setObjectProperty(k, v);
                     } catch (JMSException e) {
-                        e.printStackTrace();
+                        LOG.error("Error sending message to JMS Queue " + queueName, e);
                     }
                 });
                 return message;
@@ -67,7 +72,7 @@ public class FstepJMSQueueService implements FstepQueueService {
                     try {
                         message.setObjectProperty(k, v);
                     } catch (JMSException e) {
-                        e.printStackTrace();
+                        LOG.error("Error sending message to JMS Queue " + queueName, e);
                     }
                 });
                 message.setJMSPriority(priority);

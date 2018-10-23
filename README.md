@@ -20,9 +20,7 @@ CI or locally.
 To set up the build container and run the build scripts:
 
     docker build -t fstep-build ./build/
-    docker run -v $PWD:$PWD -w $PWD fstep-build ./build/fstep.sh
-    docker run -v $PWD:$PWD -w $PWD fstep-build ./build/zoo-project.sh
-    docker run -v $PWD:$PWD -w $PWD -e HOME=$PWD/.home fstep-build ./build/standalone-dist.sh
+    docker run -v $PWD:$PWD -w $PWD fstep-build gradle build buildDist --parallel
 
 Note that some additional paths or environment variables may be required for
 each build task.

@@ -35,33 +35,62 @@ public class SearchFacade {
         return provider.search(parameters);
     }
 
-    public Map<String, Object> getParametersSchema() throws IOException {
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getParametersSchema(boolean resolveAll) throws IOException {
         InputStream parametersFile = Strings.isNullOrEmpty(parametersSchemaFile)
                 ? getClass().getResourceAsStream("parameters.yaml")
                 : Files.newInputStream(Paths.get(parametersSchemaFile));
 
-        Map<String, Object> parameterSchema = yamlMapper.readValue(ByteStreams.toByteArray(parametersFile), new TypeReference<Map>() { });
+        Map<String, Object> parameterSchema = yamlMapper.readValue(ByteStreams.toByteArray(parametersFile), new TypeReference<Map<String, Object>>() { });
         //TODO fill with dynamic parameters from providers
-        for (String parameter: parameterSchema.keySet()) {
-            Map<String, Object> parameterObj = (Map<String, Object>) parameterSchema.get(parameter);
-            if (parameterObj.containsKey("type") && "dynamic".equals(parameterObj.get("type"))) {
-                parameterObj.put("type", "select");
-                Map<String, Object> allowedValues = (Map<String, Object>) parameterObj.get("allowed");
-                List<Map<String, Object>> values = new ArrayList<Map<String, Object>>();
-                for (SearchProvider sp: searchProviders) {
-                    if (sp.supportsDynamicParameter(parameter)) {
-                        List<Map<String, Object>> additionalValues = sp.getDynamicParameterValues(parameter);
-                        values.addAll(additionalValues);
-                        String defaultValue = sp.getDynamicParameterDefaultValue(parameter);
-                        parameterObj.put ("defaultValue", defaultValue);
-                    }
-                }
-                allowedValues.put("values", values);
-                
-            }
+        if (resolveAll) {
+	        for (String parameter: parameterSchema.keySet()) {
+	            Map<String, Object> parameterObj = (Map<String, Object>) parameterSchema.get(parameter);
+	            if (parameterObj.containsKey("type") && "dynamic".equals(parameterObj.get("type"))) {
+	                parameterObj.put("type", "select");
+	                Map<String, Object> allowedValues = (Map<String, Object>) parameterObj.get("allowed");
+	                List<Map<String, Object>> values = new ArrayList<Map<String, Object>>();
+	                for (SearchProvider sp: searchProviders) {
+	                    if (sp.supportsDynamicParameter(parameter)) {
+	                        List<Map<String, Object>> additionalValues = sp.getDynamicParameterValues(parameter);
+	                        values.addAll(additionalValues);
+	                        String defaultValue = sp.getDynamicParameterDefaultValue(parameter);
+	                        parameterObj.put ("defaultValue", defaultValue);
+	                    }
+	                }
+	                allowedValues.put("values", values);
+	                
+	            }
+	        }
         }
         return parameterSchema;
     }
+    
+    @SuppressWarnings("unchecked")
+    public Object getDynamicParameter(String parameterName) throws IOException {
+    	InputStream parametersFile = Strings.isNullOrEmpty(parametersSchemaFile)
+                ? getClass().getResourceAsStream("parameters.yaml")
+                : Files.newInputStream(Paths.get(parametersSchemaFile));
+    	Map<String, Object> parameterSchema = yamlMapper.readValue(ByteStreams.toByteArray(parametersFile), new TypeReference<Map<String, Object>>() { });
+        Map<String, Object> parameterObj = (Map<String, Object>) parameterSchema.get(parameterName);
+        if (parameterObj.containsKey("type") && "dynamic".equals(parameterObj.get("type"))) {
+            parameterObj.put("type", "select");
+            Map<String, Object> allowedValues = (Map<String, Object>) parameterObj.get("allowed");
+            List<Map<String, Object>> values = new ArrayList<Map<String, Object>>();
+            for (SearchProvider sp: searchProviders) {
+                if (sp.supportsDynamicParameter(parameterName)) {
+                    List<Map<String, Object>> additionalValues = sp.getDynamicParameterValues(parameterName);
+                    values.addAll(additionalValues);
+                    String defaultValue = sp.getDynamicParameterDefaultValue(parameterName);
+                    parameterObj.put ("defaultValue", defaultValue);
+                }
+            }
+            allowedValues.put("values", values);
+            
+        }
+        return parameterObj;
+    }
+    
 
     private SearchProvider getProvider(SearchParameters parameters) {
         return searchProviders.stream()

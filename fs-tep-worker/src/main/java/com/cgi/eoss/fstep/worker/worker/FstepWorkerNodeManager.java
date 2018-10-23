@@ -29,9 +29,9 @@ public class FstepWorkerNodeManager {
 
     private Path dataBaseDir;
 
-    public static final String pooledWorkerTag = "pooled-worker-node";
+    public static final String POOLED_WORKER_TAG = "pooled-worker-node";
     
-    public static final String dedicatedWorkerTag = "dedicated-worker-node";
+    public static final String DEDICATED_WORKER_TAG = "dedicated-worker-node";
     
     public FstepWorkerNodeManager(NodeFactory nodeFactory, Path dataBaseDir, int maxJobsPerNode) {
         this.nodeFactory = nodeFactory;
@@ -60,7 +60,7 @@ public class FstepWorkerNodeManager {
     }
     
     private Node findAvailableNode() {
-        for (Node node : nodeFactory.getCurrentNodes(pooledWorkerTag)) {
+        for (Node node : nodeFactory.getCurrentNodes(POOLED_WORKER_TAG)) {
             if (jobsPerNode.getOrDefault(node, 0) < maxJobsPerNode) {
                 return node;
             }
@@ -74,7 +74,7 @@ public class FstepWorkerNodeManager {
     
     @Deprecated
     public Node provisionNodeForJob(Path jobDir, String jobId) throws NodeProvisioningException{
-        Node node = nodeFactory.provisionNode(dedicatedWorkerTag, jobDir, dataBaseDir);
+        Node node = nodeFactory.provisionNode(DEDICATED_WORKER_TAG, jobDir, dataBaseDir);
         jobNodes.put(jobId, node);
         return node;
     }
@@ -84,7 +84,7 @@ public class FstepWorkerNodeManager {
         Node jobNode = jobNodes.remove(jobId);
         if (jobNode != null) {
             LOG.debug("Releasing node {} for job {}", jobNode.getId(), jobId);
-            if (jobNode.getTag().equals(dedicatedWorkerTag)) {
+            if (jobNode.getTag().equals(DEDICATED_WORKER_TAG)) {
                 nodeFactory.destroyNode(jobNode);
             } else {
                 jobsPerNode.put(jobNode, jobsPerNode.get(jobNode) - 1);

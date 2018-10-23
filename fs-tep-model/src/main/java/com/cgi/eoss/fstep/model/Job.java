@@ -110,6 +110,12 @@ public class Job implements FstepEntityWithOwner<Job> {
      */
     @Column(name = "gui_url")
     private String guiUrl;
+    
+    /**
+     * <p>Backend endpoint for GUI if this is a {@link FstepService.Type#APPLICATION}.</p>
+     */
+    @Column(name = "gui_endpoint")
+    private String guiEndpoint;
 
     /**
      * <p>The job execution outputs.</p>

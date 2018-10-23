@@ -33,10 +33,16 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
         };
 
         /* Get Groups for share functionality to fill the combobox */
-        this.getSearchParameters = function(){
+        this.getSearchParameters = function(params){
+
+            params = params || {}
+            let url = rootUri + '/search/parameters';
             var deferred = $q.defer();
-            halAPI.from(rootUri + '/search/parameters')
+            halAPI.from(url)
                 .newRequest()
+                .withRequestOptions({ qs: {
+                    resolveAll: params.noAutoResolve ? 'false' : 'true' }
+                })
                 .getResource()
                 .result
                 .then(
@@ -48,6 +54,25 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
                 });
             return deferred.promise;
         };
+
+        this.resolveSearchParameter = function(param){
+
+            let url = rootUri + '/search/parameter/' + param;
+
+            var deferred = $q.defer();
+            halAPI.from(url)
+                .newRequest()
+                .getResource()
+                .result
+                .then(
+                function (document) {
+                    deferred.resolve(document);
+                }, function (error) {
+                    MessageService.addError('Could not get Search Data', error);
+                    deferred.reject();
+                });
+            return deferred.promise;
+        }
 
         /* Get search name to display in the bottombar tab */
         this.getSearchName = function() {

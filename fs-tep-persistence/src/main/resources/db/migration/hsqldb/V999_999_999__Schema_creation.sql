@@ -41,6 +41,7 @@ CREATE TABLE fstep_services (
   wps_descriptor CLOB,
   docker_build_info CLOB,
   required_resources CLOB,
+  strip_proxy_path BOOLEAN DEFAULT TRUE,
   status         CHARACTER VARYING(255) NOT NULL CHECK (status IN ('IN_DEVELOPMENT', 'AVAILABLE')),
   type           CHARACTER VARYING(255) NOT NULL CHECK (type IN ('PROCESSOR', 'BULK_PROCESSOR', 'APPLICATION', 'PARALLEL_PROCESSOR')),
   owner          BIGINT                 NOT NULL FOREIGN KEY REFERENCES fstep_users (uid)
@@ -129,6 +130,7 @@ CREATE TABLE fstep_jobs (
   end_time   TIMESTAMP WITHOUT TIME ZONE,
   ext_id     CHARACTER VARYING(255) NOT NULL,
   gui_url    CHARACTER VARYING(255),
+  gui_endpoint    CHARACTER VARYING(255),
   is_parent  BOOLEAN DEFAULT FALSE,
   outputs    CLOB,
   stage      CHARACTER VARYING(255),

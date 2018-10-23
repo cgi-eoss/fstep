@@ -19,7 +19,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         $scope.enabledFields = {};
 
 
-        SearchService.getSearchParameters().then(function(data){
+        SearchService.getSearchParameters({
+            noAutoResolve: true
+        }).then(function(data){
             $scope.catalogues = data;
         });
 
@@ -123,6 +125,12 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 }
             }
         };
+
+        $scope.getDynamicValues = function(field, index) {
+            field.allowed.values = SearchService.resolveSearchParameter(index).then(function(data) {
+                $scope.catalogues[index] = data;
+            });
+        }
 
         $scope.getSelectValueDescription = function(field, value) {
             var values = $scope.allowedValues[field];

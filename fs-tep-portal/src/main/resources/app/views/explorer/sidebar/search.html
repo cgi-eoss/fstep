@@ -70,6 +70,27 @@
                         </div>
                     </section>
 
+                    <section ng-if="displayField(field, 'dynamic')" ng-init="getDynamicValues(field, index)">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <md-subheader class="md-accent md-subheader-title">{{field.title}}</md-subheader>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <md-progress-linear md-mode="indeterminate"></md-progress-linear>
+                                <md-select ng-model="searchParams[index]" md-on-open="field.allowed.values"
+                                    tooltip-placement="top-left"
+                                    tooltip-trigger="mouseenter"
+                                    tooltip-append-to-body="true"
+                                    ng-required="true"
+                                    disabled
+                                    >
+                                </md-select>
+                            </div>
+                        </div>
+                    </section>
+
                     <section ng-if="displayField(field, 'polygon')">
                         <div class="row">
                             <div class="col-xs-12">

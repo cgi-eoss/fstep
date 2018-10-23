@@ -1191,7 +1191,6 @@
   -ms-flex: 1 1 auto;
       flex: 1 1 auto;
   height: 100%;
-  overflow-y: auto;
 }
 .fstep .panel-group {
   margin: 0;

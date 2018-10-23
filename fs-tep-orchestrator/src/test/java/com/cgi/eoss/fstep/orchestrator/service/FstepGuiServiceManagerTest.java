@@ -60,8 +60,9 @@ public class FstepGuiServiceManagerTest {
 
     @Test
     public void getGuiUrl() throws Exception {
-        String guiUrl = fstepGuiServiceManager.getGuiUrl(worker, Job.getDefaultInstance());
-        assertThat(guiUrl, is("/gui/:12345/"));
+        PortBinding guiPortBinding = fstepGuiServiceManager.getGuiPortBinding(worker, Job.getDefaultInstance());
+        assertThat(guiPortBinding.getBinding().getIp(), is("127.0.0.1"));
+        assertThat(guiPortBinding.getBinding().getPort(), is(12345));
     }
 
     private class WorkerStub extends FstepWorkerGrpc.FstepWorkerImplBase {
@@ -69,7 +70,7 @@ public class FstepGuiServiceManagerTest {
         public void getPortBindings(Job request, StreamObserver<PortBindings> responseObserver) {
             PortBinding portBinding = PortBinding.newBuilder()
                     .setPortDef("8080/tcp")
-                    .setBinding(Binding.newBuilder().setPort(12345).build())
+                    .setBinding(Binding.newBuilder().setIp("127.0.0.1").setPort(12345).build())
                     .build();
 
             responseObserver.onNext(PortBindings.newBuilder().addBindings(portBinding).build());

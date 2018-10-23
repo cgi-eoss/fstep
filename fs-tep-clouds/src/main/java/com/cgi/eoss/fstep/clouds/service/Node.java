@@ -11,5 +11,5 @@ public class Node {
     private final String tag;
     private final long creationEpochSecond;
     private final String dockerEngineUrl;
-    public String ipAddress;
+    private final String ipAddress;
 }
