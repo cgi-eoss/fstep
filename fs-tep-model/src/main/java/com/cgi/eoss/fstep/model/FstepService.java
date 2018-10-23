@@ -86,6 +86,12 @@ public class FstepService implements FstepEntityWithOwner<FstepService>, Searcha
      */
     @Column(name = "docker_tag", nullable = false)
     private String dockerTag;
+    
+    /**
+     * <p>If the proxy path has to be stripped prior to be forwarded to this service. </p>
+     */
+    @Column(name = "strip_proxy_path")
+    private boolean stripProxyPath = true;
 
     /**
      * <p>Usage restriction of the service, e.g. 'open' or 'restricted'.</p>

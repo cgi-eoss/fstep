@@ -2,6 +2,7 @@ package com.cgi.eoss.fstep.persistence.service;
 
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.persistence.dao.FstepEntityDao;
@@ -56,6 +57,11 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
     @Override
     public List<Job> findByService(FstepService service) {
         return dao.findByConfig_Service(service);
+    }
+    
+    @Override
+    public List<Job> findByStatusAndGuiUrlNotNull(Status status) {
+        return dao.findByStatusAndGuiUrlNotNull(status);
     }
 
     @Override

@@ -76,6 +76,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -123,10 +124,10 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     
     @PostConstruct
     public void allocateMinNodes() {
-        int currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag).size();
+        int currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.POOLED_WORKER_TAG).size();
         if (currentNodes < minWorkerNodes) {
             try {
-                nodeManager.provisionNodes(minWorkerNodes - currentNodes, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir());
+                nodeManager.provisionNodes(minWorkerNodes - currentNodes, FstepWorkerNodeManager.POOLED_WORKER_TAG, jobEnvironmentService.getBaseDir());
             } catch (NodeProvisioningException e) {
                 LOG.error("Failed initial node provisioning: {}", e.getMessage());
             }
@@ -274,13 +275,18 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                     createContainerCmd.withPortBindings(request.getPortsList().stream()
                             .map(p -> new shadow.dockerjava.com.github.dockerjava.api.model.PortBinding(new Ports.Binding(null, null), ExposedPort.parse(p)))
                             .collect(Collectors.toList()));
-
+                    
+                    List<String> environmentVariables = new ArrayList<String>();
                     // Add proxy vars to the container, if they are set in the environment
-                    createContainerCmd.withEnv(
-                            ImmutableSet.of("http_proxy", "https_proxy", "no_proxy").stream()
-                                    .filter(var -> System.getenv().containsKey(var))
-                                    .map(var -> var + "=" + System.getenv(var))
-                                    .collect(Collectors.toList()));
+                    environmentVariables.addAll(ImmutableSet.of("http_proxy", "https_proxy", "no_proxy").stream()
+                            .filter(var -> System.getenv().containsKey(var))
+                            .map(var -> var + "=" + System.getenv(var))
+                            .collect(Collectors.toList()));
+                    
+                    //Add custom environment variables coming from job configuration
+                    environmentVariables.addAll(request.getEnvironmentVariablesMap().entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.toList()));
+                    
+                    createContainerCmd.withEnv(environmentVariables);
 
                     containerId = createContainerCmd.exec().getId();
                     jobContainers.put(request.getJob().getId(), containerId);

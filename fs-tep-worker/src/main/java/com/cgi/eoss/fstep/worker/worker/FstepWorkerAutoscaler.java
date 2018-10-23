@@ -89,7 +89,7 @@ public class FstepWorkerAutoscaler {
         // We check that currentNodes are already equal or greather than minWorkerNodes to be sure that allocation of
         // minNodes has already happened
         try {
-	        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
+	        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.POOLED_WORKER_TAG);
 	        if (currentNodes.size() < minWorkerNodes) {
 	            return;
 	        }
@@ -116,7 +116,7 @@ public class FstepWorkerAutoscaler {
    
     public void scaleTo(int target) {
         LOG.info("Scaling to {} nodes", target);
-        int freeNodes = nodeManager.getNumberOfFreeNodes(FstepWorkerNodeManager.pooledWorkerTag);
+        int freeNodes = nodeManager.getNumberOfFreeNodes(FstepWorkerNodeManager.POOLED_WORKER_TAG);
         if (target > freeNodes) {
             long previousAutoScalingActionTime = lastAutoscalingActionTime;
             try {
@@ -137,21 +137,21 @@ public class FstepWorkerAutoscaler {
 
     public int scaleUp(int numToScaleUp) throws NodeProvisioningException {
         LOG.info("Evaluating scale up of additional {} nodes", numToScaleUp);
-        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
+        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.POOLED_WORKER_TAG);
         int scaleUpTarget = Math.min(currentNodes.size() + numToScaleUp, maxWorkerNodes);
         int actualScaleUp = scaleUpTarget - currentNodes.size();
         LOG.info("Scaling up additional {} nodes. Max worker nodes are {}", actualScaleUp, maxWorkerNodes);
-        nodeManager.provisionNodes(actualScaleUp, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir());
+        nodeManager.provisionNodes(actualScaleUp, FstepWorkerNodeManager.POOLED_WORKER_TAG, jobEnvironmentService.getBaseDir());
         return actualScaleUp;
     }
 
     public int scaleDown(int numToScaleDown) {
         LOG.info("Evaluating scale down of {} nodes", numToScaleDown);
-        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.pooledWorkerTag);
+        Set<Node> currentNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.POOLED_WORKER_TAG);
         int scaleDownTarget = Math.max(currentNodes.size() - numToScaleDown, minWorkerNodes);
         int adjustedScaleDownTarget = currentNodes.size() - scaleDownTarget;
         LOG.info("Scaling down {} nodes. Min worker nodes are {}", adjustedScaleDownTarget, minWorkerNodes);
-        int actualScaleDown = nodeManager.destroyNodes(adjustedScaleDownTarget, FstepWorkerNodeManager.pooledWorkerTag, jobEnvironmentService.getBaseDir(), minimumHourFractionUptimeSeconds);
+        int actualScaleDown = nodeManager.destroyNodes(adjustedScaleDownTarget, FstepWorkerNodeManager.POOLED_WORKER_TAG, jobEnvironmentService.getBaseDir(), minimumHourFractionUptimeSeconds);
         LOG.info("Scaled down {} nodes of requested {}", actualScaleDown, adjustedScaleDownTarget);
         return actualScaleDown;
     }

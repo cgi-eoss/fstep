@@ -63,6 +63,7 @@ import com.cgi.eoss.fstep.rpc.worker.JobSpec;
 import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
+import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.rpc.worker.ResourceRequest;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -90,6 +91,7 @@ import org.apache.logging.log4j.CloseableThreadContext;
 import org.jooq.lambda.Unchecked;
 import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -150,7 +152,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private final FstepQueueService queueService;
     private final UserMountDataService userMountDataService;
     private final ServiceDataService serviceDataService;
-    
+    private final DynamicProxyService dynamicProxyService;
+    @Value("${fstep.orchestrator.gui.baseUrl:http://fstep}")
+    private String baseUrl;
+
     private Map<String, StreamObserver<FstepServiceResponse>> responseObservers = new HashMap<>();
     private Map<String, FstepWorkerBlockingStub> workerStubCache = new ConcurrentHashMap<String, FstepWorkerBlockingStub>();
     
@@ -160,7 +165,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             CatalogueService catalogueService, CostingService costingService,
             FstepSecurityService securityService, FstepQueueService queueService, 
             UserMountDataService userMountDataService,
-            ServiceDataService serviceDataService) {
+            ServiceDataService serviceDataService,
+            DynamicProxyService dynamicProxyService) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.databasketDataService = databasketDataService;
@@ -171,6 +177,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         this.queueService = queueService;
         this.userMountDataService = userMountDataService;
         this.serviceDataService = serviceDataService;
+        this.dynamicProxyService = dynamicProxyService;
     }
 
     @Override
@@ -483,6 +490,9 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             jobSpecBuilder.addUserBinds(bind);
         }
         
+        if (service.getType().equals(Type.APPLICATION) && dynamicProxyService.supportsProxyRoute()) {
+        	jobSpecBuilder.putEnvironmentVariables("PLATFORM_REVERSE_PROXY_PREFIX", dynamicProxyService.getProxyRoute(rpcJob));
+        }        
         //TODO Add CPU, RAM Management
         //TODO Add per job requests
         if (service.getRequiredResources() != null) {
@@ -681,11 +691,15 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         if (service.getType() == FstepService.Type.APPLICATION) {
             String zooId = job.getExtId();
             FstepWorkerBlockingStub worker = getWorkerById(workerId);
-            String guiUrl = guiService.getGuiUrl(worker, GrpcUtil.toRpcJob(job));
+            com.cgi.eoss.fstep.rpc.Job rpcJob = GrpcUtil.toRpcJob(job);
+            PortBinding portBinding = guiService.getGuiPortBinding(worker, rpcJob);
+            ReverseProxyEntry guiEntry = dynamicProxyService.getProxyEntry(rpcJob, portBinding.getBinding().getIp(), portBinding.getBinding().getPort());
             LOG.info("Updating GUI URL for job {} ({}): {}", zooId,
-                    job.getConfig().getService().getName(), guiUrl);
-            job.setGuiUrl(guiUrl);
+                    job.getConfig().getService().getName(), guiEntry.getPath());
+            job.setGuiUrl(guiEntry.getPath());
+            job.setGuiEndpoint(guiEntry.getEndpoint());
             jobDataService.save(job);
+            dynamicProxyService.update();
         }
         job.setStage(JobStep.PROCESSING.getText());
         jobDataService.save(job);
@@ -713,6 +727,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         job.setStage(JobStep.OUTPUT_LIST.getText());
         job.setEndTime(LocalDateTime.now()); // End time is when processing ends
         job.setGuiUrl(null); // Any GUI services will no longer be available
+        job.setGuiEndpoint(null); // Any GUI services will no longer be available
         jobDataService.save(job);
         try {
             ingestOutput(job, GrpcUtil.toRpcJob(job), worker, jobEnvironment);
@@ -784,6 +799,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         parentJob.setStage(JobStep.OUTPUT_LIST.getText());
         parentJob.setEndTime(LocalDateTime.now());
         parentJob.setGuiUrl(null);
+        parentJob.setGuiEndpoint(null); 
         parentJob.setOutputs(jobOutputFiles.entries().stream().collect(toMultimap(
               e -> e.getKey(),
               e -> e.getValue().getUri().toString(),

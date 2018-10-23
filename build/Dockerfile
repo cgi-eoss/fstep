@@ -42,7 +42,7 @@ RUN yum update -y && yum install -y\
  zip\
  && yum clean all
 ENV JAVA_HOME=/usr/lib/jvm/java-1.8.0
-
+ENV LANG=en_US.UTF-8
 # Install puppet for testing distribution module
 RUN yum install -y \
  https://yum.puppetlabs.com/puppetlabs-release-pc1-el-7.noarch.rpm \

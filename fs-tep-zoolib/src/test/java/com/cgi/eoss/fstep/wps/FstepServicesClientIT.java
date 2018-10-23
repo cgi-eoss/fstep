@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -42,11 +43,15 @@ import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
+import com.cgi.eoss.fstep.orchestrator.service.DynamicProxyService;
 import com.cgi.eoss.fstep.orchestrator.service.FstepGuiServiceManager;
 import com.cgi.eoss.fstep.orchestrator.service.FstepServiceLauncher;
+import com.cgi.eoss.fstep.orchestrator.service.ReverseProxyEntry;
 import com.cgi.eoss.fstep.orchestrator.service.WorkerFactory;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
+import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.cgi.eoss.fstep.worker.worker.FstepWorker;
 import com.cgi.eoss.fstep.worker.worker.FstepWorkerNodeManager;
@@ -88,6 +93,9 @@ public class FstepServicesClientIT {
 
     @Mock
     private CostingService costingService;
+    
+    @Mock
+    private DynamicProxyService dynamicProxyService;
 
     private Path workspace;
     private Path dataDir;
@@ -120,11 +128,18 @@ public class FstepServicesClientIT {
         dataDir = workspace.resolve("dataDir");
         Files.createDirectories(dataDir);
         
+        ReverseProxyEntry proxyEntry = new ReverseProxyEntry("/test", "127.0.0.1:32000");
+        
+        when(dynamicProxyService.getProxyEntry(any(), any(), anyInt())).thenReturn(proxyEntry);
+        
         when(catalogueService.provisionNewOutputProduct(any(), any())).thenAnswer(invocation -> {
             Path outputPath = ingestedOutputsDir.resolve(((OutputProductMetadata) invocation.getArgument(0)).getJobId()).resolve((String) invocation.getArgument(1));
             Files.createDirectories(outputPath.getParent());
             return outputPath;
         });
+        
+        when(guiService.getGuiPortBinding(any(), any())).thenReturn(PortBinding.newBuilder().setBinding(Binding.newBuilder().setIp("127.0.0.1").setPort(32000).build()).build());
+        
         when(catalogueService.ingestOutputProduct(any(), any())).thenAnswer(invocation -> {
             OutputFileMetadata outputFileMetadata = (OutputFileMetadata) invocation.getArgument(0);
             Path outputPath = (Path) invocation.getArgument(1);
@@ -132,7 +147,8 @@ public class FstepServicesClientIT {
             fstepFile.setFilename(ingestedOutputsDir.relativize(outputPath).toString());
             return fstepFile;
         });
-
+        
+       
         JobEnvironmentService jobEnvironmentService = spy(new JobEnvironmentService(workspace));
         ServiceInputOutputManager ioManager = mock(ServiceInputOutputManager.class);
         Mockito.when(ioManager.getServiceContext(SERVICE_NAME)).thenReturn(Paths.get("src/test/resources/service1").toAbsolutePath());
@@ -150,7 +166,7 @@ public class FstepServicesClientIT {
         WorkerFactory workerFactory = mock(WorkerFactory.class);
         FstepSecurityService securityService = mock(FstepSecurityService.class);
 
-        FstepServiceLauncher fstepServiceLauncher = new FstepServiceLauncher(workerFactory, jobDataService, guiService, catalogueService, costingService, securityService);
+        FstepServiceLauncher fstepServiceLauncher = new FstepServiceLauncher(workerFactory, jobDataService, guiService, catalogueService, costingService, securityService, dynamicProxyService);
         FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 0);
 
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
