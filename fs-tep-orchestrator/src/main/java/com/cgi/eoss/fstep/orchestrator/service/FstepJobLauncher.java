@@ -365,7 +365,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     }
                     throw new ServiceExecutionException("User does not have read access to all requested output collections");
                 }
-                if (job.getStage().equals("Step 1 of 3: Data-Fetch") == false) {
+                if (job.getStage() != null && !job.getStage().equals("Step 1 of 3: Data-Fetch")) {
                 	chargeUser(job.getOwner(), job);
                 }
                 job.setStatus(Status.CREATED);
