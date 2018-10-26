@@ -46,7 +46,7 @@ public class TraefikProxyService implements DynamicProxyService{
 	private static final Collector<AccessControlEntry, ?, FstepPermission> SPRING_FSTEP_ACL_SET_COLLECTOR =
             Collectors.collectingAndThen(Collectors.mapping(AccessControlEntry::getPermission, Collectors.toSet()), FstepPermission::getFstepPermission);
 
-	private static final long PROXY_UPDATE_PERIOD_MS = 10* 60 * 1000;
+	private static final long PROXY_UPDATE_PERIOD_MS = 10* 60 * 1000L;
 	
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 	

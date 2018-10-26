@@ -51,7 +51,7 @@ public class SystematicProcessingScheduler {
     private LocalServiceLauncher localServiceLauncher;
     private CostingService costingService;
 
-    private static final long SYSTEMATIC_PROCESSING_CHECK_RATE_MS = 60 * 60 * 1000;
+    private static final long SYSTEMATIC_PROCESSING_CHECK_RATE_MS = 60 * 60 * 1000L;
 
     @Autowired
     public SystematicProcessingScheduler(SystematicProcessingDataService systematicProcessingDataService, SearchFacade searchFacade,

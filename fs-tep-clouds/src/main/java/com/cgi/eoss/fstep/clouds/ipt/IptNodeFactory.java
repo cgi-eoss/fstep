@@ -173,10 +173,10 @@ public class IptNodeFactory implements NodeFactory {
             return node;
         } catch (Exception e) {
             if (server != null) {
-                LOG.warn("Tearing down partially-created node {}", server.getId());
+                LOG.info("Tearing down partially-created node {}", server.getId());
                 ActionResponse response = osClient.compute().servers().delete(server.getId());
                 if (!response.isSuccess()) {
-                    LOG.warn("Failed to destroy partially-created node {}", server.getId());
+                    LOG.info("Failed to destroy partially-created node {}", server.getId());
                 }
             }
             if (floatingIp != null) {
@@ -304,7 +304,7 @@ public class IptNodeFactory implements NodeFactory {
             LOG.info("Destroyed IPT node: {}", node.getId());
             currentNodes.remove(node);
         } else {
-            LOG.warn("Failed to destroy IPT node {}: [{}] {}", node.getId(), response.getCode(), response.getFault());
+            LOG.info("Failed to destroy IPT node {}: [{}] {}", node.getId(), response.getCode(), response.getFault());
         }
         
         for (String additionalVolume: additionalVolumes) {

@@ -928,27 +928,29 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 						try {
 	                        //Retrieve the parameter 
 	                        Optional<Parameter> outputParameter = getServiceOutputParameter(outputId);
-	                        String regexp = outputParameter.get().getTimeRegexp();
-	                        if (regexp != null) {
-	                        	Pattern p = Pattern.compile(regexp);
-	                        	Matcher m = p.matcher(getOutputPath().getFileName().toString());
-	                        	if (m.find()) {
-	                        		if (regexp.contains("?<startEnd>")) {
-	                        			OffsetDateTime startEndDateTime = parseOffsetDateTime(m.group("startEnd"), LocalTime.MIDNIGHT);
-	                        			return new Pair<OffsetDateTime, OffsetDateTime>(startEndDateTime, startEndDateTime);
-	                        		}
-	                        		else {
-	                        			OffsetDateTime start = null, end = null;
-	                        			if (regexp.contains("?<start>")) {
-	                            			start = parseOffsetDateTime(m.group("start"), LocalTime.MIDNIGHT);
-	                            		}
-	                        			
-	                        			if (regexp.contains("?<end>")) {
-	                            			end = parseOffsetDateTime(m.group("end"), LocalTime.MIDNIGHT);
-	                            		}
-	                        			return new Pair<OffsetDateTime, OffsetDateTime>(start, end);
-	                        		}
-	                            }
+	                        if (outputParameter.isPresent()) {
+		                        String regexp = outputParameter.get().getTimeRegexp();
+		                        if (regexp != null) {
+		                        	Pattern p = Pattern.compile(regexp);
+		                        	Matcher m = p.matcher(getOutputPath().getFileName().toString());
+		                        	if (m.find()) {
+		                        		if (regexp.contains("?<startEnd>")) {
+		                        			OffsetDateTime startEndDateTime = parseOffsetDateTime(m.group("startEnd"), LocalTime.MIDNIGHT);
+		                        			return new Pair<OffsetDateTime, OffsetDateTime>(startEndDateTime, startEndDateTime);
+		                        		}
+		                        		else {
+		                        			OffsetDateTime start = null, end = null;
+		                        			if (regexp.contains("?<start>")) {
+		                            			start = parseOffsetDateTime(m.group("start"), LocalTime.MIDNIGHT);
+		                            		}
+		                        			
+		                        			if (regexp.contains("?<end>")) {
+		                            			end = parseOffsetDateTime(m.group("end"), LocalTime.MIDNIGHT);
+		                            		}
+		                        			return new Pair<OffsetDateTime, OffsetDateTime>(start, end);
+		                        		}
+		                            }
+		                        }
 	                        }
                         }
                         catch(RuntimeException e) {
