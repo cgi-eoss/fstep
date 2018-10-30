@@ -14,7 +14,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import com.cgi.eoss.fstep.catalogue.CatalogueConfig;
 import com.cgi.eoss.fstep.costing.CostingConfig;
 import com.cgi.eoss.fstep.orchestrator.service.FstepServiceLauncher;
-import com.cgi.eoss.fstep.orchestrator.service.WorkerFactory;
+import com.cgi.eoss.fstep.orchestrator.service.CachingWorkerFactory;
 import com.cgi.eoss.fstep.persistence.PersistenceConfig;
 import com.cgi.eoss.fstep.persistence.service.WorkerLocatorExpressionDataService;
 import com.cgi.eoss.fstep.queues.QueuesConfig;
@@ -46,12 +46,12 @@ public class OrchestratorConfig {
     }
 
     @Bean
-    public WorkerFactory workerFactory(DiscoveryClient discoveryClient,
+    public CachingWorkerFactory workerFactory(DiscoveryClient discoveryClient,
                                        @Value("${fstep.orchestrator.worker.eurekaServiceId:fs-tep worker}") String workerServiceId,
                                        ExpressionParser workerLocatorExpressionParser,
                                        WorkerLocatorExpressionDataService workerLocatorExpressionDataService,
                                        @Value("${fstep.orchestrator.worker.defaultWorkerExpression:\"LOCAL\"}") String defaultWorkerExpression) {
-        return new WorkerFactory(discoveryClient, workerServiceId, workerLocatorExpressionParser, workerLocatorExpressionDataService, defaultWorkerExpression);
+        return new CachingWorkerFactory(discoveryClient, workerServiceId, workerLocatorExpressionParser, workerLocatorExpressionDataService, defaultWorkerExpression);
     }
 
 }

@@ -27,6 +27,7 @@ import com.cgi.eoss.fstep.model.SystematicProcessing;
 import com.cgi.eoss.fstep.persistence.dao.JobConfigDao;
 import com.cgi.eoss.fstep.persistence.dao.JobDao;
 import com.cgi.eoss.fstep.persistence.dao.SystematicProcessingDao;
+import com.cgi.eoss.fstep.rpc.FstepJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
 import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
@@ -164,7 +165,7 @@ public class JobConfigsApiExtension {
         return ResponseEntity.accepted().build();
     }
     
-    private static final class JobLaunchObserver implements StreamObserver<FstepServiceResponse> {
+    private static final class JobLaunchObserver implements StreamObserver<FstepJobResponse> {
 
         private final CountDownLatch latch;
         @Getter
@@ -175,11 +176,9 @@ public class JobConfigsApiExtension {
         }
 
         @Override
-        public void onNext(FstepServiceResponse value) {
-            if (value.getPayloadCase() == FstepServiceResponse.PayloadCase.JOB) {
-                this.intJobId = Long.parseLong(value.getJob().getIntJobId());
-                LOG.info("Received job ID: {}", this.intJobId);
-            }
+        public void onNext(FstepJobResponse value) {
+            this.intJobId = Long.parseLong(value.getJob().getIntJobId());
+            LOG.info("Received job ID: {}", this.intJobId);
             latch.countDown();
         }
 

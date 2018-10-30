@@ -6,6 +6,8 @@ import com.cgi.eoss.fstep.persistence.service.WorkerLocatorExpressionDataService
 import com.cgi.eoss.fstep.rpc.Worker;
 import com.cgi.eoss.fstep.rpc.WorkersList;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
+import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import lombok.extern.log4j.Log4j2;
@@ -13,21 +15,24 @@ import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.expression.ExpressionParser;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * <p>Service providing access to FS-TEP Worker nodes based on environment requests.</p>
  */
 @Log4j2
-public class WorkerFactory {
+public class CachingWorkerFactory {
 
     private final DiscoveryClient discoveryClient;
     private final String workerServiceId;
     private final ExpressionParser expressionParser;
     private final WorkerLocatorExpressionDataService workerLocatorExpressionDataService;
     private final WorkerLocatorExpression defaultWorkerLocatorExpression;
-
-    public WorkerFactory(DiscoveryClient discoveryClient, String workerServiceId, ExpressionParser expressionParser, WorkerLocatorExpressionDataService workerLocatorExpressionDataService, String defaultWorkerExpression) {
+    private Map<String, FstepWorkerBlockingStub> workerStubCache = new ConcurrentHashMap<String, FstepWorkerBlockingStub>();
+    
+    public CachingWorkerFactory(DiscoveryClient discoveryClient, String workerServiceId, ExpressionParser expressionParser, WorkerLocatorExpressionDataService workerLocatorExpressionDataService, String defaultWorkerExpression) {
         this.discoveryClient = discoveryClient;
         this.workerServiceId = workerServiceId;
         this.expressionParser = expressionParser;
@@ -57,10 +62,23 @@ public class WorkerFactory {
         return FstepWorkerGrpc.newBlockingStub(managedChannel);
     }
     
+    
+    public FstepWorkerBlockingStub getWorkerById(String workerId) {
+        FstepWorkerBlockingStub existingWorkerStub = workerStubCache.get(workerId);
+        if (existingWorkerStub != null) {
+            return existingWorkerStub;
+        }
+        else {
+            FstepWorkerBlockingStub newWorkerStub = createStubForWorker(workerId);
+            workerStubCache.put(workerId, newWorkerStub);
+            return newWorkerStub;
+        }
+    }
+    
     /**
      * @return The worker with the specified id
      */
-    public FstepWorkerGrpc.FstepWorkerBlockingStub getWorkerById(String workerId) {
+    private FstepWorkerGrpc.FstepWorkerBlockingStub createStubForWorker(String workerId) {
         LOG.debug("Locating worker with id {}", workerId);
         ServiceInstance worker = discoveryClient.getInstances(workerServiceId).stream()
                 .filter(si -> si.getMetadata().get("workerId").equals(workerId))

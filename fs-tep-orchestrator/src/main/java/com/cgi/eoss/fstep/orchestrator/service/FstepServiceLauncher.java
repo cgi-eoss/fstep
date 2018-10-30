@@ -124,7 +124,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
     // TODO Synchronise this list at startup from workers
     private final Map<com.cgi.eoss.fstep.rpc.Job, FstepWorkerGrpc.FstepWorkerBlockingStub> jobWorkers = new HashMap<>();
 
-    private final WorkerFactory workerFactory;
+    private final CachingWorkerFactory workerFactory;
     private final JobDataService jobDataService;
     private final FstepGuiServiceManager guiService;
     private final CatalogueService catalogueService;
@@ -133,7 +133,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
     private final DynamicProxyService dynamicProxyService;
     
     @Autowired
-    public FstepServiceLauncher(WorkerFactory workerFactory, JobDataService jobDataService, FstepGuiServiceManager guiService, CatalogueService catalogueService, CostingService costingService, FstepSecurityService securityService, DynamicProxyService dynamicProxyService) {
+    public FstepServiceLauncher(CachingWorkerFactory workerFactory, JobDataService jobDataService, FstepGuiServiceManager guiService, CatalogueService catalogueService, CostingService costingService, FstepSecurityService securityService, DynamicProxyService dynamicProxyService) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.guiService = guiService;
