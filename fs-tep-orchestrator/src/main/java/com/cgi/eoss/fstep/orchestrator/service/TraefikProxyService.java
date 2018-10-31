@@ -188,6 +188,7 @@ public class TraefikProxyService implements DynamicProxyService{
 			if (response.isSuccessful() == false) {
 				throw new RuntimeException("Unsuccessful response: " + response.message());
 			}
+			response.close();
 		}
 		catch (Exception e) {
 			LOG.error("Error updating proxy: "  + e);
