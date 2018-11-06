@@ -3,6 +3,7 @@ package com.cgi.eoss.fstep.clouds.ipt;
 import static org.awaitility.Awaitility.with;
 import static org.awaitility.Duration.FIVE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Duration.FIVE_MINUTES;
+import static org.awaitility.Duration.TWO_MINUTES;
 import static org.awaitility.Duration.FIVE_SECONDS;
 import static org.awaitility.Duration.TWO_SECONDS;
 import com.cgi.eoss.fstep.clouds.ipt.persistence.KeypairRepository;
@@ -239,7 +240,7 @@ public class IptNodeFactory implements NodeFactory {
             // TODO Use/create a certificate authority for secure docker communication
             LOG.info("Launching dockerd listening on tcp://0.0.0.0:{}", DEFAULT_DOCKER_PORT);
             with().pollInterval(FIVE_HUNDRED_MILLISECONDS)
-                    .and().atMost(FIVE_SECONDS)
+                    .and().atMost(TWO_MINUTES)
                     .await("Successfully launched Dockerd")
                     .until(() -> {
                         try {
@@ -261,6 +262,7 @@ public class IptNodeFactory implements NodeFactory {
                             ssh.exec("sudo systemctl restart docker.service");
                             return ssh.exec("sudo systemctl status docker.service | grep 'API listen on \\[::\\]:2375'").getExitStatus() == 0;
                         } catch (Exception e) {
+                        	LOG.error("Failed to prepare server", e);
                             return false;
                         }
                     });
