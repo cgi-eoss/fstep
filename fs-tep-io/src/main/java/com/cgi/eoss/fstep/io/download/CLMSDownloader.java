@@ -211,7 +211,7 @@ public class CLMSDownloader implements Downloader {
     	        	throw e;
     	        }
     	        try {
-    	            Thread.sleep(((int) Math.round(Math.pow(2, count)) * 1000) 
+    	            Thread.sleep(((long) Math.round(Math.pow(2, count)) * 1000) 
     	                + (random.nextInt(999) + 1));
     	        } catch (InterruptedException ie) {
     	            //Keep retrying 

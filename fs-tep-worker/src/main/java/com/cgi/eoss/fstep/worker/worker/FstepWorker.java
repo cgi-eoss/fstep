@@ -377,9 +377,6 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             } catch (Exception e) {
                 LOG.error("Failed to stop job: {}", request.getId(), e);
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
-            } finally {
-                removeContainer(dockerClient, containerId);
-                cleanUpJob(request.getId());
             }
         }
     }

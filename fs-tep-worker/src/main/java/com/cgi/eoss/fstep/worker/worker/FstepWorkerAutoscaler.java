@@ -115,8 +115,10 @@ public class FstepWorkerAutoscaler {
     }
    
     public void scaleTo(int target) {
-        LOG.info("Scaling to {} nodes", target);
+        LOG.info("Scale target: {} nodes", target);
+        int totalNodes = nodeManager.getCurrentNodes(FstepWorkerNodeManager.POOLED_WORKER_TAG).size();
         int freeNodes = nodeManager.getNumberOfFreeNodes(FstepWorkerNodeManager.POOLED_WORKER_TAG);
+        LOG.info("Current node balance:{} total nodes, {} free nodes", totalNodes, freeNodes);
         if (target > freeNodes) {
             long previousAutoScalingActionTime = lastAutoscalingActionTime;
             try {
@@ -131,7 +133,7 @@ public class FstepWorkerAutoscaler {
             lastAutoscalingActionTime = Instant.now().getEpochSecond();
         }
         else {
-            LOG.debug("No action needed as current nodes are equal to the target", target);
+        	LOG.info("Free nodes already match target nodes - no action");
         }
     }
 
