@@ -161,6 +161,7 @@ public class FstepWorkerDispatcher {
             
             jobUpdateListener.jobUpdate(ContainerExit.newBuilder().setExitCode(exitCode).setJobEnvironment(jobEnvironment).build());
         } catch (Exception e) {
+        	LOG.error("Error executing job", e);
             jobUpdateListener.jobUpdate(JobError.newBuilder().setErrorDescription(e.getMessage() != null? e.getMessage(): "Unknown error").build());
         } finally {
             if (jobSpec.hasResourceRequest()) {
