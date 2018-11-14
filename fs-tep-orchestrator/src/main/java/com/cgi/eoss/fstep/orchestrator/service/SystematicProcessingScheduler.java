@@ -89,7 +89,7 @@ public class SystematicProcessingScheduler {
                 ZonedDateTime.of(systematicProcessing.getLastUpdated(), ZoneOffset.UTC).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}));
         queryParameters.replaceValues("publishedBefore", Arrays.asList(new String[] {ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}));
         queryParameters.replaceValues("sortOrder", Arrays.asList(new String[] {"ascending"}));
-        queryParameters.replaceValues("sortParam", Arrays.asList(new String[] {"updated"}));
+        queryParameters.replaceValues("sortParam", Arrays.asList(new String[] {"published"}));
         int page = 0;
         HttpUrl requestUrl = new HttpUrl.Builder().scheme("http").host("local").build();
         SearchResults results = null;
