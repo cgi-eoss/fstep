@@ -11,6 +11,7 @@ import com.cgi.eoss.fstep.rpc.FileStreamServer;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
+import com.cgi.eoss.fstep.rpc.worker.CleanUpResponse;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExitCode;
 import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.ExitParams;
@@ -68,6 +69,9 @@ import shadow.dockerjava.com.github.dockerjava.core.command.BuildImageResultCall
 import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
 import shadow.dockerjava.com.github.dockerjava.core.command.PushImageResultCallback;
 import shadow.dockerjava.com.github.dockerjava.core.command.WaitContainerResultCallback;
+
+import static io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.ReadableByteChannel;
@@ -198,7 +202,6 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                     LOG.error("Failed to prepare job inputs: {}", e.getMessage());
                 }
                 LOG.error("Failed to prepare job inputs for {}", request.getJob().getId(), e);
-                cleanUpJob(request.getJob().getId());
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             }
         }
@@ -307,7 +310,6 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                 LOG.error("Failed to launch Docker container {}", request.getDockerImage(), e);
                 if (!Strings.isNullOrEmpty(containerId)) {
                     removeContainer(dockerClient, containerId);
-                    cleanUpJob(request.getJob().getId());
                 }
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             }
@@ -351,7 +353,6 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             } catch (Exception e) {
                 if (!Strings.isNullOrEmpty(containerId)) {
                     removeContainer(dockerClient, containerId);
-                    cleanUpJob(request.getId());
                 }
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             }
@@ -399,7 +400,6 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             } finally {
                 removeContainer(dockerClient, containerId);
-                cleanUpJob(request.getJob().getId());
             }
         }
     }
@@ -428,7 +428,6 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                 }
             } finally {
                 removeContainer(dockerClient, containerId);
-                cleanUpJob(request.getJob().getId());
             }
         }
     }
@@ -497,9 +496,11 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
         }
     }
 
-
-    private void cleanUpJob(String jobId) {
-        jobContainers.remove(jobId);
+    @Override
+    public void cleanUp(com.cgi.eoss.fstep.rpc.Job request,
+            io.grpc.stub.StreamObserver<com.cgi.eoss.fstep.rpc.worker.CleanUpResponse> responseObserver) {
+        String jobId = request.getId();
+    	jobContainers.remove(jobId);
         jobClients.remove(jobId);
         nodeManager.releaseJobNode(jobId);
         Set<URI> finishedJobInputs = ImmutableSet.copyOf(jobInputs.removeAll(jobId));
@@ -507,6 +508,9 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
         Set<URI> unusedUris = Sets.difference(finishedJobInputs, ImmutableSet.copyOf(jobInputs.values()));
         LOG.debug("Unused URIs to be cleaned: {}", unusedUris);
         inputOutputManager.cleanUp(unusedUris);
+        CleanUpResponse.Builder responseBuilder = CleanUpResponse.newBuilder();
+        responseObserver.onNext(responseBuilder.build());
+        responseObserver.onCompleted();
     }
 
     private WaitContainerResultCallback waitForContainer(DockerClient dockerClient, String containerId) {
