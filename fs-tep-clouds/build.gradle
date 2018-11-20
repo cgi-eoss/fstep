@@ -16,13 +16,15 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     compileOnly 'org.springframework.boot:spring-boot-configuration-processor'
 
-    // Override guava version for openstack4j, then relocate the package to avoid downstream collisions
-    compile 'com.google.guava:guava:17.0'
-    compile 'com.hierynomus:sshj'
     compile 'org.awaitility:awaitility'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.9.1'
-    compile 'org.pacesys:openstack4j-core'
-    compile 'org.pacesys.openstack4j.connectors:openstack4j-okhttp'
+    compile ('org.apache.jclouds.driver:jclouds-slf4j')
+    compile ('org.apache.jclouds.driver:jclouds-sshj')
+    compile ('org.apache.jclouds.driver:jclouds-okhttp')
+    compile ('org.apache.jclouds.api:openstack-keystone')
+    compile ('org.apache.jclouds.api:openstack-nova')
+    compile ('org.apache.jclouds.api:openstack-cinder')
+    compile ('org.apache.jclouds.api:openstack-neutron')
     compile 'org.springframework.boot:spring-boot'
     compile 'org.springframework.boot:spring-boot-autoconfigure'
     compile 'org.springframework.boot:spring-boot-starter-log4j2'
@@ -44,4 +46,16 @@ shadowJar {
     transform(de.sebastianboegl.gradle.plugins.shadow.transformers.Log4j2PluginsFileTransformer)
     // Shade the Guava package for version >=21.0 compatibility
     relocate 'com.google.common', 'shadow.com.google.common'
+    relocate 'org.jclouds', 'shadow.clouds.org.jclouds'
+    relocate 'org.glassfish', 'shadow.clouds.org.glassfish'
+    relocate 'javax.ws.rs', 'shadow.clouds.javax.ws.rs'
+    relocate 'okio', 'shadow.clouds.okio'
+    relocate 'com.squareup', 'shadow.clouds.com.squareup'
+    relocate 'com.github.clouds', 'shadow.clouds.com.github.clouds'
+    relocate 'jersey.repackaged', 'shadow.clouds.jersey.repackaged'
+    relocate 'com.google', 'shadow.clouds.com.google'
+    relocate 'io.netty', 'shadow.clouds.io.netty'
+    relocate 'javassist', 'shadow.clouds.javassist'
+    mergeServiceFiles()
+   
 }

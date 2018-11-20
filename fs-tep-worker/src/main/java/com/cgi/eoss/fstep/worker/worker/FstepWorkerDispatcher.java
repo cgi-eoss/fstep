@@ -1,5 +1,17 @@
 package com.cgi.eoss.fstep.worker.worker;
 
+import java.io.File;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.StorageProvisioningException;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
@@ -16,18 +28,9 @@ import com.cgi.eoss.fstep.rpc.worker.JobEventType;
 import com.cgi.eoss.fstep.rpc.worker.JobInputs;
 import com.cgi.eoss.fstep.rpc.worker.JobSpec;
 import com.cgi.eoss.fstep.rpc.worker.ResourceRequest;
+
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import java.io.File;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * <p>
@@ -158,7 +161,8 @@ public class FstepWorkerDispatcher {
             
             jobUpdateListener.jobUpdate(ContainerExit.newBuilder().setExitCode(exitCode).setJobEnvironment(jobEnvironment).build());
         } catch (Exception e) {
-            jobUpdateListener.jobUpdate(JobError.newBuilder().setErrorDescription(e.getMessage()).build());
+        	LOG.error("Error executing job", e);
+            jobUpdateListener.jobUpdate(JobError.newBuilder().setErrorDescription(e.getMessage() != null? e.getMessage(): "Unknown error").build());
         } finally {
             if (jobSpec.hasResourceRequest()) {
                 LOG.debug("Device id is: {}", deviceId);
@@ -170,6 +174,7 @@ public class FstepWorkerDispatcher {
                     }
                 }
             }
+            localWorker.cleanUp(jobSpec.getJob());
         }
     }
     

@@ -15,7 +15,7 @@ service FstepServiceLauncher {
 
 service FstepJobLauncher {
 	rpc BuildService (BuildServiceParams) returns (BuildServiceResponse);
-    rpc SubmitJob (FstepServiceParams) returns (stream FstepServiceResponse);
+    rpc SubmitJob (FstepServiceParams) returns (FstepJobResponse);
     rpc CancelJob (CancelJobParams) returns (CancelJobResponse);
     rpc StopJob (StopServiceParams) returns (StopServiceResponse);
     rpc RelaunchFailedJob (RelaunchFailedJobParams) returns (RelaunchFailedJobResponse);
@@ -49,6 +49,10 @@ message FstepServiceResponse {
         Job job = 1;
         JobOutputs jobOutputs = 2;
     }
+}
+
+message FstepJobResponse {
+        Job job = 1;
 }
 
 message ListWorkersParams {

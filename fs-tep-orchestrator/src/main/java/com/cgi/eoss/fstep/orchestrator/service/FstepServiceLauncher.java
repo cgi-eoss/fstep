@@ -124,7 +124,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
     // TODO Synchronise this list at startup from workers
     private final Map<com.cgi.eoss.fstep.rpc.Job, FstepWorkerGrpc.FstepWorkerBlockingStub> jobWorkers = new HashMap<>();
 
-    private final WorkerFactory workerFactory;
+    private final CachingWorkerFactory workerFactory;
     private final JobDataService jobDataService;
     private final FstepGuiServiceManager guiService;
     private final CatalogueService catalogueService;
@@ -133,7 +133,7 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
     private final DynamicProxyService dynamicProxyService;
     
     @Autowired
-    public FstepServiceLauncher(WorkerFactory workerFactory, JobDataService jobDataService, FstepGuiServiceManager guiService, CatalogueService catalogueService, CostingService costingService, FstepSecurityService securityService, DynamicProxyService dynamicProxyService) {
+    public FstepServiceLauncher(CachingWorkerFactory workerFactory, JobDataService jobDataService, FstepGuiServiceManager guiService, CatalogueService catalogueService, CostingService costingService, FstepSecurityService securityService, DynamicProxyService dynamicProxyService) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.guiService = guiService;
@@ -335,51 +335,56 @@ public class FstepServiceLauncher extends FstepServiceLauncherGrpc.FstepServiceL
     }
 
     private Multimap<String, FstepFile> executeJob(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, List<JobParam> rpcInputs, FstepWorkerGrpc.FstepWorkerBlockingStub worker) throws Exception {
-        String zooId = job.getExtId();
-        FstepService service = job.getConfig().getService();
-        Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
+        try {
+			String zooId = job.getExtId();
+			FstepService service = job.getConfig().getService();
+			Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
 
-        // Create workspace and prepare inputs
-        JobEnvironment jobEnvironment = prepareEnvironment(job, rpcJob, rpcInputs, worker);
+			// Create workspace and prepare inputs
+			JobEnvironment jobEnvironment = prepareEnvironment(job, rpcJob, rpcInputs, worker);
 
-        // Configure and launch the docker container
-        launchContainer(job, rpcJob, worker, jobEnvironment);
+			// Configure and launch the docker container
+			launchContainer(job, rpcJob, worker, jobEnvironment);
 
-        // TODO Implement async service command execution
+			// TODO Implement async service command execution
 
-        // Update GUI endpoint URL for client access
-        if (service.getType() == FstepService.Type.APPLICATION) {
-        	PortBinding portBinding = guiService.getGuiPortBinding(worker, rpcJob);
-            ReverseProxyEntry guiEntry = dynamicProxyService.getProxyEntry(rpcJob, portBinding.getBinding().getIp(), portBinding.getBinding().getPort());
-            LOG.info("Updating GUI URL for job {} ({}): {}", zooId,
-                    job.getConfig().getService().getName(), guiEntry.getPath());
-            job.setGuiUrl(guiEntry.getPath());
-            jobDataService.save(job);
-            dynamicProxyService.update();
-        }
+			// Update GUI endpoint URL for client access
+			if (service.getType() == FstepService.Type.APPLICATION) {
+				PortBinding portBinding = guiService.getGuiPortBinding(worker, rpcJob);
+			    ReverseProxyEntry guiEntry = dynamicProxyService.getProxyEntry(rpcJob, portBinding.getBinding().getIp(), portBinding.getBinding().getPort());
+			    LOG.info("Updating GUI URL for job {} ({}): {}", zooId,
+			            job.getConfig().getService().getName(), guiEntry.getPath());
+			    job.setGuiUrl(guiEntry.getPath());
+			    jobDataService.save(job);
+			    dynamicProxyService.update();
+			}
 
-        // Wait for exit, with timeout if necessary
-        waitForContainerExit(job, rpcJob, worker, inputs);
+			// Wait for exit, with timeout if necessary
+			waitForContainerExit(job, rpcJob, worker, inputs);
 
-        // Enumerate files in the job output directory
-        Multimap<String, String> outputsByRelativePath = listOutputFiles(job, rpcJob, worker, jobEnvironment);
+			// Enumerate files in the job output directory
+			Multimap<String, String> outputsByRelativePath = listOutputFiles(job, rpcJob, worker, jobEnvironment);
 
-        // Repatriate output files
-        Multimap<String, FstepFile> outputFiles = repatriateAndIngestOutputFiles(job, rpcJob, worker, inputs, jobEnvironment, outputsByRelativePath);
+			// Repatriate output files
+			Multimap<String, FstepFile> outputFiles = repatriateAndIngestOutputFiles(job, rpcJob, worker, inputs, jobEnvironment, outputsByRelativePath);
 
-        job.setStatus(Job.Status.COMPLETED);
-        job.setOutputs(outputFiles.entries().stream()
-                .collect(toMultimap(e -> e.getKey(), e -> e.getValue().getUri().toString(),
-                        MultimapBuilder.hashKeys().hashSetValues()::build)));
-        job.setOutputFiles(ImmutableSet.copyOf(outputFiles.values()));
-        jobDataService.save(job);
+			job.setStatus(Job.Status.COMPLETED);
+			job.setOutputs(outputFiles.entries().stream()
+			        .collect(toMultimap(e -> e.getKey(), e -> e.getValue().getUri().toString(),
+			                MultimapBuilder.hashKeys().hashSetValues()::build)));
+			job.setOutputFiles(ImmutableSet.copyOf(outputFiles.values()));
+			jobDataService.save(job);
 
-        if (service.getType() == FstepService.Type.BULK_PROCESSOR) {
-            // Auto-publish the output files
-            ImmutableSet.copyOf(outputFiles.values()).forEach(f -> securityService.publish(FstepFile.class, f.getId()));
-        }
+			if (service.getType() == FstepService.Type.BULK_PROCESSOR) {
+			    // Auto-publish the output files
+			    ImmutableSet.copyOf(outputFiles.values()).forEach(f -> securityService.publish(FstepFile.class, f.getId()));
+			}
 
-        return outputFiles;
+			return outputFiles;
+		} catch (Exception e) {
+			worker.cleanUp(rpcJob);
+			throw e;
+		}
     }
 
 

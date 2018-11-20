@@ -13,7 +13,7 @@ public class LocalServiceLauncher {
     }
     
     @Async
-    public void asyncSubmitJob(FstepServiceParams serviceParams, StreamObserver<FstepServiceResponse> responseObserver) {
+    public void asyncSubmitJob(FstepServiceParams serviceParams, StreamObserver<FstepJobResponse> responseObserver) {
         FstepJobLauncherGrpc.FstepJobLauncherStub jobLauncher = FstepJobLauncherGrpc.newStub(inProcessChannelBuilder.build());
         jobLauncher.submitJob(serviceParams, responseObserver);
     }

@@ -6,6 +6,7 @@ import com.cgi.eoss.fstep.model.SystematicProcessing;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.SystematicProcessing.Status;
 import com.cgi.eoss.fstep.persistence.service.SystematicProcessingDataService;
+import com.cgi.eoss.fstep.rpc.FstepJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
 import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
@@ -65,12 +66,13 @@ public class SystematicProcessingScheduler {
     @Scheduled(fixedRate = SYSTEMATIC_PROCESSING_CHECK_RATE_MS, initialDelay = 10000L)
     public void updateSystematicProcessings() {
         List<SystematicProcessing> activeSystematicProcessings = systematicProcessingDataService.findByStatus(Status.ACTIVE);
+        List<SystematicProcessing> blockedSystematicProcessings = systematicProcessingDataService.findByStatus(Status.BLOCKED);
+        
         for (SystematicProcessing activeSystematicProcessing : activeSystematicProcessings) {
             updateSystematicProcessing(activeSystematicProcessing);
         }
         
         //Try to resume blocked systematic processings
-        List<SystematicProcessing> blockedSystematicProcessings = systematicProcessingDataService.findByStatus(Status.BLOCKED);
         for (SystematicProcessing blockedSystematicProcessing : blockedSystematicProcessings) {
             User user = blockedSystematicProcessing.getOwner();
             if (user.getWallet().getBalance() > 0) {
@@ -87,7 +89,7 @@ public class SystematicProcessingScheduler {
                 ZonedDateTime.of(systematicProcessing.getLastUpdated(), ZoneOffset.UTC).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}));
         queryParameters.replaceValues("publishedBefore", Arrays.asList(new String[] {ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}));
         queryParameters.replaceValues("sortOrder", Arrays.asList(new String[] {"ascending"}));
-        queryParameters.replaceValues("sortParam", Arrays.asList(new String[] {"updated"}));
+        queryParameters.replaceValues("sortParam", Arrays.asList(new String[] {"published"}));
         int page = 0;
         HttpUrl requestUrl = new HttpUrl.Builder().scheme("http").host("local").build();
         SearchResults results = null;
@@ -104,6 +106,8 @@ public class SystematicProcessingScheduler {
                     int jobCost = costingService.estimateSingleRunJobCost(configTemplate);
                     if (jobCost > systematicProcessing.getOwner().getWallet().getBalance()) {
                         systematicProcessing.setStatus(Status.BLOCKED);
+                        systematicProcessingDataService.save(systematicProcessing);
+                        return;
                     }
                     submitJob(configTemplate.getOwner().getName(), configTemplate.getService().getName(), String.valueOf(systematicProcessing.getParentJob().getId()), inputs);
                     Map<String, Object> extraParams = (Map<String, Object>) feature.getProperties().get("extraParams");
@@ -151,7 +155,7 @@ public class SystematicProcessingScheduler {
         } 
     }
 
-    private static final class JobLaunchObserver implements StreamObserver<FstepServiceResponse> {
+    private static final class JobLaunchObserver implements StreamObserver<FstepJobResponse> {
 
         private final CountDownLatch latch;
         @Getter
@@ -165,11 +169,9 @@ public class SystematicProcessingScheduler {
         }
 
         @Override
-        public void onNext(FstepServiceResponse value) {
-            if (value.getPayloadCase() == FstepServiceResponse.PayloadCase.JOB) {
-                this.intJobId = Long.parseLong(value.getJob().getIntJobId());
-                LOG.info("Received job ID: {}", this.intJobId);
-            }
+        public void onNext(FstepJobResponse value) {
+            this.intJobId = Long.parseLong(value.getJob().getIntJobId());
+            LOG.info("Received job ID: {}", this.intJobId);
             latch.countDown();
         }
 

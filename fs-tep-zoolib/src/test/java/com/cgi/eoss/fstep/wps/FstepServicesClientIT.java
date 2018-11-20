@@ -47,7 +47,7 @@ import com.cgi.eoss.fstep.orchestrator.service.DynamicProxyService;
 import com.cgi.eoss.fstep.orchestrator.service.FstepGuiServiceManager;
 import com.cgi.eoss.fstep.orchestrator.service.FstepServiceLauncher;
 import com.cgi.eoss.fstep.orchestrator.service.ReverseProxyEntry;
-import com.cgi.eoss.fstep.orchestrator.service.WorkerFactory;
+import com.cgi.eoss.fstep.orchestrator.service.CachingWorkerFactory;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
@@ -163,7 +163,7 @@ public class FstepServicesClientIT {
         InProcessServerBuilder inProcessServerBuilder = InProcessServerBuilder.forName(RPC_SERVER_NAME).directExecutor();
         InProcessChannelBuilder channelBuilder = InProcessChannelBuilder.forName(RPC_SERVER_NAME).directExecutor();
 
-        WorkerFactory workerFactory = mock(WorkerFactory.class);
+        CachingWorkerFactory workerFactory = mock(CachingWorkerFactory.class);
         FstepSecurityService securityService = mock(FstepSecurityService.class);
 
         FstepServiceLauncher fstepServiceLauncher = new FstepServiceLauncher(workerFactory, jobDataService, guiService, catalogueService, costingService, securityService, dynamicProxyService);
