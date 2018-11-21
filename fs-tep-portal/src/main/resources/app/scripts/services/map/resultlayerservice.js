@@ -82,15 +82,18 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                 if (item.id && item.id === feature.get('data').id) {
                     if (selected) {
                         selectClick.getFeatures().push(feature);
-                        map.getView().fit(feature.getGeometry().getExtent(), map.getSize()); //center the map to the selected vector
-                        var zoomLevel = 3;
-                        if (feature.getGeometry() instanceof ol.geom.Point) {
-                            zoomLevel = 6;
+                        var geometry = feature.getGeometry();
+                        if (geometry) {
+                            map.getView().fit(geometry.getExtent(), map.getSize()); //center the map to the selected vector
+                            var zoomLevel = 3;
+                            if (geometry instanceof ol.geom.Point) {
+                                zoomLevel = 6;
+                            }
+                            else if (map.getView().getZoom() > 3) {
+                                zoomLevel = map.getView().getZoom() - 2;
+                            }
+                            map.getView().setZoom(zoomLevel); //zoom out a bit, to show the location better
                         }
-                        else if (map.getView().getZoom() > 3) {
-                            zoomLevel = map.getView().getZoom() - 2;
-                        }
-                        map.getView().setZoom(zoomLevel); //zoom out a bit, to show the location better
                     }
                     else {
                         selectClick.getFeatures().remove(feature);
@@ -130,11 +133,18 @@ define(['../../fstepmodules', 'ol'], function (fstepmodules, ol) {
                         data: item
                     });
                     if (item.geometry) {
-                        resultItem.setGeometry(parser.readGeometry(item.geometry, {
+
+                        var geometry = parser.readGeometry(item.geometry, {
                             dataProjection: 'EPSG:4326',
                             featureProjection: 'EPSG:3857'
-                        }));
-                        zoomToPlace = true;
+                        });
+                        var geomExtent = geometry.getExtent();
+
+                        if (geomExtent.every(n => isFinite(n))) {
+                            resultItem.setGeometry(geometry);
+                            zoomToPlace = true;
+                        }
+
                     }
                     resultsLayer.getSource().addFeature(resultItem);
                 }

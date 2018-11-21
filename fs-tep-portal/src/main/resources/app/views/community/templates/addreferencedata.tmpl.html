@@ -43,19 +43,41 @@
                         </div>
 
                         <div class="col-md-12 no-padding">
-                            <md-input-container md-no-float>
-                                <input required ng-model="newReference.geometry" type="text" placeholder="Enter a geometry" aria-label="Enter a geometry">
-                                <div class="hint" ng-show="true">Geometry *</div>
+                            <br>
+
+                            <md-input-container class="md-block" flex-gt-sm>
+                                <label>File type</label>
+                                <md-select ng-model="newReference.fileType" ng-change="updateFieldsForFileType()" md-autofocus aria-label="File Type" required>
+                                    <md-option ng-repeat="type in fileTypes" ng-value="type.value">
+                                        {{type.name}}
+                                    </md-option>
+                                </md-select>
                             </md-input-container>
+
+                            <md-input-container class="md-block" flex-gt-sm>
+                                <label>Description</label>
+                                <textarea ng-model="newReference.userProperties.description" />
+                            </md-input-container>
+
+                            <section ng-if="showGeometryField">
+                                <md-input-container style="margin-bottom: 0">
+                                    <md-checkbox ng-model="geometryFieldEnabled">Geometry</md-checkbox>
+                                </md-input-container>
+                                <md-input-container md-no-float ng-if="geometryFieldEnabled"  style="margin-top: 0">
+                                    <input ng-model="newReference.userProperties.geometry" type="text" placeholder="Geometry (WKT)">
+                                </md-input-container>
+                            </section>
+                            <section>
+                                <md-input-container style="margin-bottom: 0">
+                                    <md-checkbox ng-model="rangeFieldEnabled">Date range:</md-checkbox>
+                                </md-input-container>
+                                <div layout="row" ng-if="rangeFieldEnabled">
+                                    <md-datepicker ng-model="newReference.userProperties.startTime" ng-change="onStartDateChange()" />
+                                    <md-datepicker ng-model="newReference.userProperties.endTime" ng-change="onEndDateChange()"/>
+                                </div>
+                            </section>
                         </div>
 
-                        <!-- TODO description currently not in metadata -->
-                        <!-- <div class="col-md-12 no-padding">
-                         <md-input-container md-no-float>
-                             <input ng-model="newReference.description" type="text" placeholder="Enter a description" aria-label="Enter a description">
-                             <div class="hint" ng-show="true">Description</div>
-                         </md-input-container>
-                    </div> -->
                     </div>
                 </div>
             </div>

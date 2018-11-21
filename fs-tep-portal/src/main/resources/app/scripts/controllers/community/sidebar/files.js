@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityFilesCtrl', ['FileService', 'CommonService', '$scope', '$mdDialog', function (FileService, CommonService, $scope, $mdDialog) {
+    fstepmodules.controller('CommunityFilesCtrl', ['FileService', 'CommonService', '$scope', '$mdDialog', 'moment', function (FileService, CommonService, $scope, $mdDialog, moment) {
 
         /* Get stored Files details */
         $scope.fileParams = FileService.params.community;
@@ -19,6 +19,12 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         $scope.filetypes = [
             { name: "Reference Data", value: "REFERENCE_DATA" },
             { name: "Output Products", value: "OUTPUT_PRODUCT" }
+        ];
+
+        var uploadFileTypes = [
+            { name: "GeoTIFF", value: "GEOTIFF"},
+            { name: "Shapefile", value: "SHAPEFILE"},
+            { name: "Other", value: "OTHER"}
         ];
 
         /* Get files */
@@ -59,8 +65,12 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             function AddReferenceFileDialog($scope, $mdDialog, FileService) {
 
                 $scope.item = "File";
+                $scope.fileTypes = uploadFileTypes;
                 $scope.fileParams = FileService.params.community;
-                $scope.newReference = {};
+                $scope.newReference = {
+                    userProperties: {
+                    }
+                };
                 $scope.validation = "Valid";
 
                 $scope.validateFile = function (file) {
@@ -75,9 +85,45 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                     }
                 };
 
+                $scope.updateFieldsForFileType = function() {
+                    $scope.geometryFieldEnabled = false;
+                    $scope.showGeometryField = $scope.newReference.fileType === 'OTHER';
+                }
+
+                $scope.onStartDateChange = function() {
+                    var data = $scope.newReference.userProperties;
+                    if (!data.endTime || data.endTime < data.startTime) {
+                        data.endTime = data.startTime;
+                    }
+                }
+
+                $scope.onEndDateChange = function() {
+                    var data = $scope.newReference.userProperties;
+                    if (!data.startTime || data.startTime > data.endTime) {
+                        data.startTime = data.endTime;
+                    }
+                }
                 /* Upload the file */
                 $scope.addReferenceFile = function () {
-                    FileService.uploadFile("community", $scope.newReference).then(function (response) {
+
+                    var userProperties = Object.assign({}, $scope.newReference.userProperties);
+                    if ($scope.newReference.fileType === 'OTHER' && !userProperties.geometry) {
+                        userProperties.geometry = 'POINT(100 0)';
+                    }
+
+                    userProperties.startTime = userProperties.endTime || userProperties.startTime;
+                    userProperties.endTime = userProperties.endTime || userProperties.startTime;
+
+                    if (userProperties.startTime) {
+                        userProperties.startTime = moment(userProperties.startTime).format('YYYY-MM-DD[T00:00:00Z]');
+                        userProperties.endTime = moment(userProperties.endTime).format('YYYY-MM-DD[T23:59:59Z]');
+                    }
+
+                    FileService.uploadFile("community", {
+                        file: $scope.newReference.file,
+                        fileType: $scope.newReference.fileType,
+                        userProperties: userProperties
+                    }).then(function (response) {
                         /* Get updated list of reference data */
                         FileService.refreshFstepFiles("community");
                     });

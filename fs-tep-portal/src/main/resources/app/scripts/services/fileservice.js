@@ -141,11 +141,13 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             var deferred = $q.defer();
             var file = newReference.file;
             if (!file.$error) {
+
                 Upload.upload({
                     url: fstepProperties.URLv2 + '/fstepFiles/refData',
                     data: {
                         file: file,
-                        geometry: newReference.geometry
+                        fileType: newReference.fileType,
+                        userProperties: Upload.jsonBlob(newReference.userProperties)
                     }
                 }).then(function (resp) {
                     MessageService.addInfo('File uploaded', 'Success ' + resp.config.data.file.name + ' uploaded.');
