@@ -1,23 +1,5 @@
 package com.cgi.eoss.fstep.catalogue.files;
 
-import com.cgi.eoss.fstep.catalogue.CatalogueUri;
-import com.cgi.eoss.fstep.catalogue.resto.RestoService;
-import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
-import com.cgi.eoss.fstep.model.FstepFile;
-import com.cgi.eoss.fstep.model.User;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.hash.Hashing;
-import com.google.common.io.MoreFiles;
-import lombok.extern.log4j.Log4j2;
-import org.geojson.Feature;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.io.PathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -27,11 +9,35 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.geojson.Feature;
+import org.geojson.GeoJsonObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.PathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.cgi.eoss.fstep.catalogue.CatalogueUri;
+import com.cgi.eoss.fstep.catalogue.resto.RestoService;
+import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
+import com.cgi.eoss.fstep.catalogue.util.GeometryException;
+import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.UploadableFileType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.hash.Hashing;
+import com.google.common.io.MoreFiles;
+
+import lombok.extern.log4j.Log4j2;
+
 @Log4j2
 @Component
 public class FilesystemReferenceDataService implements ReferenceDataService {
 
-    private final Path referenceDataBasedir;
+    private static final int GEOMETRY_BOUNDING_BOX_THRESHOLD = 10000;
+	private final Path referenceDataBasedir;
     private final RestoService resto;
     private final ObjectMapper jsonMapper;
 
@@ -43,7 +49,7 @@ public class FilesystemReferenceDataService implements ReferenceDataService {
     }
 
     @Override
-    public FstepFile ingest(User owner, String filename, String geometry, Map<String, Object> userProperties, MultipartFile multipartFile) throws IOException {
+    public FstepFile ingest(User owner, String filename, UploadableFileType filetype, Map<String, Object> userProperties, MultipartFile multipartFile) throws IOException {
         Path dest = referenceDataBasedir.resolve(String.valueOf(owner.getId())).resolve(filename);
         LOG.info("Saving new reference data to: {}", dest);
 
@@ -68,14 +74,58 @@ public class FilesystemReferenceDataService implements ReferenceDataService {
         properties.put("fstepUrl", uri);
         // TODO Get the proper MIME type
         properties.put("resourceMimeType", "application/unknown");
-        properties.put("resourceSize", Files.size(dest));
+        long filesize = Files.size(dest);
+		properties.put("resourceSize", filesize);
         properties.put("resourceChecksum", "sha256=" + MoreFiles.asByteSource(dest).hash(Hashing.sha256()));
+        
+        String startTime = (String) userProperties.remove("startTime");
+        String endTime = (String) userProperties.remove("endTime");
+       
+        if (startTime != null) {
+        	properties.put("startDate", startTime.toString());
+        }
+        if (endTime != null) {
+        	properties.put("completionDate", endTime.toString());
+        }
+        
+        String description = (String) userProperties.remove("description");
+        if (description != null) {
+        	properties.put("description", description.toString());
+        }
+        
+        GeoJsonObject geometry = null;
+        switch (filetype) {
+    	case GEOTIFF: 
+    		   geometry = GeoUtil.extractBoundingBox(dest); break;
+    	case SHAPEFILE:{
+    		//Try to get shapefile as multipolygon, if not possible resort to bounding box
+    					try {
+    						geometry = GeoUtil.shapeFileToGeojson(dest, GEOMETRY_BOUNDING_BOX_THRESHOLD);
+    						break;
+    					}
+    					catch(GeometryException e) {
+    						geometry = GeoUtil.extractBoundingBox(dest);
+    						break;
+    					}
+    			}
+    	case OTHER: {
+    			String userWktGeometry = (String) userProperties.remove("geometry");
+    			if (userWktGeometry != null) {
+    				geometry =  GeoUtil.getGeoJsonGeometry(userWktGeometry);
+    			}
+    	}
+        }
+
+        if (geometry == null) {
+        	geometry = GeoUtil.defaultGeometry();
+        }
+        
         // TODO Validate extra properties?
         properties.put("extraParams", jsonMapper.writeValueAsString(userProperties));
 
         Feature feature = new Feature();
         feature.setId(owner.getName() + "_" + filename);
-        feature.setGeometry(GeoUtil.getGeoJsonGeometry(geometry));
+        feature.setGeometry(geometry);        
         feature.setProperties(properties);
 
         UUID restoId;
@@ -92,10 +142,13 @@ public class FilesystemReferenceDataService implements ReferenceDataService {
         fstepFile.setOwner(owner);
         fstepFile.setType(FstepFile.Type.REFERENCE_DATA);
         fstepFile.setFilename(referenceDataBasedir.relativize(dest).toString());
+        fstepFile.setFilesize(filesize);
         return fstepFile;
     }
 
-    @Override
+    
+
+	@Override
     public Resource resolve(FstepFile file) {
         Path path = referenceDataBasedir.resolve(file.getFilename());
         return new PathResource(path);

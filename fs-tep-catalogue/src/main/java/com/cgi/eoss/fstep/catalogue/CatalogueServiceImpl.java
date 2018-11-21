@@ -80,7 +80,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
 
     @Override
     public FstepFile ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException {
-        FstepFile fstepFile = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getGeometry(), referenceData.getProperties(), file);
+        FstepFile fstepFile = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getFiletype(), referenceData.getUserProperties(), file);
         fstepFile.setDataSource(dataSourceDataService.getForRefData(fstepFile));
         return fstepFileDataService.save(fstepFile);
     }

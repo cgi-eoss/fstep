@@ -6,6 +6,7 @@ import org.geojson.Polygon;
 import org.junit.Before;
 import org.junit.Test;
 
+
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,17 +21,18 @@ public class GeoUtilTest {
     private Path shapefileDurango;
     private Path shapefileChiapas;
     private Path geotiffDurango;
-
+	
     @Before
     public void setUp() throws URISyntaxException {
         shapefileDurango = Paths.get(getClass().getResource("/DurangoRef/FS-TEPsampleDurangoLandCoverRefPolygons.shp").toURI());
         shapefileChiapas = Paths.get(getClass().getResource("/FS-TEPchiapasLandCover/FS-TEPchiapasLandCover.shp").toURI());
         geotiffDurango = Paths.get(getClass().getResource("/subset_0_of_S2A_OPER_MTD_SAFL1C_PDMC_20160521T232007_R055_V20160521T174723_20160521T174723_resampled_RGB.tif").toURI());
     }
-
+    
     @Test
     public void testWktToGeojsonPolygon() throws Exception {
-        Polygon polygon = GeoUtil.wktToGeojsonPolygon("POLYGON ((-15.029296875 57.947513433650634, 10.283203125 57.947513433650634, 10.283203125 40.12513173115235, -15.029296875 40.12513173115235, -15.029296875 57.947513433650634))");
+        //Polygon polygon = GeoUtil.wktToGeojsonPolygon("POLYGON ((-15.029296875 57.947513433650634, 10.283203125 57.947513433650634, 10.283203125 40.12513173115235, -15.029296875 40.12513173115235, -15.029296875 57.947513433650634))");
+    	Polygon polygon = (Polygon) GeoUtil.wktToGeojson("POLYGON ((-15.029296875 57.947513433650634, 10.283203125 57.947513433650634, 10.283203125 40.12513173115235, -15.029296875 40.12513173115235, -15.029296875 57.947513433650634))");
         Polygon expected = new Polygon(
                 new LngLatAlt(-15.029296875, 57.947513433650634),
                 new LngLatAlt(10.283203125, 57.947513433650634),
@@ -65,11 +67,11 @@ public class GeoUtilTest {
 
     @Test
     public void testWktToGeojsonPoint() throws Exception {
-        Point point = GeoUtil.wktToGeojsonPoint("POINT(0 0)");
+        Point point = (Point) GeoUtil.wktToGeojson("POINT(0 0)");
         Point expected = new Point(new LngLatAlt(0, 0));
 
         assertThat(point, is(expected));
-        assertThat(GeoUtil.defaultPoint(), is(expected));
+        assertThat(GeoUtil.defaultGeometry(), is(expected));
     }
 
     @Test

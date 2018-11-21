@@ -187,7 +187,7 @@ public class FstepFilesApiIT {
         MockMultipartFile uploadFile = new MockMultipartFile("file", "testFile1", "text/plain", fileResource.getInputStream());
 
         when(catalogueService.ingestReferenceData(any(), any())).thenReturn(testFile1);
-        mockMvc.perform(fileUpload("/api/fstepFiles/refData").file(uploadFile).header("REMOTE_USER", fstepUser.getName()).param("geometry", "POINT(0 0)"))
+        mockMvc.perform(fileUpload("/api/fstepFiles/refData").file(uploadFile).header("REMOTE_USER", fstepUser.getName()).param("fileType", "OTHER"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$._links.self.href").value(endsWith("/fstepFiles/" + testFile1.getId())))
                 .andExpect(jsonPath("$._links.download.href").value(endsWith("/fstepFiles/" + testFile1.getId() + "/dl")));

@@ -114,7 +114,7 @@ public class FilesystemOutputProductService implements OutputProductService {
 
         Feature feature = new Feature();
         feature.setId(jobId + "_" + relativePath.toString().replaceAll(File.pathSeparator, "_"));
-        feature.setGeometry(Strings.isNullOrEmpty(geometry) ? GeoUtil.defaultPoint() : GeoUtil.getGeoJsonGeometry(geometry));
+        feature.setGeometry(Strings.isNullOrEmpty(geometry) ? GeoUtil.defaultGeometry() : GeoUtil.getGeoJsonGeometry(geometry));
         feature.setProperties(properties);
 
         UUID restoId;

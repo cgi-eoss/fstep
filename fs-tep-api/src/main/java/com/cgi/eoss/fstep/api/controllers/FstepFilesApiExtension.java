@@ -7,6 +7,7 @@ import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
+import com.cgi.eoss.fstep.model.internal.UploadableFileType;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +38,9 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -63,7 +68,7 @@ public class FstepFilesApiExtension {
 
     @PostMapping("/refData")
     @ResponseBody
-    public ResponseEntity saveRefData(@RequestParam("geometry") String geometry, @RequestParam("file") MultipartFile file) throws Exception {
+    public ResponseEntity saveRefData(@RequestPart(required=false) Map<String, Object> userProperties,@RequestParam UploadableFileType fileType, @RequestPart(name = "file", required = true) MultipartFile file) throws Exception {
         User owner = fstepSecurityService.getCurrentUser();
         String filename = file.getOriginalFilename();
 
@@ -81,11 +86,11 @@ public class FstepFilesApiExtension {
         }
 
         try {
-            ReferenceDataMetadata metadata = ReferenceDataMetadata.builder()
+        	ReferenceDataMetadata metadata = ReferenceDataMetadata.builder()
                     .owner(owner)
                     .filename(filename)
-                    .geometry(geometry)
-                    .properties(ImmutableMap.of()) // TODO Collect user-driven metadata properties
+                    .filetype(fileType)
+                    .userProperties(userProperties == null? Collections.emptyMap(): userProperties) 
                     .build();
 
             FstepFile fstepFile = catalogueService.ingestReferenceData(metadata, file);
