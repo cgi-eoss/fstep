@@ -42,6 +42,7 @@ allprojects {
             mavenBom 'org.springframework.cloud:spring-cloud-dependencies:Dalston.SR2'
             mavenBom 'org.springframework.data:spring-data-releasetrain:Ingalls-SR6'
             mavenBom 'org.springframework.security:spring-security-bom:4.2.3.RELEASE'
+    	    mavenBom 'com.amazonaws:aws-java-sdk-bom:1.11.106'
         }
 
         dependencies {

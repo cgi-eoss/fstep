@@ -274,14 +274,19 @@ public class CachingSymlinkDownloaderFacade implements DownloaderFacade {
             return resolveCacheSymlink(cacheDir).orElse(cacheDir);
         }
 
-        private Path doDownload(Path targetDir, URI uri) {
-            List<Downloader> availableDownloaders = ImmutableList.sortedCopyOf(new DownloaderUriComparator(uri), getValidDownloaders(uri));
+        private Path doDownload(Path targetDir, URI uri) throws IOException {
+            List<Downloader> availableDownloaders = ImmutableList.sortedCopyOf(new DescendingPriorityUriComparator(uri), getValidDownloaders(uri));
             for (Downloader downloader : availableDownloaders) {
                 try {
                     LOG.debug("Attempting download with {} for uri: {}", downloader, uri);
                     return downloader.download(targetDir, uri);
                 } catch (Exception e) {
                     LOG.error("Failed to download with {} uri: {}", downloader, uri, e);
+                    //Clean up the folder for next downloader to try
+                    MoreFiles.deleteDirectoryContents(targetDir);
+                    //Rewrite the URI 
+                    Path urlFile = targetDir.resolve(URI_FILENAME);
+                    Files.write(urlFile, ImmutableList.of(uri.toString()), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE_NEW);
                 }
             }
             throw new ServiceIoException("No downloader was able to process the URI: " + uri);

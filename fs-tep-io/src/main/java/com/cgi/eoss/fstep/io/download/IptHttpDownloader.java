@@ -1,5 +1,22 @@
 package com.cgi.eoss.fstep.io.download;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.rpc.Credentials;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
@@ -9,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.jayway.jsonpath.JsonPath;
+
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import okhttp3.HttpUrl;
@@ -19,22 +37,6 @@ import okhttp3.Response;
 import okio.BufferedSink;
 import okio.BufferedSource;
 import okio.Okio;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * <p>Downloader for accessing data from <a href="https://finder.eocloud.eu">EO Cloud</a>. Uses IPT's token
@@ -80,6 +82,12 @@ public class IptHttpDownloader implements Downloader {
         return ImmutableSet.of("sentinel1", "sentinel2", "sentinel3", "landsat5", "landsat7", "landsat8", "envisat");
     }
 
+    
+    @Override
+    public int getPriority(URI uri) {
+    	return properties.getPriority();
+    }
+    
     @Override
     public Path download(Path targetDir, URI uri) throws IOException {
     	int count = 0;
@@ -236,6 +244,8 @@ public class IptHttpDownloader implements Downloader {
         private String authDomain;
         @Value("${fstep.worker.downloader.ipt.retries:3}")
         private int retries;
+        @Value("${fstep.worker.downloader.ipt.priority:0}")
+        private int priority;
     }
 
 }
