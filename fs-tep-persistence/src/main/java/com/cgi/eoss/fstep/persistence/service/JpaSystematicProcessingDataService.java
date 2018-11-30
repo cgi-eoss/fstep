@@ -30,6 +30,8 @@ public class JpaSystematicProcessingDataService extends AbstractJpaDataService<S
 
     @Override
     Predicate getUniquePredicate(SystematicProcessing entity) {
+    	if (entity.getId() == null)
+    		return null;
         return systematicProcessing.id.eq(entity.getId());
     }
 

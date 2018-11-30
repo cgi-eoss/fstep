@@ -9,6 +9,7 @@ import com.cgi.eoss.fstep.model.Group;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.Project;
+import com.cgi.eoss.fstep.model.SystematicProcessing;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.UserEndpoint;
 import com.cgi.eoss.fstep.model.UserMount;
@@ -196,6 +197,22 @@ public class AclsApi {
         return FstepAccessControlList.builder()
                 .entityId(jobConfig.getId())
                 .permissions(getFstepPermissions(new ObjectIdentityImpl(JobConfig.class, jobConfig.getId())))
+                .build();
+    }
+    
+    @PostMapping("/systematicProcessing/{systematicProcessingId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#systematicProcessing, 'administration')")
+    public void setSystematicProcessingAcl(@ModelAttribute("systematicProcessingId") SystematicProcessing systematicProcessing, @RequestBody FstepAccessControlList acl) {
+        Preconditions.checkArgument(systematicProcessing.getId().equals(acl.getEntityId()), "ACL subject entity ID mismatch: URL %s vs BODY %s", systematicProcessing.getId(), acl.getEntityId());
+        setAcl(new ObjectIdentityImpl(SystematicProcessing.class, systematicProcessing.getId()), systematicProcessing.getOwner(), acl.getPermissions());
+    }
+
+    @GetMapping("/systematicProcessing/{systematicProcessingId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#systematicProcessing, 'administration')")
+    public FstepAccessControlList getSystematicProcessingAcls(@ModelAttribute("systematicProcessingId") SystematicProcessing systematicProcessing) {
+        return FstepAccessControlList.builder()
+                .entityId(systematicProcessing.getId())
+                .permissions(getFstepPermissions(new ObjectIdentityImpl(SystematicProcessing.class, systematicProcessing.getId())))
                 .build();
     }
 
