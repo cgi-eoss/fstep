@@ -9,7 +9,7 @@
 
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityCtrl', ['$scope', 'CommunityService', 'GroupService', 'UserService', 'ProjectService', 'CollectionService', 'BasketService', 'JobService', 'ProductService', 'FileService', 'MessageService', 'TabService', 'CommonService', '$injector', function ($scope, CommunityService, GroupService, UserService, ProjectService, CollectionService, BasketService, JobService, ProductService, FileService, MessageService, TabService, CommonService, $injector) {
+    fstepmodules.controller('CommunityCtrl', ['$scope', 'CommunityService', 'GroupService', 'UserService', 'ProjectService', 'CollectionService', 'BasketService', 'JobService', 'SystematicService', 'ProductService', 'FileService', 'MessageService', 'TabService', 'CommonService', '$injector', function ($scope, CommunityService, GroupService, UserService, ProjectService, CollectionService, BasketService, JobService, SystematicService, ProductService, FileService, MessageService, TabService, CommonService, $injector) {
 
         $scope.navInfo = TabService.navInfo.community;
         $scope.bottombarNavInfo = TabService.navInfo.bottombar;
@@ -19,6 +19,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.collectionParams = CollectionService.params.community;
         $scope.basketParams = BasketService.params.community;
         $scope.jobParams = JobService.params.community;
+        $scope.systematicParams = SystematicService.params.community;
         $scope.serviceParams = ProductService.params.community;
         $scope.fileParams = FileService.params.community;
 
@@ -111,7 +112,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         };
 
         $scope.hideContent = true;
-        var navbar, sidenav, groups, projects, collections, databaskets, jobs, services, servicetemplates, files;
+        var navbar, sidenav, groups, projects, collections, databaskets, jobs, systematicprocs, services, servicetemplates, files;
         $scope.finishLoading = function(component) {
             switch(component) {
                 case 'navbar':
@@ -135,6 +136,9 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 case 'jobs':
                     jobs = true;
                     break;
+                case 'systematicprocs':
+                    systematicprocs = true;
+                    break;
                 case 'services':
                     services = true;
                     break;
@@ -146,7 +150,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
                     break;
             }
 
-            if (navbar && sidenav && (groups || projects || collections || databaskets || jobs || services || servicetemplates || files)) {
+            if (navbar && sidenav && (groups || projects || collections || databaskets || jobs || systematicprocs || services || servicetemplates || files)) {
                 $scope.hideContent = false;
             }
         };

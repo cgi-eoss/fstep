@@ -994,6 +994,19 @@
   margin: 0;
   padding: 0.3rem 0;
 }
+#systematic-manage #systematic-overview h5 {
+  font-size: 0.7rem;
+  font-weight: bold;
+  line-height: 1rem;
+  margin: 0;
+  padding: 0.3rem 0;
+}
+#systematic-manage #systematic-overview p {
+  font-size: 0.7rem;
+  line-height: 1rem;
+  margin: 0;
+  padding: 0.3rem 0;
+}
 
 @media (min-width: 1600px) and (max-width: 2399px) {
   .container {
