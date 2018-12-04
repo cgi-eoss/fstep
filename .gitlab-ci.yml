@@ -31,30 +31,38 @@ build:
     paths:
       - build
       - .gradle
+  only:
+    - environment/hetzner
+    - master
   artifacts:
     expire_in: 1 day
     paths:
       - ./distribution/target/repo
       - ./distribution/target/yumrepo
-test:
-  stage: test
-  script: ./gradlew check
-  cache:
-    key: ${CI_COMMIT_REF_SLUG}"
-    paths:
-      - build
-      - .gradle
+
 
 sonarqube_master_job:
   stage: test
   only:
     - master
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      - build
+      - .gradle
+    policy: pull  
   script:
     - ./gradlew sonarqube -Dsonar.host.url=$SONAR_URL -Dsonar.login=$SONAR_LOGIN
 
     
 deployRpmsToHetzner:
   stage: deploy
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      - build
+      - .gradle
+    policy: pull  
   only:
     - environment/hetzner
   before_script:
