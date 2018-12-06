@@ -1,10 +1,13 @@
 package com.cgi.eoss.fstep.api.controllers;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
+
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.QJob;
@@ -18,6 +21,7 @@ import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberPath;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -132,5 +136,50 @@ public class JobsApiImpl extends BaseRepositoryApiImpl<Job> implements JobsApiCu
 
         return builder.getValue();
     }
+
+	@Override
+	public Page<Job> parametricFind(String filter, Collection<Status> statuses, Long parentId, User owner,
+			User notOwner, String inputIdentifier, LocalDateTime startDateTime, LocalDateTime endDateTime,
+			Pageable pageable){
+		Predicate p = buildPredicate(filter, statuses, parentId, owner, notOwner, inputIdentifier, startDateTime, endDateTime);
+		return getFilteredResults(p, pageable);
+	}
+
+	private Predicate buildPredicate(String filter, Collection<Status> statuses, Long parentId,
+			User owner, User notOwner, String inputIdentifier, LocalDateTime startDateTime,
+			LocalDateTime endDateTime) {
+		BooleanBuilder builder = new BooleanBuilder(Expressions.asBoolean(true).isTrue());
+		if (!Strings.isNullOrEmpty(filter)) {
+			builder.and(QJob.job.id.stringValue().toLowerCase().contains(filter.toLowerCase()));
+		}
+		if (statuses != null && !statuses.isEmpty()) {
+			builder.and(QJob.job.status.in(statuses));
+		}
+		if (parentId != null) {
+			builder.and(isChildOf(parentId));
+		}
+		else {
+			builder.and(QJob.job.parentJob.isNull());
+		}
+		if (owner != null) {
+			builder.and(getOwnerPath().eq(owner));
+		}
+		if (notOwner !=null) {
+			builder.and(getOwnerPath().ne(notOwner));
+		}
+		if (startDateTime != null && endDateTime != null) {
+			builder.and(QJob.job.startTime.before(endDateTime)).and(QJob.job.endTime.after(startDateTime));
+		}
+		else if (startDateTime != null) {
+			builder.and(QJob.job. startTime.before(startDateTime)).and(QJob.job.endTime.after(startDateTime));
+		}
+		else if (endDateTime != null){
+			builder.and(QJob.job.startTime.before(endDateTime)).and(QJob.job.endTime.after(endDateTime));
+		}
+		if (!Strings.isNullOrEmpty(inputIdentifier)) {
+			builder.and(Expressions.booleanTemplate("{0} like concat('%', {1}, '%')", QJob.job.config.inputs, inputIdentifier));
+		}
+		return builder.getValue();
+	}
 
 }

@@ -1,6 +1,8 @@
 package com.cgi.eoss.fstep.api.controllers;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -8,6 +10,8 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.data.rest.core.annotation.RestResource;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.security.access.method.P;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -94,5 +98,9 @@ public interface JobsApi extends BaseRepositoryApi<Job>, JobsApiCustom, PagingAn
     @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob.id=:parentId and t.status in (:status) and not t.owner=:owner")
     Page<Job> findByFilterAndParentAndNotOwner(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("parentId") Long parentId, @Param("owner") User user, Pageable pageable);
 
+    @Override
+    @RestResource(path="parametricFind", rel = "parametricFind")
+    @Query("select t from Job t where (t.id like %:filter% or t.config.label like %:filter% or t.config.service.name like %:filter%) and t.parentJob.id=:parentId and t.status in (:status) and not t.owner=:notOwner and t.owner=:owner and t.startTime < :endDateTime and t.endTime > :startDateTime and t.config.label like %:inputIdentifier%")
+    Page<Job> parametricFind(@Param("filter") String filter, @Param("status") Collection<Status> statuses, @Param("parentId") Long parentId, @Param("owner") User user,@Param("notOwner") User notOwner, @Param("inputIdentifier") String inputIdentifier, @Param("startDateTime") @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime startDateTime, @Param("endDateTime") @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime endDateTime, Pageable pageable);
 
 }
