@@ -15,6 +15,7 @@ define([
     './controllers/common/directives/imageLoader',
     './controllers/common/directives/aoiField',
     './controllers/common/directives/aoiList',
+    './controllers/common/directives/dateRangeField',
     './controllers/common/directives/dynamicForm',
 
     './controllers/community/community',

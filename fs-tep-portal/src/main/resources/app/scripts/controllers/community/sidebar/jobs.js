@@ -26,19 +26,30 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             $scope.jobParams.jobs = data;
         });
 
-        /* Stop Polling */
-        $scope.$on("$destroy", function() {
-            JobService.stopPolling();
-        });
-
         /* Paging */
         $scope.getPage = function(url){
             JobService.getJobsPage('community', url);
         };
 
+        var pendingRefresh = null;
+
         $scope.filter = function(){
-            JobService.getJobsByFilter('community');
+
+            if (pendingRefresh) {
+                clearTimeout(pendingRefresh);
+            }
+            pendingRefresh = setTimeout(function() {
+                JobService.getJobsByFilter('community');
+            }, 500);
         };
+
+        /* Stop Polling */
+        $scope.$on("$destroy", function() {
+            if (pendingRefresh) {
+                clearTimeout(pendingRefresh);
+            }
+            JobService.stopPolling();
+        });
 
         /* Select a Job */
         $scope.selectJob = function (item) {
@@ -48,6 +59,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         $scope.setParentJobFilter = function(job) {
             $scope.jobParams.parentId = job ? job.id : null;
+            $scope.jobParams.searchText = '';
+            $scope.jobParams.dateFilter.enabled = false;
+            $scope.jobParams.inputFilename = '';
             JobService.getJobsByFilter('community');
         }
 

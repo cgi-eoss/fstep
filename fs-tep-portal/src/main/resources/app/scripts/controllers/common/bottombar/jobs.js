@@ -71,6 +71,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
             $scope.setParentJobFilter = function(job) {
                 $scope.jobParams.parentId = job ? job.id : null;
+                $scope.jobParams.searchText = '';
                 JobService.getJobsByFilter('explorer');
             }
 

@@ -7,7 +7,7 @@
  */
 'use strict';
 
-define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJsonHalAdapter) {
+define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, TraversonJsonHalAdapter, moment) {
 
     fstepmodules.service('JobService', [ 'fstepProperties', '$q', '$timeout', '$rootScope', 'MessageService', 'CommonService', 'UserService', 'CommunityService', 'traverson', function (fstepProperties, $q, $timeout, $rootScope, MessageService, CommonService, UserService, CommunityService, traverson) {
 
@@ -52,6 +52,11 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 displayFilters: false, //whether filter section is opened or not
                 selectedStatuses: [],
                 selectedOwnershipFilter: this.jobOwnershipFilters.MY_JOBS,
+                dateFilter: {
+                    enabled: false,
+                    start: null,
+                    end: null
+                },
                 parentId: null,
                 jobCategoryInfo: {} //info about job categories, which ones are opened, etc.
             },
@@ -63,10 +68,16 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 selectedJob: undefined,
                 searchText: '',
                 displayFilters: false,
+                selectedStatuses: [],
                 sharedGroups: undefined,
                 sharedGroupsSearchText: '',
                 sharedGroupsDisplayFilters: false,
-                selectedOwnershipFilter: self.jobOwnershipFilters.MY_JOBS
+                selectedOwnershipFilter: self.jobOwnershipFilters.MY_JOBS,
+                dateFilter: {
+                    enabled: false,
+                    start: null,
+                    end: null
+                }
             }
         };
         /** END OF PRESERVE USER SELECTIONS **/
@@ -151,42 +162,43 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         };
 
         function filterJobs(page) {
-            if (_this.params[page]) {
 
-                var searchUrlKey =  _this.params[page].parentId ? 'subjobsSearchUrl' : 'searchUrl';
+            let params = _this.params[page];
 
-                /* Set base URL */
-                _this.params[page].pollingUrl = rootUri + '/jobs/' + _this.params[page].selectedOwnershipFilter[searchUrlKey];
+            if (params) {
 
-                /* Get sort parameter */
-                _this.params[page].pollingUrl += '?sort=id,DESC';
+                let pollingUrl = rootUri + '/jobs/search/parametricFind?sort=id,DESC';
 
-                /* Get owner parameter */
-                if(_this.params[page].selectedOwnershipFilter !== _this.jobOwnershipFilters.ALL_JOBS) {
-                    _this.params[page].pollingUrl += '&owner=' + UserService.params.activeUser._links.self.href;
+                if (params.parentId) {
+                    pollingUrl += '&parentId=' + params.parentId;
+                }
+                if (params.selectedOwnershipFilter === _this.jobOwnershipFilters.MY_JOBS) {
+                    pollingUrl += '&owner=' + UserService.params.activeUser._links.self.href;
+                } else if (params.selectedOwnershipFilter === _this.jobOwnershipFilters.SHARED_JOBS) {
+                    pollingUrl += '&notOwner=' + UserService.params.activeUser._links.self.href;
                 }
 
-                if (_this.params[page].parentId) {
-                    _this.params[page].pollingUrl += '&parentId=' + _this.params[page].parentId;
-                }
-
-                /* Get status parameter */
-                var statusStr = '';
-                if(_this.params[page].selectedStatuses) {
-                    statusStr = _this.params[page].selectedStatuses.join(',');
-                }
+                var statusStr = params.selectedStatuses.join(',');
                 if (statusStr) {
-                    _this.params[page].pollingUrl += '&status=' + statusStr;
-                } else {
-                    _this.params[page].pollingUrl += '&status=' + JOB_STATUSES_STRING;
+                    pollingUrl += '&status=' + statusStr;
+                }
+                if (params.searchText) {
+                    pollingUrl += '&filter=' + params.searchText;
+                }
+                if (params.dateFilter.enabled) {
+                    if (params.dateFilter.start) {
+                        pollingUrl += '&startDateTime=' + moment(params.dateFilter.start).subtract(params.dateFilter.start.getTimezoneOffset()).format('YYYY-MM-DD[T00:00:00Z]');
+                    }
+                    if (params.dateFilter.end) {
+                        pollingUrl += '&endDateTime=' + moment(params.dateFilter.end).subtract(params.dateFilter.end.getTimezoneOffset()).format('YYYY-MM-DD[T23:59:59.999Z]');
+                    }
+                }
+                if (params.inputFilename) {
+                    pollingUrl += '&inputIdentifier=' + params.inputFilename;
                 }
 
-                /* Get text search parameter */
-                if(_this.params[page].searchText) {
-                    _this.params[page].pollingUrl += '&filter=' +  _this.params[page].searchText;
-                } else {
-                    _this.params[page].pollingUrl += "&filter=";
-                }
+                params.pollingUrl = pollingUrl;
+
             }
         }
 

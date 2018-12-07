@@ -10,13 +10,13 @@
 
     <section class="filter-list">
             <ul class="list">
-    
-    
+
+
                 <md-input-container>
                     <label>Filter</label>
                     <input ng-model="jobParams.searchText" type="text" placeholder="Search" ng-keyup="filter()" aria-label="Jobs Search Filter">
                 </md-input-container>
-    
+
                 <md-input-container>
                     <label>Job Status</label>
                     <md-select ng-model="jobParams.selectedStatuses" ng-change="filter()" multiple placeholder="Job Status">
@@ -29,7 +29,7 @@
                         </md-optgroup>
                     </md-select>
                 </md-input-container>
-    
+
                 <md-input-container class="md-input-has-value">
                     <label>Ownership</label>
                     <md-radio-group ng-model="jobParams.selectedOwnershipFilter" ng-change="filter()">
@@ -38,7 +38,20 @@
                         </md-radio-button>
                     </md-radio-group>
                 </md-input-container>
-    
+
+                <md-input-container class="md-block" flex-gt-sm>
+                    <label>Input filename</label>
+                    <input ng-model="jobParams.inputFilename" type="text" placeholder="Input name" ng-keyup="filter()">
+                </md-input-container>
+
+                <div>
+                    <md-input-container style="margin-top: 5px;">
+                        <md-checkbox ng-model="jobParams.dateFilter.enabled" ng-change="filter()">Date range</md-checkbox>
+                    </md-input-container>
+                    <date-range-field ng-if="jobParams.dateFilter.enabled" value="jobParams.dateFilter" on-change="filter()"></date-range-field>
+                </div>
+
+
                 <md-chips readonly="true" md-removable="true" ng-if="jobParams.parentId">
                     <md-chip>
                         <div class="md-chip-content">Parent job ID: {{jobParams.parentId}}</div>
