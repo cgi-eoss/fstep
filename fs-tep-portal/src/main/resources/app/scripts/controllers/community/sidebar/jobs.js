@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityJobsCtrl', ['JobService', '$scope', '$mdDialog', function (JobService, $scope, $mdDialog) {
+    fstepmodules.controller('CommunityJobsCtrl', ['JobService', 'CommonService', '$scope', '$rootScope', '$location', '$mdDialog', function (JobService, CommonService, $scope, $rootScope, $location, $mdDialog) {
 
         /* Get stored Jobs details */
         $scope.jobParams = JobService.params.community;
@@ -65,11 +65,74 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             JobService.getJobsByFilter('community');
         }
 
+        $scope.cloneJob = function(job){
+            JobService.getJobConfig(job).then(function(config){
+                //rerun single batch processing subjob
+                if (config._embedded.service.type == "PARALLEL_PROCESSOR" && !config.inputs.parallelInputs) {
+                    if (config.inputs.input) {
+                        config.inputs.parallelInputs = config.inputs.input;
+                        delete config.inputs.input;
+                    }
+                }
+                $location.path('/explorer');
+                setTimeout(function() {
+                    $rootScope.$broadcast('update.selectedService', config._embedded.service, config.inputs, config.label, config._embedded.parent, config.systematicParameter);
+                });
+            });
+        };
+
+        $scope.retryJob = function(job, $event) {
+
+            JobService.estimateRerunCost(job).then(function(estimation){
+
+                var currency = ( estimation.estimatedCost === 1 ? 'coin' : 'coins' );
+                CommonService.confirm($event, 'Failed jobs rerun will cost ' + estimation.estimatedCost + ' ' + currency + '.' +
+                        '\nAre you sure you want to continue?').then(function (confirmed) {
+                    if (confirmed === false) {
+                        return;
+                    }
+
+                    JobService.retryJob(job).then(function(result){
+                        JobService.refreshJobs('community');
+                    });
+                });
+            },
+            function (error) {
+                if (error.status === 402) {
+                    CommonService.infoBulletin($event, 'The cost of this job exceeds your balance. This job cannot be run.' +
+                                            '\nYour balance: ' + error.currentWalletBalance + '\nCost estimation: ' + error.estimatedCost);
+                } else {
+                    CommonService.infoBulletin($event, 'Error retrieving rerun cost estimation. Unable to continue.');
+                }
+            });
+
+        }
+
+        $scope.cancelJob = function(job){
+            JobService.cancelJob(job).then(function(result){
+                JobService.refreshJobs('community');
+            });
+        };
+
+
+        $scope.terminateJob = function(job){
+            JobService.terminateJob(job).then(function(result){
+                JobService.refreshJobs('community');
+            });
+        };
 
         /* Filters */
         $scope.toggleFilters = function () {
             $scope.jobParams.displayFilters = !$scope.jobParams.displayFilters;
         };
+
+        $scope.getColorForStatus = function(status){
+            let style = CommonService.getColor(status);
+            if (style) {
+                return style.match(/color:\s*[^$;]*/)[0];
+            }
+        };
+
 
     }]);
 });

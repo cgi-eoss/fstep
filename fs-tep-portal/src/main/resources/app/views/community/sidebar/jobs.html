@@ -38,8 +38,7 @@
                         </md-radio-button>
                     </md-radio-group>
                 </md-input-container>
-
-                <md-input-container class="md-block" flex-gt-sm>
+				<md-input-container class="md-block" flex-gt-sm>
                     <label>Input filename</label>
                     <input ng-model="jobParams.inputFilename" type="text" placeholder="Input name" ng-keyup="filter()">
                 </md-input-container>
@@ -50,8 +49,6 @@
                     </md-input-container>
                     <date-range-field ng-if="jobParams.dateFilter.enabled" value="jobParams.dateFilter" on-change="filter()"></date-range-field>
                 </div>
-
-
                 <md-chips readonly="true" md-removable="true" ng-if="jobParams.parentId">
                     <md-chip>
                         <div class="md-chip-content">Parent job ID: {{jobParams.parentId}}</div>
@@ -75,9 +72,18 @@
 
             <div class="md-list-item-text" layout="column">
                 <h3 class="selectable" ng-bind="'Job: ' + job.id" />
-                <span><b>ID:</b> <span ng-bind="job.extId" /></span>
-                <span><b>Stage:</b> <span ng-bind="job.stage" /></span>
-                <span><b>Status:</b> <span ng-bind="job.status" /></span>
+                <span ng-if="job.startTime"><b>Start:</b> <span ng-bind="job.startTime" /></span>
+                <span ng-if="job.stage"><b>Stage:</b> <span ng-bind="job.stage" /></span>
+                <span>
+                    <b>Status:</b>
+                    <span ng-bind="job.status" />
+                    <span style="{{getColorForStatus(job.status)}};display:inline-block;margin-top:-3px;margin-left:2px;vertical-align:middle;">
+                        <i class="material-icons" ng-if="job.status === 'CREATED'">pause</i>
+                        <i class="material-icons" ng-if="job.status === 'COMPLETED'">done</i>
+                        <i class="material-icons" ng-if="job.status === 'ERROR'">error</i>
+                        <i class="material-icons" ng-if="job.status === 'RUNNING'">hourglass_empty</i>
+                    </span>
+                </span>
             </div>
 
             <md-button class="toolbar-button md-secondary"
@@ -91,6 +97,8 @@
                 <i class="material-icons">subdirectory_arrow_right</i>
             </md-button>
 
+
+
             <md-button class="toolbar-button md-secondary"
                        aria-label="Job Info"
                        uib-popover-template="'views/common/templates/jobinfo.tmpl.html'"
@@ -98,6 +106,52 @@
                        popover-trigger="'mouseenter'"
                        popover-append-to-body="true">
                 <i class="material-icons">info_outline</i>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
+                        ng-click="cloneJob(job)"
+                        aria-label="clone job"
+                        uib-tooltip="Clone job"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">filter_none</i>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
+                        ng-if="job.status === 'ERROR'"
+                        ng-click="retryJob(job)"
+                        aria-label="retry job"
+                        uib-tooltip="Retry job"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">replay</i>
+            </md-button>
+
+
+            <md-button class="toolbar-button md-secondary"
+                        ng-if="job._links.terminate && !job.systematicParameter"
+                        has-permission="ADMIN" permission-source="{{job}}"
+                        ng-click="terminateJob(job)"
+                        aria-label="Terminate"
+                        uib-tooltip="Terminate this job"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">stop</i>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
+                        ng-if="job._links.cancel && !job.systematicParameter"
+                        has-permission="ADMIN" permission-source="{{job}}"
+                        ng-click="cancelJob(job)"
+                        aria-label="Cancel"
+                        uib-tooltip="Cancel this job"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">close</i>
             </md-button>
 
         </md-list-item>

@@ -44,30 +44,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 JobService.getJobsByFilter('explorer');
             };
 
-            $scope.repeatJob = function(job){
-                JobService.getJobConfig(job).then(function(config){
-                    //rerun single batch processing subjob
-                    if (config._embedded.service.type == "PARALLEL_PROCESSOR" && !config.inputs.parallelInputs) {
-                        if (config.inputs.input) {
-                            config.inputs.parallelInputs = config.inputs.input;
-                            delete config.inputs.input;
-                        }
-                    }
-                    $rootScope.$broadcast('update.selectedService', config._embedded.service, config.inputs, config.label, config._embedded.parent, config.systematicParameter);
-                });
-            };
 
-            $scope.cancelJob = function(job){
-                JobService.cancelJob(job).then(function(result){
-                    JobService.refreshJobs('explorer');
-                });
-            };
-
-            $scope.terminateJob = function(job){
-                JobService.terminateJob(job).then(function(result){
-                    JobService.refreshJobs('explorer');
-                });
-            };
 
             $scope.setParentJobFilter = function(job) {
                 $scope.jobParams.parentId = job ? job.id : null;

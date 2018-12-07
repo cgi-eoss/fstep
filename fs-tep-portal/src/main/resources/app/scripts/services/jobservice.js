@@ -475,6 +475,47 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             });
         };
 
+        this.estimateRerunCost = function(job){
+            return $q(function(resolve, reject) {
+                halAPI.from(rootUri + '/estimateCost/jobRelaunch/' + job.id)
+                .newRequest()
+                .getResource()
+                .result
+                .then(function (document) {
+                     resolve(document);
+                 }, function (error) {
+                    if (error.httpStatus === 402) {
+                        MessageService.addError('Balance exceeded', error);
+                    } else {
+                        MessageService.addError('Could not get Job cost estimation', error);
+                    }
+                    reject(JSON.parse(error.body));
+                 });
+            });
+        };
+
+
+
+        this.retryJob = function(job) {
+            var deferred = $q.defer();
+            // Launch the jobConfig
+            halAPI.from(job._links.self.href + '/relaunchFailed')
+                    .newRequest()
+                    .post()
+                    .result
+                    .then(
+             function (document) {
+                 MessageService.addInfo('Job ' + job.id + ' relaunched');
+                 deferred.resolve();
+             },
+             function(error){
+                 MessageService.addError('Could not relaunch the Job', error);
+                 deferred.reject();
+             });
+
+            return deferred.promise;
+        }
+
         this.terminateJob = function(job) {
             var deferred = $q.defer();
             // Launch the jobConfig
