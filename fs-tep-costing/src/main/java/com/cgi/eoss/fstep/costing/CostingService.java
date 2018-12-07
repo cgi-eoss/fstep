@@ -12,6 +12,8 @@ public interface CostingService {
 
     Integer estimateJobCost(JobConfig jobConfig);
     
+    Integer estimateJobRelaunchCost(Job job);
+    
     Integer estimateSingleRunJobCost(JobConfig jobConfig);
     
     Integer estimateDownloadCost(FstepFile download);

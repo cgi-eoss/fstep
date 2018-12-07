@@ -94,10 +94,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
-import com.google.common.collect.SetMultimap;
 import com.mysema.commons.lang.Pair;
 
-import io.grpc.stub.StreamObserver;
 import lombok.extern.log4j.Log4j2;
 
 @Component
@@ -242,6 +240,11 @@ public class FstepJobUpdatesManager {
         job.setStatus(Job.Status.ERROR);
         job.setEndTime(LocalDateTime.now());
         jobDataService.save(job);
+        if (job.getParentJob() != null) {
+        	Job parentJob = job.getParentJob();
+			parentJob .setStatus(Job.Status.ERROR);
+			jobDataService.save(parentJob);
+        }
     }
     
     private void ingestOutput(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
@@ -265,54 +268,33 @@ public class FstepJobUpdatesManager {
                     .forEach(f -> securityService.publish(FstepFile.class, f.getId()));
         }
         if (job.getParentJob() != null) {
+        	updateParentOutputs(job);
             Job parentJob = job.getParentJob();
             if (allChildJobCompleted(parentJob)) {
                 completeParentJob(parentJob);
             }
          }
-        else {
-            StreamObserver<FstepServiceResponse> responseObserver;
-            List<JobParam> outputs = outputFiles.entries().stream().map(e -> JobParam.newBuilder().setParamName(e.getKey()).addParamValue(e.getValue().getUri().toASCIIString()).build()).collect(toList());
-        }
      }
+    
+    private void updateParentOutputs(Job job) {
+		Job parentJob = job.getParentJob();
+		parentJob.getOutputs().putAll(job.getOutputs());
+		parentJob.getOutputFiles().addAll(ImmutableSet.copyOf(job.getOutputFiles()));
+        jobDataService.save(parentJob);
+		
+	}
 
     private void completeParentJob(Job parentJob) {
-        StreamObserver<FstepServiceResponse> responseObserver;
-        //Must collect all child jobs, save for parent and send a response.
-        Multimap<String, FstepFile> jobOutputFiles = collectSubJobOutputs(parentJob);
         // Wrap up the parent job
         parentJob.setStatus(Job.Status.COMPLETED);
         parentJob.setStage(JobStep.OUTPUT_LIST.getText());
         parentJob.setEndTime(LocalDateTime.now());
         parentJob.setGuiUrl(null);
-        parentJob.setGuiEndpoint(null); 
-        parentJob.setOutputs(jobOutputFiles.entries().stream().collect(toMultimap(
-              e -> e.getKey(),
-              e -> e.getValue().getUri().toString(),
-              MultimapBuilder.hashKeys().hashSetValues()::build)));
-        parentJob.setOutputFiles(ImmutableSet.copyOf(jobOutputFiles.values()));
         jobDataService.save(parentJob);
-        List<JobParam> outputs = jobOutputFiles.asMap().entrySet().stream()
-                .map(e -> JobParam.newBuilder().setParamName(e.getKey())
-                .addAllParamValue(
-                e.getValue().stream().map(f -> f.getUri().toASCIIString()).collect(toSet()))
-                .build())
-                .collect(toList());
-    }
-
-    private SetMultimap<String, FstepFile> collectSubJobOutputs(Job parentJob) {
-        SetMultimap<String, FstepFile> jobOutputsFiles = MultimapBuilder.hashKeys().hashSetValues().build();
-        for (Job subJob: parentJob.getSubJobs()) {
-          if (subJob.getStatus().equals(Status.COMPLETED)){  
-              subJob.getOutputs().forEach((k, v) -> subJob.getOutputFiles().stream().
-                  filter(x -> x.getUri().toString().equals(v)).findFirst().ifPresent(match -> jobOutputsFiles.put(k, match)));
-          }
-        }
-        return jobOutputsFiles;
     }
 
     private boolean allChildJobCompleted(Job parentJob) {
-        return !parentJob.getSubJobs().stream().anyMatch(j -> j.getStatus() != Job.Status.COMPLETED && j.getStatus() != Job.Status.ERROR);
+        return !parentJob.getSubJobs().stream().anyMatch(j -> j.getStatus() != Job.Status.COMPLETED);
     }
 
     private Multimap<String, String> listOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,

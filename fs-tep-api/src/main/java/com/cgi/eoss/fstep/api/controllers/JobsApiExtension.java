@@ -164,7 +164,7 @@ public class JobsApiExtension {
         
     }
     
-    @GetMapping("/{jobId}/relaunchFailed")
+    @PostMapping("/{jobId}/relaunchFailed")
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#job, 'write')")
     @ResponseBody
     public void relaunchFailedJob(@ModelAttribute("jobId") Job job) throws IOException {

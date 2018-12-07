@@ -5,8 +5,10 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.springframework.expression.ExpressionParser;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.cgi.eoss.fstep.model.CostingExpression;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
@@ -50,6 +52,23 @@ public class CostingServiceImpl implements CostingService {
         }
         else {
         		return singleJobCost;
+        }
+    }
+    
+    @Override
+    public Integer estimateJobRelaunchCost(Job job) {
+        if (job.isParent()) {
+        	return job.getSubJobs()
+        			.stream()
+        			.filter(j -> j.getStatus() == Job.Status.ERROR && j.getStage() != null && !j.getStage().equals("Step 1 of 3: Data-Fetch"))
+        			.mapToInt(j -> estimateSingleRunJobCost(j.getConfig()))
+        			.sum();
+        }
+        else {
+        	if( job.getStage() == null || job.getStage().equals("Step 1 of 3: Data-Fetch")) {
+        		return 0;
+        	}
+        	return estimateSingleRunJobCost(job.getConfig());
         }
     }
     

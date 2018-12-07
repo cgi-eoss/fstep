@@ -9,6 +9,7 @@ import com.google.common.collect.ListMultimap;
 import javax.servlet.http.HttpServletRequest;
 import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.search.api.SearchFacade;
 import com.cgi.eoss.fstep.search.api.SearchParameters;
@@ -61,6 +62,17 @@ public class EstimateCostApi {
     public ResponseEntity estimateJobConfigCost(@ModelAttribute("jobConfigId") JobConfig jobConfig) {
         int walletBalance = fstepSecurityService.getCurrentUser().getWallet().getBalance();
         int cost = costingService.estimateJobCost(jobConfig);
+
+        return ResponseEntity
+                .status(cost > walletBalance ? HttpStatus.PAYMENT_REQUIRED : HttpStatus.OK)
+                .body(CostEstimationResponse.builder().estimatedCost(cost).currentWalletBalance(walletBalance).build());
+    }
+    
+    @GetMapping("/jobRelaunch/{jobId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#job, 'read')")
+    public ResponseEntity estimateJobConfigCost(@ModelAttribute("jobId") Job job) {
+        int walletBalance = fstepSecurityService.getCurrentUser().getWallet().getBalance();
+        int cost = costingService.estimateJobRelaunchCost(job);
 
         return ResponseEntity
                 .status(cost > walletBalance ? HttpStatus.PAYMENT_REQUIRED : HttpStatus.OK)
