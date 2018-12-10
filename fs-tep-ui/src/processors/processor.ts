@@ -9,24 +9,30 @@ export class Processor {
     mapSource;
     domainConfig;
     legendConfig;
-    timeRange: {start: moment.Moment, end: moment.Moment, frequency: moment.Duration, list: Array<moment.Moment>}
+    timeRange?: {start: moment.Moment, end: moment.Moment, frequency: moment.Duration, list: Array<moment.Moment>}
 
     constructor(config) {
         this.id = config.id;
         this.name = config.name;
         this.description = config.description;
         this.thumb = config.thumb;
-        this.timeRange = {
-            start: moment(config.time_range.start),
-            end: moment(config.time_range.end),
-            frequency: config.time_range.frequency ? moment.duration(config.time_range.frequency) : null,
-            list: config.time_range.list ? config.time_range.list.map((ts)=>{
-                return moment(ts);
-            }) : null
+        if (config.time_range) {
+            this.timeRange = {
+                start: moment(config.time_range.start),
+                end: moment(config.time_range.end),
+                frequency: config.time_range.frequency ? moment.duration(config.time_range.frequency) : null,
+                list: config.time_range.list ? config.time_range.list.map((ts)=>{
+                    return moment(ts);
+                }) : null
+            }
         }
         this.domainConfig = config.domain;
         this.legendConfig = config.legend;
         this.mapSource = this.createMapSource(config.layer);
+    }
+
+    hasTimeDimension() {
+        return !!this.timeRange;
     }
 
     getNearestTime(dt) {

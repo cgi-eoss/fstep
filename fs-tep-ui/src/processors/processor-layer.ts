@@ -43,7 +43,7 @@ export class ProcessorLayer {
 
         timeService.getSelectedDate().subscribe((dt)=>{
             let ds = this.state.value.dataSource;
-            if (ds) {
+            if (ds && ds.hasTimeDimension()) {
                 ds.updateSourceTime(dt);
                 this.centerOnMap();
             }
@@ -73,7 +73,7 @@ export class ProcessorLayer {
             }
         }
 
-        if (source) {
+        if (source && source.hasTimeDimension()) {
             source.updateSourceTime(this.timeService.getCurrentDate());
             this.centerOnMap();
         }
@@ -251,7 +251,6 @@ export class ProcessorLayer {
             if (domains && domains.bbox) {
                 this.mapService.fitExtent([domains.bbox.minx, domains.bbox.miny, domains.bbox.maxx, domains.bbox.maxy])
             }
-            console.log(domains);
         });
     }
 

@@ -102,17 +102,28 @@
             "name": "User contrib",
             "thumb": "assets/data/previews/users.png",
             "description": "External products provided by the platform users",
-            "url": "/geoserver",
+            "url": "/geo-contrib",
             "products": [
                 {
-                    "id": "vito_fapar",
-                    "layer": "fs-prods:vito_fapar",
+                    "id": "alos-dem",
+                    "layer": "fs-tep:alos-dem",
+                    "thumb": "assets/data/previews/AW3D30_sample.png",
+                    "legend": {
+                        "height": 20
+                    }
+                },
+                {
+                    "id": "GFSAD-Cropmask",
+                    "layer": "fs-tep:GFSAD-Cropmask",
                     "domain": {
-                        "scale": 0.005 ,
+                        "scale": 1,
                         "offset": 0,
-                        "nodata": 255
+                        "special_values": {
+                            "0": "Water",
+                            "9": "No crop"
+                        }
                     },
-                    "thumb": "assets/data/previews/vito_fapar.jpg",
+                    "thumb": "assets/data/previews/GFSAD1KCM_v1.jpg",
                     "legend": {
                         "height": 20
                     }

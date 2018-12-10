@@ -34,7 +34,7 @@ export class ProcessorInfoComponent implements AfterViewInit, OnDestroy {
     ) {
         processorService.getTimeSeriesState().subscribe((value)=>{
             this.position = value.coordinates;
-            this.showTimeseriesButton = !value.enabled;
+            this.showTimeseriesButton = !value.enabled && this.processorService.getActiveProcessor().hasTimeDimension();
         });
         
 

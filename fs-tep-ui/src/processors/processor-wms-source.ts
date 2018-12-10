@@ -73,14 +73,17 @@ export class ProcessorWMSSource {
     }
 
     updateSourceTime(dt: Date) {
+
+        if (!this.timeRange) {
+            return;
+        }
+
         this.source.updateParams({
             TIME: this.getNearestWMSTime(dt)
         });
-        //this.source.setTileLoadFunction(this.source.getTileLoadFunction());
+        
         this.source.refresh();
-        //this.source.clear();
-        //this.source.tileCache.clear()
-        //this.source.setTileUrlFunction(this.source.getTileUrlFunction(), function () { return (new Date()).getTime(); });
+        
         if (this.rasterSource) {
             this.rasterSource.changed();
         }
@@ -88,6 +91,10 @@ export class ProcessorWMSSource {
 
     isTiled() {
         return this.rasterSource == null;
+    }
+
+    hasTimeDimension() {
+        return !!this.timeRange;
     }
 
     getLegendUrl() {

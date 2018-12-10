@@ -4,7 +4,7 @@
   "description": "FS-TEP client",
   "main": "index.js",
   "scripts": {
-    "start": "webpack-dev-server --config webpack.dev.js",
+    "start": "webpack-dev-server --config webpack.dev.js --env.baseUrl=/",
     "build": "webpack --config webpack.prod.js",
     "build-verbose": "webpack --config webpack.prod.js --display-error-details"
   },

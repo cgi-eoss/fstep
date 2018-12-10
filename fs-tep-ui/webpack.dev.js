@@ -36,11 +36,19 @@ const config = (env) => {
                     }
                 },
                 '/geoserver': {
-                    target: 'http://cgi-int.eoss-cloud.it/geoserver',
+                    target: 'https://fsdev.eoss-cloud.it/geoserver',
                     secure: false,
                     changeOrigin: true,
                     pathRewrite: {
                     '^/geoserver': ''
+                    }
+                },
+                '/geo-contrib': {
+                    target: 'https://foodsecurity-tep.net/geoserver-contrib',
+                    secure: false,
+                    changeOrigin: true,
+                    pathRewrite: {
+                    '^/geo-contrib': ''
                     }
                 }
             }

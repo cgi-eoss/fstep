@@ -75,31 +75,34 @@ export class ProcessorsService {
                         let capabilities = parser.read(response.text());
                         let layers = capabilities.Capability.Layer.Layer;
 
-                        console.log(layers);
                         this.processors.set(service, this.serviceNames[service].products.map((product) => {
 
                             let layer = layers.find((layer) => {
                                 return layer.Name === product.layer
                             });
 
-                            let timeDimension = layer.Dimension.find((dim)=>{
-                                return dim.name == 'time'
-                            });
+                            if (!layer) {
+                                return null;
+                            }
+                            
+                            let times = null;
 
-                            if (!timeDimension) {
-                                return;
+                            if (layer.Dimension) {
+                                let timeDimension = layer.Dimension.find((dim)=>{
+                                    return dim.name == 'time'
+                                });
+
+                                if (timeDimension && timeDimension.values && /,/.test(timeDimension.values) ) {
+                                    times = timeDimension.values.split(',');
+                                }
                             }
 
-                            if (!timeDimension.values || !/,/.test(timeDimension.values)) {
-                                return;
-                            }
-
-                            let times = timeDimension.values.split(',');
-
+                            
                             let processor = null;
 
                             try {
-                                processor =  new Processor({
+
+                                let processorConfig = {
                                     ...product,
                                     name: layer.Title,
                                     description: layer.Abstract,
@@ -111,13 +114,18 @@ export class ProcessorsService {
                                             legend: true,
                                             srs: 'EPSG:900913'
                                         }
-                                    },
-                                    time_range: {
+                                    }
+                                }
+
+                                if (times) {
+                                    processorConfig.time_range = {
                                         start: times[0],
                                         end: times[times.length - 1],
                                         list: times
                                     }
-                                });
+                                }
+
+                                processor =  new Processor(processorConfig);
                             }
                             catch(e) {
 
@@ -167,28 +175,38 @@ export class ProcessorsService {
 
         if (processor) {
 
-            this.timeService.setDateContraints({
-                minDate: processor.timeRange.start ? processor.timeRange.start.toDate(): null,
-                maxDate: processor.timeRange.end ? processor.timeRange.end.toDate(): null,
-                dateList: processor.timeRange.list ? processor.timeRange.list.map((el)=>el.toDate()) : null
-            });
+            if (processor.hasTimeDimension()) {
 
-            let dt = this.timeService.getCurrentDate();
+                this.timeService.setDateContraints({
+                    minDate: processor.timeRange.start ? processor.timeRange.start.toDate(): null,
+                    maxDate: processor.timeRange.end ? processor.timeRange.end.toDate(): null,
+                    dateList: processor.timeRange.list ? processor.timeRange.list.map((el)=>el.toDate()) : null
+                });
 
-            this.timeService.setSelectedDate(processor.getNearestTime(dt));
+                let dt = this.timeService.getCurrentDate();
 
-            let tsState = this.timeSeriesState.value;
-            if (processor.timeRange.end.isBefore(tsState.end)) {
-                tsState.end = processor.timeRange.end.toDate();
+                this.timeService.setSelectedDate(processor.getNearestTime(dt));
+
+                let tsState = this.timeSeriesState.value;
+                if (processor.timeRange.end.isBefore(tsState.end)) {
+                    tsState.end = processor.timeRange.end.toDate();
+                }
+                if (processor.timeRange.start.isAfter(tsState.start)) {
+                    tsState.start = processor.timeRange.start.toDate();
+                }
+    
+                tsState.units = processor.domainConfig.units;
+                tsState.title = processor.domainConfig.title || processor.name;
+                
+                this.setTimeSeriesState(tsState);
+
+            } else {
+                let tsState = this.timeSeriesState.value;
+                tsState.enabled = false;
+                this.setTimeSeriesState(tsState);
             }
-            if (processor.timeRange.start.isAfter(tsState.start)) {
-                tsState.start = processor.timeRange.start.toDate();
-            }
 
-            tsState.units = processor.domainConfig.units;
-            tsState.title = processor.domainConfig.title || processor.name;
-            
-            this.setTimeSeriesState(tsState);
+
         }
     }
 
