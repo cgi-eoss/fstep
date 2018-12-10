@@ -126,10 +126,14 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                     }).then(function (response) {
                         /* Get updated list of reference data */
                         FileService.refreshFstepFiles("community");
+                        $scope.closeDialog();
                     });
                 };
 
                 $scope.closeDialog = function () {
+                    $scope.fileParams.progressPercentage = 0;
+                    $scope.fileParams.uploadStatus = 'pending';
+                    delete $scope.fileParams.uploadMessage;
                     $mdDialog.hide();
                 };
 

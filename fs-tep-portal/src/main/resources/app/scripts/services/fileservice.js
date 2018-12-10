@@ -273,20 +273,16 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         this.refreshFstepFiles = function (page, action, file) {
             if(self.params[page]){
 
-                self.getFstepFiles(page, self.params[page].activeFileType).then(function (data) {
-                    self.params[page].files = data;
-
-                    /* Clear file if deleted */
-                    if (action === "Remove" && self.params[page].selectedFile) {
-                        if (file && file.id === self.params[page].selectedFile.id) {
-                            self.params[page].selectedFile = undefined;
-                            self.params[page].fileDetails = undefined;
-                        }
+                if (action === "Remove" && self.params[page].selectedFile) {
+                    if (file && file.id === self.params[page].selectedFile.id) {
+                        self.params[page].selectedFile = undefined;
+                        self.params[page].fileDetails = undefined;
                     }
+                }
 
-                    /* Update the selected file */
-                    self.refreshSelectedFstepFile(page);
-                });
+
+                self.getFstepFilesByFilter(page);
+                self.refreshSelectedFstepFile(page);
             }
         };
 
