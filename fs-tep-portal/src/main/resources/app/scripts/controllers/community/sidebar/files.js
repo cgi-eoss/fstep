@@ -73,6 +73,10 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 };
                 $scope.validation = "Valid";
 
+                $scope.fileParams.progressPercentage = 0;
+                $scope.fileParams.uploadStatus = 'idle';
+                delete $scope.fileParams.uploadMessage;
+
                 $scope.validateFile = function (file) {
                     if(!file) {
                         $scope.validation = "No file selected";
@@ -124,15 +128,19 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                         fileType: $scope.newReference.fileType,
                         userProperties: userProperties
                     }).then(function (response) {
+
                         /* Get updated list of reference data */
                         FileService.refreshFstepFiles("community");
-                        $scope.closeDialog();
+
+                        if ($scope.fileParams.uploadStatus === "complete") {
+                            $scope.closeDialog();
+                        }
                     });
                 };
 
                 $scope.closeDialog = function () {
                     $scope.fileParams.progressPercentage = 0;
-                    $scope.fileParams.uploadStatus = 'pending';
+                    $scope.fileParams.uploadStatus = 'idle';
                     delete $scope.fileParams.uploadMessage;
                     $mdDialog.hide();
                 };

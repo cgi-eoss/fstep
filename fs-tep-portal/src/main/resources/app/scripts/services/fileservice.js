@@ -152,7 +152,12 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 }).then(function (resp) {
                     MessageService.addInfo('File uploaded', 'Success ' + resp.config.data.file.name + ' uploaded.');
                     self.params[page].uploadStatus = "complete";
-                    self.params[page].uploadMessage = "resp.config.data.file.name uploaded successfully";
+                    if (!resp.data.statusMessage || resp.data.statusMessage === 'OK') {
+                        self.params[page].uploadMessage = "resp.config.data.file.name uploaded successfully";
+                    } else {
+                        self.params[page].uploadStatus = "warning";
+                        self.params[page].uploadMessage = resp.data.statusMessage;
+                    }
                     deferred.resolve(resp);
                 }, function (resp) {
                     MessageService.addError('Error uploading File', resp.data);
