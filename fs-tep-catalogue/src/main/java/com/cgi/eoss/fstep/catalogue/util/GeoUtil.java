@@ -35,8 +35,10 @@ import org.geotools.geometry.jts.JTS;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.geometry.text.WKTParser;
 import org.geotools.referencing.CRS;
+import org.geotools.referencing.ReferencingFactoryFinder;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.Filter;
 import org.opengis.geometry.coordinate.LineString;
 import org.opengis.geometry.coordinate.PointArray;
@@ -44,7 +46,9 @@ import org.opengis.geometry.coordinate.Position;
 import org.opengis.geometry.primitive.Curve;
 import org.opengis.geometry.primitive.Point;
 import org.opengis.geometry.primitive.Surface;
+import org.opengis.referencing.crs.CRSAuthorityFactory;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.MathTransform;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -82,13 +86,8 @@ public class GeoUtil {
         return wktToGeojson(DEFAULT_POINT);
     }
 
-    public static GeoJsonObject getGeoJsonGeometry(String geometry) {
-        try {
-            // TODO Check for other ISO Geometry types
-            return GeoUtil.wktToGeojson(geometry);
-        } catch (GeometryException e) {
-            return GeoUtil.defaultGeometry();
-        }
+    public static GeoJsonObject getGeoJsonGeometry(String geometry) throws GeometryException{
+        return GeoUtil.wktToGeojson(geometry);
     }
     
     public static GeoJsonObject wktToGeojson(String wkt) {
@@ -302,14 +301,21 @@ public class GeoUtil {
 		try {
     		store = new ShapefileDataStore(shapeFile.toUri().toURL());
         	SimpleFeatureSource source = store.getFeatureSource();
-        	SimpleFeatureCollection featureCollection = source.getFeatures();
+        	SimpleFeatureType schema = source.getSchema();
+        	CoordinateReferenceSystem crs = schema.getCoordinateReferenceSystem();
+        	Hints hints = new Hints(Hints.FORCE_LONGITUDE_FIRST_AXIS_ORDER, Boolean.TRUE);
+            CRSAuthorityFactory factory = ReferencingFactoryFinder.getCRSAuthorityFactory("EPSG", hints);
+            CoordinateReferenceSystem targetCRS = factory.createCoordinateReferenceSystem("EPSG:4326");
+        	MathTransform transform = CRS.findMathTransform(crs, targetCRS);
+    		SimpleFeatureCollection featureCollection = source.getFeatures();
         	SimpleFeatureIterator features = featureCollection.features();
         	ArrayList<Geometry> geometries = new ArrayList<>();
         	int pointCount = 0;
         	String basicGeometryType = null;
-        	while (features.hasNext() && pointCount < threshold) {
+        	while (features.hasNext() && pointCount <= threshold) {
         		SimpleFeature feature = features.next();
-        		Geometry featureGeometry = (Geometry) feature.getDefaultGeometry();
+        		Geometry featureGeometrySource = (Geometry) feature.getDefaultGeometry();
+        		Geometry featureGeometry = JTS.transform(featureGeometrySource, transform);
         		String featureGeometryType = featureGeometry.getGeometryType();
         		String featureBasicGeometryType = getBasicGeometryType(featureGeometryType);
         		if (basicGeometryType != null && !basicGeometryType.equals(featureBasicGeometryType)) {
@@ -373,6 +379,7 @@ public class GeoUtil {
     		store.dispose();
     	}
 	}
+	
 
     private static String getBasicGeometryType(String geometryType) {
 		if(geometryType.equals("Polygon") || geometryType.equals("MultiPolygon")){

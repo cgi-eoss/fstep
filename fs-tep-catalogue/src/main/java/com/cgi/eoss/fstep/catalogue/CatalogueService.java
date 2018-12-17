@@ -6,6 +6,7 @@ import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
+import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
 import okhttp3.HttpUrl;
 import org.geojson.GeoJsonObject;
 import org.springframework.core.io.Resource;
@@ -30,7 +31,7 @@ public interface CatalogueService {
      * @return
      * @throws IOException
      */
-    FstepFile ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException;
+    FstepFileIngestion ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException;
 
     /**
      * <p>Create a path reference suitable for creating a new output product file.</p>

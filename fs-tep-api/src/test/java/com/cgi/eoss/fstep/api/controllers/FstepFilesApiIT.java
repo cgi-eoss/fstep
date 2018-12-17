@@ -6,6 +6,7 @@ import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.Role;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.persistence.service.UserDataService;
 import com.google.common.collect.ImmutableSet;
@@ -186,7 +187,7 @@ public class FstepFilesApiIT {
         Resource fileResource = new ClassPathResource("/testFile1", FstepFilesApiIT.class);
         MockMultipartFile uploadFile = new MockMultipartFile("file", "testFile1", "text/plain", fileResource.getInputStream());
 
-        when(catalogueService.ingestReferenceData(any(), any())).thenReturn(testFile1);
+        when(catalogueService.ingestReferenceData(any(), any())).thenReturn(new FstepFileIngestion("OK", testFile1));
         mockMvc.perform(fileUpload("/api/fstepFiles/refData").file(uploadFile).header("REMOTE_USER", fstepUser.getName()).param("fileType", "OTHER"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$._links.self.href").value(endsWith("/fstepFiles/" + testFile1.getId())))

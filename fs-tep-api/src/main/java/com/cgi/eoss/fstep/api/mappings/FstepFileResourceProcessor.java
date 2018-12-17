@@ -36,7 +36,7 @@ public class FstepFileResourceProcessor extends BaseResourceProcessor<FstepFile>
         return FstepFile.class;
     }
 
-    private void addDownloadLink(Resource resource, FstepFile.Type type) {
+    void addDownloadLink(Resource resource, FstepFile.Type type) {
         // TODO Check file datasource?
         if (type != FstepFile.Type.EXTERNAL_PRODUCT) {
             // TODO Do this properly with a method reference
@@ -44,14 +44,14 @@ public class FstepFileResourceProcessor extends BaseResourceProcessor<FstepFile>
         }
     }
 
-    private void addWmsLink(Resource resource, FstepFile.Type type, URI uri) {
+    void addWmsLink(Resource resource, FstepFile.Type type, URI uri) {
         HttpUrl wmsLink = catalogueService.getWmsUrl(type, uri);
         if (wmsLink != null) {
             resource.add(new Link(wmsLink.toString()).withRel("wms"));
         }
     }
 
-    private void addFstepLink(Resource resource, URI fstepFileUri) {
+    void addFstepLink(Resource resource, URI fstepFileUri) {
         resource.add(new Link(fstepFileUri.toASCIIString()).withRel("fstep"));
     }
 

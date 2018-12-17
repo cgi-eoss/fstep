@@ -1,5 +1,22 @@
 package com.cgi.eoss.fstep.catalogue;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.logging.log4j.CloseableThreadContext;
+import org.geojson.GeoJsonObject;
+import org.lognet.springboot.grpc.GRpcService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.cgi.eoss.fstep.catalogue.external.ExternalProductDataService;
 import com.cgi.eoss.fstep.catalogue.files.OutputProductService;
 import com.cgi.eoss.fstep.catalogue.files.ReferenceDataService;
@@ -9,6 +26,7 @@ import com.cgi.eoss.fstep.model.DataSource;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
@@ -29,27 +47,12 @@ import com.cgi.eoss.fstep.rpc.catalogue.Uris;
 import com.cgi.eoss.fstep.security.FstepPermission;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.google.common.base.Stopwatch;
+
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-import java.io.IOException;
-import java.net.URI;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.file.Path;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import lombok.extern.log4j.Log4j2;
 import okhttp3.HttpUrl;
-import org.apache.logging.log4j.CloseableThreadContext;
-import org.geojson.GeoJsonObject;
-import org.lognet.springboot.grpc.GRpcService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
-
 @Component
 @GRpcService
 @Log4j2
@@ -79,10 +82,11 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     }
 
     @Override
-    public FstepFile ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException {
-        FstepFile fstepFile = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getFiletype(), referenceData.getUserProperties(), file);
-        fstepFile.setDataSource(dataSourceDataService.getForRefData(fstepFile));
-        return fstepFileDataService.save(fstepFile);
+    public FstepFileIngestion ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException {
+    	FstepFileIngestion fstepFileIngestion = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getFiletype(), referenceData.getUserProperties(), file);
+    	FstepFile fstepFile = fstepFileIngestion.getFstepFile();       
+    	fstepFile.setDataSource(dataSourceDataService.getForRefData(fstepFile));
+        return new FstepFileIngestion(fstepFileIngestion.getStatusMessage(), fstepFileDataService.save(fstepFile));
     }
 
     @Override

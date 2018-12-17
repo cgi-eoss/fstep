@@ -23,6 +23,7 @@ import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoserverService;
 import com.cgi.eoss.fstep.catalogue.resto.RestoService;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
+import com.cgi.eoss.fstep.catalogue.util.GeometryException;
 import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
@@ -114,7 +115,17 @@ public class FilesystemOutputProductService implements OutputProductService {
 
         Feature feature = new Feature();
         feature.setId(jobId + "_" + relativePath.toString().replaceAll(File.pathSeparator, "_"));
-        feature.setGeometry(Strings.isNullOrEmpty(geometry) ? GeoUtil.defaultGeometry() : GeoUtil.getGeoJsonGeometry(geometry));
+        if (Strings.isNullOrEmpty(geometry)) {
+        	feature.setGeometry(GeoUtil.defaultGeometry());
+        }
+        else {
+        	try {
+        		feature.setGeometry(GeoUtil.getGeoJsonGeometry(geometry));
+        	}
+        	catch (GeometryException e) {
+        		feature.setGeometry(GeoUtil.defaultGeometry());
+        	}
+        }
         feature.setProperties(properties);
 
         UUID restoId;

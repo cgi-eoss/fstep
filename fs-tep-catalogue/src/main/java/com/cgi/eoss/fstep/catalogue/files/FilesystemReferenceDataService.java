@@ -5,12 +5,16 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.geojson.Feature;
 import org.geojson.GeoJsonObject;
+import org.geojson.LngLatAlt;
+import org.geojson.MultiPoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.PathResource;
@@ -24,6 +28,7 @@ import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
 import com.cgi.eoss.fstep.catalogue.util.GeometryException;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
 import com.cgi.eoss.fstep.model.internal.UploadableFileType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
@@ -49,7 +54,7 @@ public class FilesystemReferenceDataService implements ReferenceDataService {
     }
 
     @Override
-    public FstepFile ingest(User owner, String filename, UploadableFileType filetype, Map<String, Object> userProperties, MultipartFile multipartFile) throws IOException {
+    public FstepFileIngestion ingest(User owner, String filename, UploadableFileType filetype, Map<String, Object> userProperties, MultipartFile multipartFile) throws IOException {
         Path dest = referenceDataBasedir.resolve(String.valueOf(owner.getId())).resolve(filename);
         LOG.info("Saving new reference data to: {}", dest);
 
@@ -94,30 +99,45 @@ public class FilesystemReferenceDataService implements ReferenceDataService {
         }
         
         GeoJsonObject geometry = null;
+        String ingestionStatusMessage = null;
         switch (filetype) {
     	case GEOTIFF: 
-    		   geometry = GeoUtil.extractBoundingBox(dest); break;
+    		   geometry = GeoUtil.extractBoundingBox(dest); 
+    		   ingestionStatusMessage = "OK";
+    		   break;
     	case SHAPEFILE:{
     		//Try to get shapefile as multipolygon, if not possible resort to bounding box
     					try {
     						geometry = GeoUtil.shapeFileToGeojson(dest, GEOMETRY_BOUNDING_BOX_THRESHOLD);
+    						if (isValidRestoGeometry(geometry) == false) {
+    							throw new GeometryException("Invalid Resto Geometry");
+    						}
+    						ingestionStatusMessage = "OK";
     						break;
     					}
     					catch(GeometryException e) {
     						geometry = GeoUtil.extractBoundingBox(dest);
+    						ingestionStatusMessage = "Shapefile geometry too complex - converted to bounding box";
     						break;
     					}
     			}
     	case OTHER: {
     			String userWktGeometry = (String) userProperties.remove("geometry");
     			if (userWktGeometry != null) {
+    				try {
     				geometry =  GeoUtil.getGeoJsonGeometry(userWktGeometry);
+    				}
+    				catch (GeometryException e) {
+    					ingestionStatusMessage = "Shapefile geometry too complex - converted to bounding box";
+    					geometry = GeoUtil.defaultGeometry();
+    				}
     			}
     	}
         }
 
         if (geometry == null) {
-        	geometry = GeoUtil.defaultGeometry();
+        	ingestionStatusMessage = "Unrecognized geometry - product ingested with default geometry";
+			geometry = GeoUtil.defaultGeometry();
         }
         
         // TODO Validate extra properties?
@@ -143,10 +163,25 @@ public class FilesystemReferenceDataService implements ReferenceDataService {
         fstepFile.setType(FstepFile.Type.REFERENCE_DATA);
         fstepFile.setFilename(referenceDataBasedir.relativize(dest).toString());
         fstepFile.setFilesize(filesize);
-        return fstepFile;
+        return new FstepFileIngestion(ingestionStatusMessage, fstepFile);
     }
 
     
+
+	private boolean isValidRestoGeometry(GeoJsonObject geometry) {
+		if (geometry instanceof MultiPoint) {
+			MultiPoint multipoint = (MultiPoint) geometry;
+			List<LngLatAlt> coordinates = new ArrayList<>(multipoint.getCoordinates());
+			coordinates.sort((p1, p2) -> Double.compare(p1.getLongitude(), p2.getLongitude()));
+			double minX = coordinates.get(0).getLongitude();
+			double maxX = coordinates.get(coordinates.size() -1).getLongitude();
+			if (minX < -90 && maxX > 90) {
+				return false;
+			}
+			return true;
+		}
+		return true;
+	}
 
 	@Override
     public Resource resolve(FstepFile file) {

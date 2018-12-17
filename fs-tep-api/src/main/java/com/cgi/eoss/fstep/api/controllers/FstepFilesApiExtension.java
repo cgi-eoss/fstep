@@ -1,19 +1,13 @@
 package com.cgi.eoss.fstep.api.controllers;
 
-import com.cgi.eoss.fstep.security.FstepSecurityService;
-import com.cgi.eoss.fstep.catalogue.CatalogueService;
-import com.cgi.eoss.fstep.catalogue.CatalogueUri;
-import com.cgi.eoss.fstep.costing.CostingService;
-import com.cgi.eoss.fstep.model.FstepFile;
-import com.cgi.eoss.fstep.model.User;
-import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
-import com.cgi.eoss.fstep.model.internal.UploadableFileType;
-import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.io.ByteStreams;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
+
+import javax.servlet.http.HttpServletResponse;
+
 import org.geojson.GeoJsonObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.BasePathAwareController;
@@ -35,13 +29,22 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.net.URI;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import com.cgi.eoss.fstep.catalogue.CatalogueService;
+import com.cgi.eoss.fstep.catalogue.CatalogueUri;
+import com.cgi.eoss.fstep.costing.CostingService;
+import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
+import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
+import com.cgi.eoss.fstep.model.internal.UploadableFileType;
+import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
+import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.io.ByteStreams;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 
 /**
  * <p>A {@link RepositoryRestController} for interacting with {@link com.cgi.eoss.fstep.model.FstepFile}s. Extends the
@@ -93,8 +96,8 @@ public class FstepFilesApiExtension {
                     .userProperties(userProperties == null? Collections.emptyMap(): userProperties) 
                     .build();
 
-            FstepFile fstepFile = catalogueService.ingestReferenceData(metadata, file);
-            return ResponseEntity.created(fstepFile.getUri()).body(new Resource<>(fstepFile));
+            FstepFileIngestion fstepFileIngestion = catalogueService.ingestReferenceData(metadata, file);
+            return ResponseEntity.created(fstepFileIngestion.getFstepFile().getUri()).body(new Resource<>(fstepFileIngestion));
         } catch (Exception e) {
             LOG.error("Could not ingest reference data file {}", filename, e);
             throw e;
