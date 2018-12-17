@@ -54,6 +54,8 @@ mission:
         title: 'Sentinel-2'
       - value: 'sentinel3'
         title: 'Sentinel-3'
+      - value: 'sentinel5p'
+        title: 'Sentinel-5P'
       - value: 'landsat'
         title: 'Landsat'
       - value: 'envisat'
@@ -65,15 +67,15 @@ mission:
 s2ProcessingLevel:
   title: 'Processing level'
   type: 'select'
-  defaultValue: ''
+  defaultValue: 'L1C'
   allowed:
     values:
-      - value: ''
-        title: ''
+#      - value: ''   L2 products not available for download in creodias
+#        title: ''
       - value: 'L1C'
         title: 'L1C'
-      - value: 'L2A'
-        title: 'L2A'
+#      - value: 'L2A' L2 products not available for download in creodias
+#        title: 'L2A'
   onlyIf:
     'mission':
       - 'sentinel2'
@@ -176,11 +178,107 @@ s1ProductType:
   onlyIf:
     'mission':
       - 'sentinel1'
+      
+s5pProductType:
+  title: 'Product type'
+  type: 'select'
+  defaultValue: 'GRD'
+  allowed:
+    values:
+      - value: 'L1B_IR_SIR'
+        title: 'L1B_IR_SIR'
+      - value: 'L1B_IR_UVN'
+        title: 'L1B_IR_UVN'
+      - value: 'L1B_RA_BD1'
+        title: 'L1B_RA_BD1'
+      - value: 'L1B_RA_BD2'
+        title: 'L1B_RA_BD2'
+      - value: 'L1B_RA_BD3'
+        title: 'L1B_RA_BD3'
+      - value: 'L1B_RA_BD4'
+        title: 'L1B_RA_BD4'
+      - value: 'L1B_RA_BD5'
+        title: 'L1B_RA_BD5'
+      - value: 'L1B_RA_BD6'
+        title: 'L1B_RA_BD6'                
+      - value: 'L1B_RA_BD7'
+        title: 'L1B_RA_BD7'
+      - value: 'L1B_RA_BD8'
+        title: 'L1B_RA_BD8'
+      - value: 'L2__AER_AI'
+        title: 'L2__AER_AI'
+      - value: 'L2__CLOUD_'
+        title: 'L2__CLOUD_'
+      - value: 'L2__CO____'
+        title: 'L2__CO____'
+      - value: 'L2__HCHO__'
+        title: 'L2__HCHO__'
+      - value: 'L2__NO2___'
+        title: 'L2__NO2___'
+      - value: 'L2__NP_BD3'
+        title: 'L2__NP_BD3'
+      - value: 'L2__NP_BD6'
+        title: 'L2__NP_BD6'
+      - value: 'L2__O3____'
+        title: 'L2__O3____'        
+      - value: 'L2__SO2___'
+        title: 'L2__SO2___'                
+  onlyIf:
+    'mission':
+      - 'sentinel5p'
+
+s5pProcessingLevel:
+  title: 'Processing Level'
+  type: 'select'
+  defaultValue: '1B'
+  allowed:
+    values:
+      - value: ''
+        title: ''    
+      - value: '1B'
+        title: 'L1B'
+      - value: '2'
+        title: 'L2'               
+  onlyIf:
+    'mission':
+      - 'sentinel5p'
+      
+s1ProcessingLevel:
+  title: 'Processing Level'
+  type: 'select'
+  defaultValue: '1'
+  allowed:
+    values:
+      - value: ''
+        title: ''    
+      - value: '1'
+        title: 'L1'
+      - value: '2'
+        title: 'L2'               
+  onlyIf:
+    'mission':
+      - 'sentinel1'
+      
+s3ProcessingLevel:
+  title: 'Processing Level'
+  type: 'select'
+  defaultValue: '1'
+  allowed:
+    values:
+      - value: ''
+        title: ''    
+      - value: '1'
+        title: 'L1'
+      - value: '2'
+        title: 'L2'               
+  onlyIf:
+    'mission':
+      - 'sentinel3'
 
 orbitDirection:
   title: 'Orbit direction'
   type: 'select'
-  defaultValue: 'ascending'
+  defaultValue: ''
   allowed:
     values:
       - value: 'ascending'
@@ -192,3 +290,22 @@ orbitDirection:
   onlyIf:
     'mission':
       - 'sentinel1'
+      - 'sentinel3'
+      
+s3Instrument:
+  title: 'Instrument'
+  type: 'select'
+  defaultValue: ''
+  allowed:
+    values:
+      - value: ''
+        title: ''
+      - value: 'SLSTR'
+        title: 'SLSTR'
+      - value: 'OLCI'
+        title: 'OLCI'
+      - value: 'SRAL'
+        title: 'SRAL'
+  onlyIf:
+    'mission':
+      - 'sentinel3' 

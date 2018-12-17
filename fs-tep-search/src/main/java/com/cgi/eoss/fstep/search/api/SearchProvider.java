@@ -29,7 +29,7 @@ public interface SearchProvider extends Comparable<SearchProvider> {
     
     @Override
     default int compareTo(SearchProvider o) {
-        return ComparisonChain.start().compare(getPriority(), o.getPriority()).result();
+        return ComparisonChain.start().compare(o.getPriority(), getPriority()).result();
     }
 
 }
