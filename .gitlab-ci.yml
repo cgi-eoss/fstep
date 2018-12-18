@@ -33,6 +33,7 @@ build:
       - .gradle
   only:
     - environment/hetzner
+    - environment/prod
     - master
   artifacts:
     expire_in: 1 day
@@ -55,7 +56,7 @@ sonarqube_master_job:
     - ./gradlew sonarqube -Dsonar.host.url=$SONAR_URL -Dsonar.login=$SONAR_LOGIN
 
     
-deployRpmsToHetzner:
+deployRpmsToDev:
   stage: deploy
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
@@ -78,8 +79,32 @@ deployRpmsToHetzner:
     - export GRADLE_USER_HOME=`pwd`/.gradle
     - export LANG=en_US.UTF-8
   script: 
-    - ./gradlew  -Pupload.uploadDir=$HETZNER_UPLOAD_DIR -Pupload.uploadHost=$HETZNER_UPLOAD_HOST -Pupload.uploadUser=$HETZNER_UPLOAD_USER -Pupload.uploadIdentity=$HETZNER_UPLOAD_IDENTITY_PATH -Pupload.uploadKnownHosts=$HETZNER_UPLOAD_KNOWN_HOSTS_PATH :distribution:deployRpms
+    - ./gradlew  -Pupload.uploadDir=$DEV_UPLOAD_DIR -Pupload.uploadHost=$HETZNER_UPLOAD_HOST -Pupload.uploadUser=$HETZNER_UPLOAD_USER -Pupload.uploadIdentity=$HETZNER_UPLOAD_IDENTITY_PATH -Pupload.uploadKnownHosts=$HETZNER_UPLOAD_KNOWN_HOSTS_PATH :distribution:deployRpms
   
+deployRpmsToProd:
+  stage: deploy
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      - build
+      - .gradle
+    policy: pull  
+  only:
+    - environment/prod
+  before_script:
+    - mkdir ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$HETZNER__UPLOAD_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - echo "$HETZNER_UPLOAD_IDENTITY" > ~/.ssh/hetzner_id
+    - chmod 600 ~/.ssh/hetzner_id
+    - export HETZNER_UPLOAD_IDENTITY_PATH=~/.ssh/hetzner_id
+    - export HETZNER_UPLOAD_KNOWN_HOSTS_PATH=~/.ssh/known_hosts
+    - export JAVA_HOME=/usr/lib/jvm/java
+    - export GRADLE_USER_HOME=`pwd`/.gradle
+    - export LANG=en_US.UTF-8
+  script: 
+    - ./gradlew  -Pupload.uploadDir=$PROD_UPLOAD_DIR -Pupload.uploadHost=$HETZNER_UPLOAD_HOST -Pupload.uploadUser=$HETZNER_UPLOAD_USER -Pupload.uploadIdentity=$HETZNER_UPLOAD_IDENTITY_PATH -Pupload.uploadKnownHosts=$HETZNER_UPLOAD_KNOWN_HOSTS_PATH :distribution:deployRpms
   
   
   

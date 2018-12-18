@@ -25,5 +25,7 @@ public interface JobDataService extends
 
     Job reload(Long id);
 
+	void updateParentJob(Job job);
+
 	
 }

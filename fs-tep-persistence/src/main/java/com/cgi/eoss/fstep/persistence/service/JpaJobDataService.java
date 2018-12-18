@@ -8,6 +8,8 @@ import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.persistence.dao.FstepEntityDao;
 import com.cgi.eoss.fstep.persistence.dao.JobDao;
 import com.google.common.base.Strings;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.querydsl.core.types.Predicate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,6 +101,19 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         job.getOutputFiles().size();
         return job;
     }
+
+	@Override
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void updateParentJob(Job job) {
+		Job parentJob = job.getParentJob();
+		if (parentJob.getOutputs() == null) {
+			parentJob.setOutputs(ArrayListMultimap.create());
+		} 
+		parentJob.getOutputs().putAll(job.getOutputs());
+		parentJob.getOutputFiles().addAll(ImmutableSet.copyOf(job.getOutputFiles()));
+        save(parentJob);
+		
+	}
     
     
 

@@ -46,32 +46,26 @@ import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
-import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.logging.Logging;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
+import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Parameter;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobStep;
-import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Parameter;
-import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
-import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
-import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata.OutputFileMetadataBuilder;
+import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata.OutputProductMetadataBuilder;
-import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
+import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
-import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
-import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.rpc.FileStream;
 import com.cgi.eoss.fstep.rpc.FileStreamClient;
-import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
-import com.cgi.eoss.fstep.rpc.JobParam;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
+import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.rpc.worker.GetOutputFileParam;
 import com.cgi.eoss.fstep.rpc.worker.JobEnvironment;
 import com.cgi.eoss.fstep.rpc.worker.JobError;
@@ -81,7 +75,6 @@ import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
-import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -277,10 +270,7 @@ public class FstepJobUpdatesManager {
      }
     
     private void updateParentOutputs(Job job) {
-		Job parentJob = job.getParentJob();
-		parentJob.getOutputs().putAll(job.getOutputs());
-		parentJob.getOutputFiles().addAll(ImmutableSet.copyOf(job.getOutputFiles()));
-        jobDataService.save(parentJob);
+		jobDataService.updateParentJob(job);
 		
 	}
 
