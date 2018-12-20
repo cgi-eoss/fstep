@@ -104,14 +104,14 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
 
 	@Override
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateParentJob(Job job) {
+    public Job updateParentJob(Job job) {
 		Job parentJob = job.getParentJob();
 		if (parentJob.getOutputs() == null) {
 			parentJob.setOutputs(ArrayListMultimap.create());
 		} 
 		parentJob.getOutputs().putAll(job.getOutputs());
 		parentJob.getOutputFiles().addAll(ImmutableSet.copyOf(job.getOutputFiles()));
-        save(parentJob);
+        return save(parentJob);
 		
 	}
     

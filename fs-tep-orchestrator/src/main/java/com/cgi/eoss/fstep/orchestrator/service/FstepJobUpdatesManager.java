@@ -261,16 +261,15 @@ public class FstepJobUpdatesManager {
                     .forEach(f -> securityService.publish(FstepFile.class, f.getId()));
         }
         if (job.getParentJob() != null) {
-        	updateParentOutputs(job);
-            Job parentJob = job.getParentJob();
+        	Job parentJob = updateParentOutputs(job);
             if (allChildJobCompleted(parentJob)) {
                 completeParentJob(parentJob);
             }
          }
      }
     
-    private void updateParentOutputs(Job job) {
-		jobDataService.updateParentJob(job);
+    private Job updateParentOutputs(Job job) {
+		return jobDataService.updateParentJob(job);
 		
 	}
 
