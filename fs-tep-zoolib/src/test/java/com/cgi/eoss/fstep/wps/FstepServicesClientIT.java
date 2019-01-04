@@ -199,7 +199,7 @@ public class FstepServicesClientIT {
         String workerId = "local1";
         JobValidator jobValidator = new JobValidator(costingService, catalogueService);
         FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, databasketDataService, guiService, 
-        		 costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService, jobValidator);
+        		 costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService, jobValidator, updatesManager);
         
         FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1);
         fstepWorker.allocateMinNodes();

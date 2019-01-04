@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,6 +49,8 @@ import com.cgi.eoss.fstep.rpc.FstepServiceParams;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.JobOutputsResponse;
 import com.cgi.eoss.fstep.rpc.JobOutputsResponse.JobOutputs;
+import com.cgi.eoss.fstep.rpc.IngestJobOutputsParams;
+import com.cgi.eoss.fstep.rpc.IngestJobOutputsResponse;
 import com.cgi.eoss.fstep.rpc.JobParam;
 import com.cgi.eoss.fstep.rpc.JobStatus;
 import com.cgi.eoss.fstep.rpc.JobStatusResponse;
@@ -57,9 +60,11 @@ import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
 import com.cgi.eoss.fstep.rpc.StopServiceResponse;
 import com.cgi.eoss.fstep.rpc.WorkersList;
+import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
 import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
+import com.cgi.eoss.fstep.rpc.worker.JobEnvironment;
 import com.cgi.eoss.fstep.rpc.worker.JobSpec;
 import com.cgi.eoss.fstep.rpc.worker.ResourceRequest;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
@@ -96,6 +101,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private final DynamicProxyService dynamicProxyService;
     private final JobValidator jobValidator;
     private final PlatformParameterExtractor platformParameterExtractor;
+    FstepJobUpdatesManager fstepJobUpdatesManager;
     
     @Autowired
     public FstepJobLauncher(CachingWorkerFactory workerFactory, JobDataService jobDataService,
@@ -105,7 +111,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             UserMountDataService userMountDataService,
             ServiceDataService serviceDataService,
             DynamicProxyService dynamicProxyService,
-            JobValidator jobValidator) {
+            JobValidator jobValidator,
+            FstepJobUpdatesManager fstepJobUpdatesManager) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.databasketDataService = databasketDataService;
@@ -116,7 +123,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         this.dynamicProxyService = dynamicProxyService;
         this.jobValidator = jobValidator;
         this.platformParameterExtractor = new PlatformParameterExtractor();
-        
+        this.fstepJobUpdatesManager = fstepJobUpdatesManager;
     }
 
     @Override
@@ -284,6 +291,34 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 	    responseObserver.onNext(CancelJobResponse.newBuilder().build());
 	    responseObserver.onCompleted();
 	
+	}
+	
+	@Override
+	public void ingestJobOutputs(IngestJobOutputsParams request,
+	        StreamObserver<IngestJobOutputsResponse> responseObserver) {
+	    com.cgi.eoss.fstep.rpc.Job rpcJob = request.getJob();
+	    Job job = jobDataService.refreshFull(Long.parseLong(rpcJob.getIntJobId()));
+	    Set<Job> subJobs = new HashSet<>(job.getSubJobs());
+	    try {
+		    if (subJobs.size() > 0) {
+		        for (Job subJob : subJobs) {
+		            if (subJob.getStatus().equals(Status.ERROR) && "Step 3 of 3: Output-List".equals(subJob.getStage())){
+		            	subJob = jobDataService.refreshFull(subJob);
+		            	ingestJobOutputs(subJob);
+		            }
+		        }
+		    } else {
+		    	if (job.getStatus().equals(Status.ERROR) && "Step 3 of 3: Output-List".equals(job.getStage())) {
+		    		ingestJobOutputs(job);
+		        }
+		    }
+		    responseObserver.onNext(IngestJobOutputsResponse.newBuilder().build());
+		    responseObserver.onCompleted();
+	    }
+	    catch (Exception e) {
+	    	LOG.error(e);
+	    	responseObserver.onError(e);
+	    }
 	}
 
 	@Override
@@ -498,6 +533,16 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             job.setStatus(Status.CANCELLED);
             jobDataService.save(job);
         }
+    }
+    
+    private void ingestJobOutputs(Job job) throws IOException, Exception {
+    	FstepWorkerBlockingStub worker = workerFactory.getWorkerById(job.getWorkerId());
+    	//TODO The output location is hardwired, but there is no way for the server to know it in this retry call because
+    	//it is normally transmitted to the server by the worker in the containerExit rpc call
+    	//Either the location should be saved together with the job status or the outputLocation call should be made available by the worker
+    	JobEnvironment jobEnvironment = JobEnvironment.newBuilder().setOutputDir("/data/jobs/Job_" + job.getExtId() + "/outDir").build();
+        fstepJobUpdatesManager.ingestOutput(job, GrpcUtil.toRpcJob(job), worker, jobEnvironment);
+        
     }
     
     private List<String> explodeParallelInput(Collection<String> inputUris) {

@@ -25,6 +25,8 @@ import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.rpc.CancelJobParams;
 import com.cgi.eoss.fstep.rpc.CancelJobResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
+import com.cgi.eoss.fstep.rpc.IngestJobOutputsParams;
+import com.cgi.eoss.fstep.rpc.IngestJobOutputsResponse;
 import com.cgi.eoss.fstep.rpc.LocalJobLauncher;
 import com.cgi.eoss.fstep.rpc.RelaunchFailedJobParams;
 import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
@@ -181,6 +183,23 @@ public class JobsApiExtension {
         localJobLauncher.asyncRelaunchFailedJob(relaunchJobParams, responseObserver);
         
     }
+    
+    @PostMapping("/{jobId}/ingestOutputs")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#job, 'write')")
+    @ResponseBody
+    public void ingestJobOutputs(@ModelAttribute("jobId") Job job) throws IOException {
+        IngestJobOutputsParams.Builder ingestJobOutputsParamsBuilder = IngestJobOutputsParams.newBuilder()
+                .setJob(GrpcUtil.toRpcJob(job));
+        
+        IngestJobOutputsParams ingestJobOutputsParams = ingestJobOutputsParamsBuilder.build();
+
+        LOG.info("Ingesting job outputs via REST API: {}", ingestJobOutputsParams);
+        
+        IngestJobOutputsObserver ingestJobOutputsObserver = new IngestJobOutputsObserver();
+        
+        localJobLauncher.asyncIngestJobOutputs(ingestJobOutputsParams, ingestJobOutputsObserver);
+        
+    }
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -267,6 +286,26 @@ public class JobsApiExtension {
         @Override
         public void onError(Throwable t) {
             LOG.error("Failed to relaunch job via REST API", t);
+        }
+
+        @Override
+        public void onCompleted() {
+            // No-op, the user has long stopped listening here
+        }
+    }
+    
+    private static final class IngestJobOutputsObserver implements StreamObserver<IngestJobOutputsResponse> {
+        
+       
+        @Override
+        public void onNext(IngestJobOutputsResponse value) {
+            LOG.debug("Received IngestJobOutputsResponse: {}", value);
+           
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            LOG.error("Failed to ingest job output via REST API", t);
         }
 
         @Override

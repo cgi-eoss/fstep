@@ -241,7 +241,7 @@ public class FstepJobUpdatesManager {
         }
     }
     
-    private void ingestOutput(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
+    public void ingestOutput(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
             FstepWorkerBlockingStub worker, JobEnvironment jobEnvironment)
             throws IOException, Exception {
         // Enumerate files in the job output directory

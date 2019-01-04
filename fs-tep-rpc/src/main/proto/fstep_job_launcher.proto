@@ -16,6 +16,7 @@ service FstepJobLauncher {
     rpc StopJob (StopServiceParams) returns (StopServiceResponse);
     rpc RelaunchFailedJob (RelaunchFailedJobParams) returns (RelaunchFailedJobResponse);
     rpc ListWorkers (ListWorkersParams) returns (WorkersList);
+    rpc IngestJobOutputs (IngestJobOutputsParams) returns (IngestJobOutputsResponse);
     
 }
 
@@ -90,10 +91,18 @@ message RelaunchFailedJobParams {
     Job job = 1;
 }
 
+message IngestJobOutputsParams {
+    Job job = 1;
+}
+
 message CancelJobResponse {
    
 }
 
 message RelaunchFailedJobResponse {
+
+}
+
+message IngestJobOutputsResponse {
 
 }
