@@ -15,26 +15,12 @@
             <md-button id="update-file"
                         class="save-button md-fab md-mini right"
                         ng-click="refreshFile()"
-                        aria-label="Update File"
-                        uib-tooltip="Update File"
+                        aria-label="Refresh"
+                        uib-tooltip="Refresh"
                         tooltip-placement="top"
                         tooltip-trigger="mouseenter"
                         tooltip-append-to-body="true">
                 <i class="material-icons">update</i>
-            </md-button>
-
-            <md-button id="save-file-button"
-                        class="md-fab md-mini btn-success right"
-                        type="submit"
-                        form="fileForm"
-                        ng-disabled="fileForm.$invalid"
-                        ng-click="saveFile()"
-                        aria-label="Save"
-                        uib-tooltip="Save"
-                        tooltip-placement="top"
-                        tooltip-trigger="mouseenter"
-                        tooltip-append-to-body="true">
-                <i class="material-icons">save</i>
             </md-button>
 
             <section class="row section-title">
@@ -58,12 +44,30 @@
             </div>
 
             <div class="row file-field">
+                <md-input-container md-no-float>
+                    <label class="md-title">Description</label>
+                    <input ng-readonly="true" name="description" ng-model="fileParams.fileDetails.metadata.properties.description" type="text" placeholder="" aria-label="Description">
+                </md-input-container>
+            </div>
+
+            <div class="row file-field">
                 <md-input-container md-no-float required>
                     <label class="md-title">Geometry</label>
                     <textarea ng-readonly="true" name="geometry" rows="3" placeholder="File geometry is required *" aria-label="Geometry ">{{getGeometryStr(fileParams.fileDetails.metadata.geometry)}}</textarea>
                     <div ng-messages="fileForm.geometry.$error" role="alert">
                         <div ng-message="required">Geometry is required!</div>
                     </div>
+                </md-input-container>
+            </div>
+
+            <div ng-if="fileParams.fileDetails.metadata.properties.startDate !== 'Z'" class="row file-field" layout="row" layout-align="start center" layout-padding>
+                <md-input-container md-no-float>
+                    <label class="md-title">Start date:</label>
+                    <input ng-readonly="true" name="description" ng-model="fileParams.fileDetails.metadata.properties.startDate" type="text" placeholder="" aria-label="Description">
+                </md-input-container>
+                <md-input-container md-no-float>
+                    <label class="md-title">End date:</label>
+                    <input ng-readonly="true" name="description" ng-model="fileParams.fileDetails.metadata.properties.completionDate" type="text" placeholder="" aria-label="Description">
                 </md-input-container>
             </div>
 

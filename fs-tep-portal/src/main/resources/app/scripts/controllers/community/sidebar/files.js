@@ -115,7 +115,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                         userProperties.geometry = 'POINT(100 0)';
                     }
 
-                    userProperties.startTime = userProperties.endTime || userProperties.startTime;
+                    userProperties.startTime = userProperties.startTime || userProperties.endTime;
                     userProperties.endTime = userProperties.endTime || userProperties.startTime;
 
                     if (userProperties.startTime) {
