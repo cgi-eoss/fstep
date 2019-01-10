@@ -80,7 +80,10 @@ export class ProcessorListComponent implements OnInit {
       });
   }
 
-  onProcessorSelect(processor) {
+  onProcessorSelect(processor, evt) {
+    if (evt.target.tagName === 'A') {
+      return;
+    }
     this.processorsService.setActiveProcessor(processor);
     setTimeout(() => this.router.navigate(['/products', this.service, processor.id]), 0);
   }

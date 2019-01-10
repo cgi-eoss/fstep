@@ -107,6 +107,7 @@
                 {
                     "id": "alos-dem",
                     "layer": "fs-tep:alos-dem",
+                    "additionalDescription": "Data access is available through WCS service:<br><a target='_blank' href='/geo-contrib/fs-tep/alos-dem/ows?service=WCS&request=GetCapabilities&version=2.0.1'>Capabilities document</a><br><a target='_blank' href='/geo-contrib/fs-tep/ows?service=WCS&request=DescribeCoverage&version=2.0.1&coverageId=alos-dem'>Describe coverage document</a>",
                     "thumb": "assets/data/previews/AW3D30_sample.png",
                     "legend": {
                         "height": 20
@@ -115,6 +116,7 @@
                 {
                     "id": "GFSAD-Cropmask",
                     "layer": "fs-tep:GFSAD-Cropmask",
+                    "additionalDescription": "Data access is available through WCS service:<br><a target='_blank' href='/geo-contrib/fs-tep/GFSAD-Cropmask/ows?service=WCS&request=GetCapabilities&version=2.0.1'>Capabilities document</a><br><a target='_blank' href='/geo-contrib/fs-tep/ows?service=WCS&request=DescribeCoverage&version=2.0.1&coverageId=GFSAD-Cropmask'>Describe coverage document</a>",
                     "domain": {
                         "scale": 1,
                         "offset": 0,

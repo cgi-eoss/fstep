@@ -125,6 +125,14 @@ export class ProcessorsService {
                                     }
                                 }
 
+                                if (product.additionalDescription) {
+                                    if (processorConfig.description) {
+                                        processorConfig.description += '<br><br>' + product.additionalDescription;
+                                    } else {
+                                        processorConfig.description = product.additionalDescription;
+                                    }
+                                }
+
                                 processor =  new Processor(processorConfig);
                             }
                             catch(e) {
