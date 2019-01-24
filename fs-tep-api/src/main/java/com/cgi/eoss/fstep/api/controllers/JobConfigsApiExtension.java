@@ -29,9 +29,8 @@ import com.cgi.eoss.fstep.persistence.dao.JobDao;
 import com.cgi.eoss.fstep.persistence.dao.SystematicProcessingDao;
 import com.cgi.eoss.fstep.rpc.FstepJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
-import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
-import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
+import com.cgi.eoss.fstep.rpc.LocalJobLauncher;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -56,15 +55,15 @@ import lombok.extern.log4j.Log4j2;
 public class JobConfigsApiExtension {
 
     private final FstepSecurityService fstepSecurityService;
-    private final LocalServiceLauncher localServiceLauncher;
+    private final LocalJobLauncher localJobLauncher;
     private final JobDao jobRepository;
     private final SystematicProcessingDao systematicProcessingDao;
     private final JobConfigDao jobConfigDao;
     
     @Autowired
-    public JobConfigsApiExtension(FstepSecurityService fstepSecurityService, ObjectMapper objectMapper, LocalServiceLauncher localServiceLauncher, JobDao jobRepository, SystematicProcessingDao systematicProcessingDao, JobConfigDao jobConfigDao) {
+    public JobConfigsApiExtension(FstepSecurityService fstepSecurityService, ObjectMapper objectMapper, LocalJobLauncher localJobLauncher, JobDao jobRepository, SystematicProcessingDao systematicProcessingDao, JobConfigDao jobConfigDao) {
         this.fstepSecurityService = fstepSecurityService;
-        this.localServiceLauncher = localServiceLauncher;
+        this.localJobLauncher = localJobLauncher;
         this.jobRepository = jobRepository;
         this.systematicProcessingDao = systematicProcessingDao;
         this.jobConfigDao = jobConfigDao;
@@ -99,7 +98,7 @@ public class JobConfigsApiExtension {
 
         final CountDownLatch latch = new CountDownLatch(1);
         JobLaunchObserver responseObserver = new JobLaunchObserver(latch);
-        localServiceLauncher.asyncSubmitJob(serviceParams, responseObserver);
+        localJobLauncher.asyncSubmitJob(serviceParams, responseObserver);
 
         // Block until the latch counts down (i.e. one message from the server
         latch.await(1, TimeUnit.MINUTES);

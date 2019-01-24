@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.queues.service;
 
+import java.util.Enumeration;
 import java.util.Map;
 
 import javax.jms.JMSException;
@@ -12,6 +13,7 @@ import javax.jms.Queue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessagePostProcessor;
+import org.springframework.jms.support.converter.MessageConversionException;
 
 import lombok.extern.log4j.Log4j2;
 
@@ -100,9 +102,74 @@ public class FstepJMSQueueService implements FstepQueueService {
     }
     
     @Override
+    public com.cgi.eoss.fstep.queues.service.Message receiveSelected(String queueName, String messageSelector) {
+        jmsTemplate.setReceiveTimeout(JmsTemplate.RECEIVE_TIMEOUT_INDEFINITE_WAIT);
+        Message jmsMessage = jmsTemplate.receiveSelected(queueName, messageSelector);
+        com.cgi.eoss.fstep.queues.service.Message m = new com.cgi.eoss.fstep.queues.service.Message();
+        try {
+			Object payload = jmsTemplate.getMessageConverter().fromMessage(jmsMessage);
+			m.setPayload(payload);
+			m.setPriority(jmsMessage.getJMSPriority());
+			Enumeration e = jmsMessage.getPropertyNames();
+			while (e.hasMoreElements()) {
+				String propertyName = (String) e.nextElement();
+				m.getHeaders().put(propertyName, jmsMessage.getObjectProperty(propertyName));
+			}
+			return m;
+		} catch (MessageConversionException | JMSException e) {
+			throw new MessageConversionException(e.getMessage());
+		}
+        
+    }
+    
+    @Override
     public Object receiveSelectedObjectWithTimeout(String queueName, String messageSelector, long timeout) {
         jmsTemplate.setReceiveTimeout(timeout);
         return jmsTemplate.receiveSelectedAndConvert(queueName, messageSelector);
+    }
+    
+    @Override
+    public com.cgi.eoss.fstep.queues.service.Message receive(String queueName) {
+        jmsTemplate.setReceiveTimeout(JmsTemplate.RECEIVE_TIMEOUT_INDEFINITE_WAIT);
+        Message jmsMessage = jmsTemplate.receive(queueName);
+        com.cgi.eoss.fstep.queues.service.Message m = new com.cgi.eoss.fstep.queues.service.Message();
+        try {
+			Object payload = jmsTemplate.getMessageConverter().fromMessage(jmsMessage);
+			m.setPayload(payload);
+			m.setPriority(jmsMessage.getJMSPriority());
+			Enumeration e = jmsMessage.getPropertyNames();
+			while (e.hasMoreElements()) {
+				String propertyName = (String) e.nextElement();
+				m.getHeaders().put(propertyName, jmsMessage.getObjectProperty(propertyName));
+			}
+			return m;
+		} catch (MessageConversionException | JMSException e) {
+			throw new MessageConversionException(e.getMessage());
+		}
+        
+    }
+    
+    @Override
+    public com.cgi.eoss.fstep.queues.service.Message receiveWithTimeout(String queueName, long timeout) {
+        jmsTemplate.setReceiveTimeout(timeout);
+        Message jmsMessage = jmsTemplate.receive(queueName);
+        if (jmsMessage == null) {
+        	return null;
+        }
+        com.cgi.eoss.fstep.queues.service.Message m = new com.cgi.eoss.fstep.queues.service.Message();
+        try {
+			Object payload = jmsTemplate.getMessageConverter().fromMessage(jmsMessage);
+			m.setPayload(payload);
+			m.setPriority(jmsMessage.getJMSPriority());
+			Enumeration e = jmsMessage.getPropertyNames();
+			while (e.hasMoreElements()) {
+				String propertyName = (String) e.nextElement();
+				m.getHeaders().put(propertyName, jmsMessage.getObjectProperty(propertyName));
+			}
+			return m;
+		} catch (MessageConversionException | JMSException e) {
+			throw new MessageConversionException(e.getMessage());
+		}
     }
 
     @Override

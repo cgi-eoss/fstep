@@ -1,6 +1,6 @@
 package com.cgi.eoss.fstep.api.controllers;
 
-import com.cgi.eoss.fstep.rpc.FstepServiceLauncherGrpc;
+import com.cgi.eoss.fstep.rpc.FstepJobLauncherGrpc;
 import com.cgi.eoss.fstep.rpc.ListWorkersParams;
 import com.cgi.eoss.fstep.rpc.Worker;
 import com.cgi.eoss.fstep.rpc.WorkersList;
@@ -36,7 +36,7 @@ public class WorkersApi {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity getWorkers() {
-        FstepServiceLauncherGrpc.FstepServiceLauncherBlockingStub serviceLauncher = FstepServiceLauncherGrpc.newBlockingStub(inProcessChannelBuilder.build());
+        FstepJobLauncherGrpc.FstepJobLauncherBlockingStub serviceLauncher = FstepJobLauncherGrpc.newBlockingStub(inProcessChannelBuilder.build());
 
         WorkersList workersList = serviceLauncher.listWorkers(ListWorkersParams.getDefaultInstance());
 

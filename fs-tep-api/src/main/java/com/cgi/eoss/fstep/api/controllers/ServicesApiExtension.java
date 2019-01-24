@@ -12,7 +12,7 @@ import com.cgi.eoss.fstep.persistence.service.ServiceTemplateDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceTemplateFileDataService;
 import com.cgi.eoss.fstep.rpc.BuildServiceParams;
 import com.cgi.eoss.fstep.rpc.BuildServiceResponse;
-import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
+import com.cgi.eoss.fstep.rpc.LocalJobLauncher;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.cgi.eoss.fstep.services.DefaultFstepServices;
 import io.grpc.stub.StreamObserver;
@@ -54,7 +54,7 @@ public class ServicesApiExtension {
     private final FstepSecurityService fstepSecurityService;
     private final ServiceTemplateDataService serviceTemplateDataService;
     private final ServiceTemplateFileDataService serviceTemplateFileDataService;
-    private final LocalServiceLauncher localServiceLauncher;
+    private final LocalJobLauncher localJobLauncher;
     
     @GetMapping("/defaults")
     public Resources<FstepService> getDefaultServices() {
@@ -184,7 +184,7 @@ public class ServicesApiExtension {
     private void buildService(FstepService fstepService, BuildServiceParams buildServiceParams) {
         serviceDataService.save(fstepService);
         BuildServiceObserver responseObserver = new BuildServiceObserver();
-        localServiceLauncher.asyncBuildService(buildServiceParams, responseObserver);
+        localJobLauncher.asyncBuildService(buildServiceParams, responseObserver);
     }
     
 

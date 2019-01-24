@@ -7,18 +7,15 @@ import "common_messages.proto";
 option java_multiple_files = true;
 option java_package = "com.cgi.eoss.fstep.rpc";
 
-service FstepServiceLauncher {
-    rpc LaunchService (FstepServiceParams) returns (stream FstepServiceResponse);
-    rpc ListWorkers (ListWorkersParams) returns (WorkersList);
-    rpc StopService (StopServiceParams) returns (StopServiceResponse);
-}
-
 service FstepJobLauncher {
 	rpc BuildService (BuildServiceParams) returns (BuildServiceResponse);
     rpc SubmitJob (FstepServiceParams) returns (FstepJobResponse);
+    rpc GetJobStatus (GetJobStatusParams) returns (JobStatusResponse);
+    rpc GetJobOutputs (GetJobOutputsParams) returns (JobOutputsResponse);
     rpc CancelJob (CancelJobParams) returns (CancelJobResponse);
     rpc StopJob (StopServiceParams) returns (StopServiceResponse);
     rpc RelaunchFailedJob (RelaunchFailedJobParams) returns (RelaunchFailedJobResponse);
+    rpc ListWorkers (ListWorkersParams) returns (WorkersList);
     
 }
 
@@ -41,18 +38,28 @@ message FstepServiceParams {
     string jobParent = 6;
 }
 
-message FstepServiceResponse {
-    message JobOutputs {
-        repeated JobParam outputs = 1;
-    }
-    oneof Payload {
-        Job job = 1;
-        JobOutputs jobOutputs = 2;
-    }
+message GetJobStatusParams {
+    Job job = 1;
+}
+
+message GetJobOutputsParams {
+    Job job = 1;
 }
 
 message FstepJobResponse {
         Job job = 1;
+}
+
+message JobOutputsResponse {
+    message JobOutputs {
+        repeated JobParam outputs = 1;
+    }
+    JobOutputs jobOutputs = 1;
+}
+
+message JobStatusResponse {
+        Job job = 1;
+        JobStatus jobStatus = 2;
 }
 
 message ListWorkersParams {

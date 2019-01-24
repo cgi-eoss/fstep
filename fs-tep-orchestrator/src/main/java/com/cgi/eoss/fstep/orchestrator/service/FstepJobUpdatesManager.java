@@ -117,16 +117,22 @@ public class FstepJobUpdatesManager {
 	    }
 
     @JmsListener(destination = FstepQueueService.jobUpdatesQueueName)
-    public void receiveJobUpdate(@Payload ObjectMessage objectMessage, @Header("workerId") String workerId,
+    public void receiveJobUpdateMessage(@Payload ObjectMessage objectMessage, @Header("workerId") String workerId,
             @Header("jobId") String internalJobId) {
         Job job = jobDataService.reload(Long.parseLong(internalJobId));
         // TODO change into Chain of Responsibility type pattern
         Serializable update = null;
         try {
             update = objectMessage.getObject();
+            receiveJobUpdate(update, workerId, internalJobId);
         } catch (JMSException e) {
             onJobError(job, e);
         }
+
+    }
+    
+    public void receiveJobUpdate(Object update, String workerId, String internalJobId) {
+        Job job = jobDataService.reload(Long.parseLong(internalJobId));
         if (update instanceof JobEvent) {
             JobEvent jobEvent = (JobEvent) update;
             JobEventType jobEventType = jobEvent.getJobEventType();

@@ -13,7 +13,6 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 import com.cgi.eoss.fstep.catalogue.CatalogueConfig;
 import com.cgi.eoss.fstep.costing.CostingConfig;
-import com.cgi.eoss.fstep.orchestrator.service.FstepServiceLauncher;
 import com.cgi.eoss.fstep.orchestrator.service.CachingWorkerFactory;
 import com.cgi.eoss.fstep.persistence.PersistenceConfig;
 import com.cgi.eoss.fstep.persistence.service.WorkerLocatorExpressionDataService;

@@ -1,26 +1,38 @@
 package com.cgi.eoss.fstep.wps;
 
-import com.cgi.eoss.fstep.rpc.FstepServiceLauncherGrpc;
+import static org.awaitility.Awaitility.with;
+import static org.awaitility.pollinterval.IterativePollInterval.iterative;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.PreDestroy;
+
+import org.apache.logging.log4j.CloseableThreadContext;
+import org.awaitility.Duration;
+import org.zoo_project.ZOO;
+
+import com.cgi.eoss.fstep.rpc.FstepJobLauncherGrpc;
+import com.cgi.eoss.fstep.rpc.FstepJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
-import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
+import com.cgi.eoss.fstep.rpc.GetJobOutputsParams;
+import com.cgi.eoss.fstep.rpc.GetJobStatusParams;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
+import com.cgi.eoss.fstep.rpc.JobOutputsResponse;
+import com.cgi.eoss.fstep.rpc.JobStatus;
+import com.cgi.eoss.fstep.rpc.JobStatus.Status;
+import com.cgi.eoss.fstep.rpc.JobStatusResponse;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Multimaps;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import lombok.extern.log4j.Log4j2;
-import org.apache.logging.log4j.CloseableThreadContext;
-import org.zoo_project.ZOO;
-
-import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * <p>Client for FS-TEP gRPC services. Encapsulates the usage of the RPC interface so that WPS service implementations
@@ -30,8 +42,8 @@ import java.util.concurrent.TimeUnit;
 public class FstepServicesClient {
 
     private final ManagedChannel channel;
-    private final FstepServiceLauncherGrpc.FstepServiceLauncherBlockingStub fstepServiceLauncherBlockingStub;
-    private final FstepServiceLauncherGrpc.FstepServiceLauncherStub fstepServiceLauncherStub;
+    private final FstepJobLauncherGrpc.FstepJobLauncherBlockingStub fstepJobLauncherBlockingStub;
+    private final FstepJobLauncherGrpc.FstepJobLauncherStub fstepJobLauncherStub;
 
     /**
      * <p>Construct gRPC client connecting to server at ${host}:${port}.</p>
@@ -47,8 +59,8 @@ public class FstepServicesClient {
      */
     public FstepServicesClient(ManagedChannelBuilder<?> channelBuilder) {
         channel = channelBuilder.build();
-        fstepServiceLauncherBlockingStub = FstepServiceLauncherGrpc.newBlockingStub(channel);
-        fstepServiceLauncherStub = FstepServiceLauncherGrpc.newStub(channel);
+        fstepJobLauncherBlockingStub = FstepJobLauncherGrpc.newBlockingStub(channel);
+        fstepJobLauncherStub = FstepJobLauncherGrpc.newStub(channel);
     }
 
     /**
@@ -76,16 +88,38 @@ public class FstepServicesClient {
                 .setServiceId(serviceId)
                 .addAllInputs(GrpcUtil.mapToParams(inputs))
                 .build();
-        Iterator<FstepServiceResponse> responseIterator = fstepServiceLauncherBlockingStub.launchService(request);
-
-        // First message is the persisted job metadata
-        Job jobInfo = responseIterator.next().getJob();
-        LOG.info("Instantiated job: {}", jobInfo);
-
-        // Second message is the outputs
-        FstepServiceResponse.JobOutputs jobOutputs = responseIterator.next().getJobOutputs();
-        return GrpcUtil.paramsListToMap(jobOutputs.getOutputsList());
+        FstepJobResponse jobSubmissionResponse = fstepJobLauncherBlockingStub.submitJob(request);
+        Job jobInfo = jobSubmissionResponse.getJob();
+        LOG.info("Instantiated job: {}", jobInfo.getId());
+        LOG.info("Waiting for job completion: {}", jobInfo.getId());
+        Status[] jobStatusHolder = new Status[1];
+        with().pollInterval(iterative(duration -> duration.compareTo(new Duration(15,TimeUnit.MINUTES)) <= 0 ?duration.multiply(2): duration).with().startDuration(Duration.TWO_SECONDS))
+        .and().atMost(new Duration(7, TimeUnit.DAYS))
+        .await("Job ended")
+        .until(() -> {
+        	jobStatusHolder[0] = getJobStatus(jobInfo);
+            return jobStatusHolder[0].equals(JobStatus.Status.COMPLETED) || jobStatusHolder[0].equals(JobStatus.Status.ERROR);
+            
+        });
+       
+        
+        if (jobStatusHolder[0] == JobStatus.Status.COMPLETED) {
+        	GetJobOutputsParams outputParams = GetJobOutputsParams.newBuilder().setJob(jobInfo).build();
+        	JobOutputsResponse response = fstepJobLauncherBlockingStub.getJobOutputs(outputParams);
+        	return GrpcUtil.paramsListToMap(response.getJobOutputs().getOutputsList());
+        }
+        else {
+        	throw new RuntimeException("Error in job execution");
+        }
+        
     }
+
+	private Status getJobStatus(Job job) {
+		GetJobStatusParams params = GetJobStatusParams.newBuilder().setJob(job).build();
+        JobStatusResponse jobStatusResponse = fstepJobLauncherBlockingStub.getJobStatus(params);
+        Status jobStatus = jobStatusResponse.getJobStatus().getStatus();
+		return jobStatus;
+	}
 
     /**
      * <p>Entry point for WPS services to hook into the FS-TEP service launching infrastructure.</p>

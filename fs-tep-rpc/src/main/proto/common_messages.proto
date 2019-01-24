@@ -19,6 +19,19 @@ message Job {
     string serviceId = 4;
 }
 
+message JobStatus {
+    enum Status {
+    	COMPLETED = 0;
+    	FAILED = 1;
+    	RUNNING = 2;
+    	ERROR = 3;
+    	CREATED = 4;
+    
+    }
+    
+    Status status = 1;
+}
+
 message JobParam {
     string paramName = 1;
     repeated string paramValue = 2;

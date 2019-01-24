@@ -1,15 +1,12 @@
 package com.cgi.eoss.fstep.rpc;
 
+import java.util.List;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
-import com.google.protobuf.ByteString;
-import io.grpc.stub.StreamObserver;
+
 import lombok.experimental.UtilityClass;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
-import java.util.List;
 
 /**
  * <p>Utility class providing helper methods for dealing with Protobuf/Grpc services and objects.</p>

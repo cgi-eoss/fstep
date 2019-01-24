@@ -25,7 +25,7 @@ import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.rpc.CancelJobParams;
 import com.cgi.eoss.fstep.rpc.CancelJobResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
-import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
+import com.cgi.eoss.fstep.rpc.LocalJobLauncher;
 import com.cgi.eoss.fstep.rpc.RelaunchFailedJobParams;
 import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
@@ -61,12 +61,12 @@ public class JobsApiExtension {
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
-    private final LocalServiceLauncher localServiceLauncher;
+    private final LocalJobLauncher localJobLauncher;
 
     @Autowired
     public JobsApiExtension(@Value("${fstep.api.logs.username:admin}") String username,
                             @Value("${fstep.api.logs.password:graylogpass}") String password,
-                            LocalServiceLauncher localServiceLauncher) {
+                            LocalJobLauncher localJobLauncher) {
         this.httpClient = new OkHttpClient.Builder()
                 .addInterceptor(new Interceptor() {
                     @Override
@@ -82,7 +82,7 @@ public class JobsApiExtension {
                 .addInterceptor(new HttpLoggingInterceptor(LOG::trace).setLevel(HttpLoggingInterceptor.Level.BODY))
                 .build();
         this.objectMapper = new ObjectMapper();
-        this.localServiceLauncher = localServiceLauncher;
+        this.localJobLauncher = localJobLauncher;
     }
 
     @GetMapping("/{jobId}/logs")
@@ -140,7 +140,7 @@ public class JobsApiExtension {
         final CountDownLatch latch = new CountDownLatch(1);
         JobStopObserver responseObserver = new JobStopObserver(latch);
 
-        localServiceLauncher.asyncStopJob(stopServiceParams, responseObserver);
+        localJobLauncher.asyncStopJob(stopServiceParams, responseObserver);
 
         latch.await(1, TimeUnit.MINUTES);
         return ResponseEntity.noContent().build();
@@ -160,7 +160,7 @@ public class JobsApiExtension {
         final CountDownLatch latch = new CountDownLatch(1);
         JobCancelObserver responseObserver = new JobCancelObserver(latch);
 
-        localServiceLauncher.asyncCancelJob(cancelJobParams, responseObserver);
+        localJobLauncher.asyncCancelJob(cancelJobParams, responseObserver);
         
     }
     
@@ -178,7 +178,7 @@ public class JobsApiExtension {
         final CountDownLatch latch = new CountDownLatch(1);
         JobRelaunchObserver responseObserver = new JobRelaunchObserver(latch);
 
-        localServiceLauncher.asyncRelaunchFailedJob(relaunchJobParams, responseObserver);
+        localJobLauncher.asyncRelaunchFailedJob(relaunchJobParams, responseObserver);
         
     }
 

@@ -73,6 +73,7 @@ public class FstepWorkerDispatcher {
                 t.start();
             } else {
                 LOG.debug("Job queue currently empty");
+                return;
             }
         }
     }

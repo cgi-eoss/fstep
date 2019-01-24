@@ -8,9 +8,8 @@ import com.cgi.eoss.fstep.model.SystematicProcessing.Status;
 import com.cgi.eoss.fstep.persistence.service.SystematicProcessingDataService;
 import com.cgi.eoss.fstep.rpc.FstepJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
-import com.cgi.eoss.fstep.rpc.FstepServiceResponse;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
-import com.cgi.eoss.fstep.rpc.LocalServiceLauncher;
+import com.cgi.eoss.fstep.rpc.LocalJobLauncher;
 import com.cgi.eoss.fstep.search.api.SearchFacade;
 import com.cgi.eoss.fstep.search.api.SearchParameters;
 import com.cgi.eoss.fstep.search.api.SearchResults;
@@ -49,17 +48,17 @@ public class SystematicProcessingScheduler {
 
     SearchFacade searchFacade;
     SystematicProcessingDataService systematicProcessingDataService;
-    private LocalServiceLauncher localServiceLauncher;
+    private LocalJobLauncher localJobLauncher;
     private CostingService costingService;
 
     private static final long SYSTEMATIC_PROCESSING_CHECK_RATE_MS = 60 * 60 * 1000L;
 
     @Autowired
     public SystematicProcessingScheduler(SystematicProcessingDataService systematicProcessingDataService, SearchFacade searchFacade,
-            LocalServiceLauncher localServiceLauncher, CostingService costingService) {
+            LocalJobLauncher localJobLauncher, CostingService costingService) {
         this.systematicProcessingDataService = systematicProcessingDataService;
         this.searchFacade = searchFacade;
-        this.localServiceLauncher = localServiceLauncher;
+        this.localJobLauncher = localJobLauncher;
         this.costingService = costingService;
     }
 
@@ -147,7 +146,7 @@ public class SystematicProcessingScheduler {
 
         final CountDownLatch latch = new CountDownLatch(1);
         JobLaunchObserver responseObserver = new JobLaunchObserver(latch);
-        localServiceLauncher.asyncSubmitJob(serviceParamsBuilder.build(), responseObserver);
+        localJobLauncher.asyncSubmitJob(serviceParamsBuilder.build(), responseObserver);
         // Block until the latch counts down (i.e. one message from the server)
         latch.await(1, TimeUnit.MINUTES);
         if (responseObserver.getError() != null) {

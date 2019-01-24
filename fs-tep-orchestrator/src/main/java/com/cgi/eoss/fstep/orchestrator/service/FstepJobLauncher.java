@@ -52,11 +52,17 @@ import com.cgi.eoss.fstep.rpc.FstepJobLauncherGrpc;
 import com.cgi.eoss.fstep.rpc.FstepJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
+import com.cgi.eoss.fstep.rpc.JobOutputsResponse;
+import com.cgi.eoss.fstep.rpc.JobOutputsResponse.JobOutputs;
 import com.cgi.eoss.fstep.rpc.JobParam;
+import com.cgi.eoss.fstep.rpc.JobStatus;
+import com.cgi.eoss.fstep.rpc.JobStatusResponse;
+import com.cgi.eoss.fstep.rpc.ListWorkersParams;
 import com.cgi.eoss.fstep.rpc.RelaunchFailedJobParams;
 import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
 import com.cgi.eoss.fstep.rpc.StopServiceResponse;
+import com.cgi.eoss.fstep.rpc.WorkersList;
 import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
@@ -231,6 +237,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 chargeUser(job.getOwner(), job);
                 submitJob(job, rpcJob, rpcInputs, SINGLE_JOB_PRIORITY);
             }
+            responseObserver.onCompleted();
 
         } catch (Exception e) {
             if (job != null) {
@@ -400,6 +407,30 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 	    }
 	    responseObserver.onCompleted();
 	}
+    
+
+    @Override
+    public void getJobStatus(com.cgi.eoss.fstep.rpc.GetJobStatusParams request,
+        io.grpc.stub.StreamObserver<com.cgi.eoss.fstep.rpc.JobStatusResponse> responseObserver) {
+    	com.cgi.eoss.fstep.rpc.Job rpcJob = request.getJob();
+    	Job job = jobDataService.getById(Long.parseLong(rpcJob.getIntJobId()));
+    	JobStatusResponse r = JobStatusResponse.newBuilder()
+    			.setJobStatus(JobStatus.newBuilder().setStatus(JobStatus.Status.valueOf(job.getStatus().toString()))).build();
+    	responseObserver.onNext(r);
+    	responseObserver.onCompleted();
+    }
+
+    @Override
+    public void getJobOutputs(com.cgi.eoss.fstep.rpc.GetJobOutputsParams request,
+        io.grpc.stub.StreamObserver<com.cgi.eoss.fstep.rpc.JobOutputsResponse> responseObserver) {
+    	com.cgi.eoss.fstep.rpc.Job rpcJob = request.getJob();
+    	Job job = jobDataService.getById(Long.parseLong(rpcJob.getIntJobId()));
+    	Multimap<String, String> jobOutputs = job.getOutputs();
+    	JobOutputsResponse r = JobOutputsResponse.newBuilder()
+    			.setJobOutputs(JobOutputs.newBuilder().addAllOutputs(GrpcUtil.mapToParams(jobOutputs))).build();
+    	responseObserver.onNext(r);
+    	responseObserver.onCompleted();
+    }
 
 	private void endJobWithError(Job job) {
         job.setStatus(Job.Status.ERROR);
@@ -534,10 +565,14 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         }
         
         JobSpec jobSpec = jobSpecBuilder.build();
-        HashMap<String, Object> messageHeaders = new HashMap<String, Object>();
-        messageHeaders.put("jobId", job.getId());
-        queueService.sendObject(FstepQueueService.jobQueueName, messageHeaders, jobSpec, priority);
+        queueService.sendObject(FstepQueueService.jobQueueName, getJobHeaders(job), jobSpec, priority);
     }
+
+	private HashMap<String, Object> getJobHeaders(Job job) {
+		HashMap<String, Object> messageHeaders = new HashMap<String, Object>();
+        messageHeaders.put("jobId", job.getId());
+		return messageHeaders;
+	}
 
     private void cancelJob(Job job) {
         LOG.info("Cancelling job with id {}", job.getId());
@@ -611,5 +646,15 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         costingService.chargeForJob(user.getWallet(), job);
     }
  
+    @Override
+    public void listWorkers(ListWorkersParams request, StreamObserver<WorkersList> responseObserver) {
+        try {
+            responseObserver.onNext(workerFactory.listWorkers());
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            LOG.error("Failed to enumerate workers", e);
+            responseObserver.onError(new StatusRuntimeException(io.grpc.Status.fromCode(io.grpc.Status.Code.ABORTED).withCause(e)));
+        }
+    }
 
 }

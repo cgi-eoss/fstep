@@ -32,8 +32,8 @@ public class InProcessRpcConfig {
     }
 
     @Bean
-    public LocalServiceLauncher localServiceLauncher(ManagedChannelBuilder inProcessChannelBuilder) {
-        return new LocalServiceLauncher(inProcessChannelBuilder);
+    public LocalJobLauncher localServiceLauncher(ManagedChannelBuilder inProcessChannelBuilder) {
+        return new LocalJobLauncher(inProcessChannelBuilder);
     }
     
     @Bean

@@ -26,4 +26,10 @@ public interface FstepQueueService {
 
     public long getQueueLength(String queueName);
 
+	public Message receiveSelected(String queueName, String messageSelector);
+	
+	public Message receive(String queueName);
+	
+	public Message receiveWithTimeout(String queueName, long timeout);
+
 }
