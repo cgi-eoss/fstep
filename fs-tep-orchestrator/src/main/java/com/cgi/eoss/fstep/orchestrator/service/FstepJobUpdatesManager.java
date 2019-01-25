@@ -514,6 +514,7 @@ public class FstepJobUpdatesManager {
         try {
             return GeoUtil.extractEpsg(outputPath);
         } catch (Exception e) {
+        	LOG.info("Could not extract bounding box from file: {}", outputPath);
             return null;
         }
     }
@@ -522,6 +523,7 @@ public class FstepJobUpdatesManager {
         try {
             return GeoUtil.geojsonToWkt(GeoUtil.extractBoundingBox(outputPath));
         } catch (Exception e) {
+        	LOG.info("Could not extract bounding box from file: {}", outputPath);
             return null;
         }
     }
