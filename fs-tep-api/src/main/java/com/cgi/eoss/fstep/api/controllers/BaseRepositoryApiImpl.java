@@ -1,17 +1,17 @@
 package com.cgi.eoss.fstep.api.controllers;
 
-import com.cgi.eoss.fstep.security.FstepSecurityService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import com.cgi.eoss.fstep.model.FstepEntityWithOwner;
 import com.cgi.eoss.fstep.model.QUser;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.persistence.dao.FstepEntityDao;
+import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.SubQueryExpression;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.NumberPath;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-
-import java.util.Set;
 
 public abstract class BaseRepositoryApiImpl<T extends FstepEntityWithOwner<T>> implements BaseRepositoryApi<T> {
 
@@ -28,8 +28,8 @@ public abstract class BaseRepositoryApiImpl<T extends FstepEntityWithOwner<T>> i
         if (getSecurityService().isSuperUser()) {
             return getDao().findAll(pageable);
         } else {
-            Set<Long> visibleIds = getSecurityService().getVisibleObjectIds(getEntityClass(), getDao().findAllIds());
-            BooleanExpression isVisible = getIdPath().in(visibleIds);
+            SubQueryExpression<Long> visibleQuery = getSecurityService().getVisibleQuery(getEntityClass());
+            BooleanExpression isVisible = getIdPath().in(visibleQuery);
             return getDao().findAll(isVisible, pageable);
         }
     }
@@ -48,8 +48,8 @@ public abstract class BaseRepositoryApiImpl<T extends FstepEntityWithOwner<T>> i
         if (getSecurityService().isSuperUser()) {
             return getDao().findAll(predicate, pageable);
         } else {
-            Set<Long> visibleIds = getSecurityService().getVisibleObjectIds(getEntityClass(), getDao().findAllIds());
-            BooleanExpression isVisible = getIdPath().in(visibleIds);
+        	SubQueryExpression<Long> visibleQuery = getSecurityService().getVisibleQuery(getEntityClass());
+            BooleanExpression isVisible = getIdPath().in(visibleQuery);
             return getDao().findAll(isVisible.and(predicate), pageable);
         }
     }

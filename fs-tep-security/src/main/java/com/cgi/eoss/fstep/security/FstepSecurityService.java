@@ -1,14 +1,15 @@
 package com.cgi.eoss.fstep.security;
 
-import com.cgi.eoss.fstep.model.FstepEntityWithOwner;
-import com.cgi.eoss.fstep.model.Group;
-import com.cgi.eoss.fstep.model.Role;
-import com.cgi.eoss.fstep.model.User;
-import com.cgi.eoss.fstep.persistence.service.PublishingRequestDataService;
-import com.cgi.eoss.fstep.persistence.service.UserDataService;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import lombok.extern.log4j.Log4j2;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.acls.AclPermissionEvaluator;
 import org.springframework.security.acls.domain.BasePermission;
@@ -28,15 +29,20 @@ import org.springframework.security.web.authentication.preauth.PreAuthenticatedA
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import com.cgi.eoss.fstep.model.FstepEntityWithOwner;
+import com.cgi.eoss.fstep.model.Group;
+import com.cgi.eoss.fstep.model.QAclEntry;
+import com.cgi.eoss.fstep.model.QAclObjectIdentity;
+import com.cgi.eoss.fstep.model.Role;
+import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.persistence.service.PublishingRequestDataService;
+import com.cgi.eoss.fstep.persistence.service.UserDataService;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.querydsl.core.types.SubQueryExpression;
+import com.querydsl.jpa.JPAExpressions;
+
+import lombok.extern.log4j.Log4j2;
 
 /**
  * <p>Provides common utility-style methods for interacting with the FS-TEP security context.</p>
@@ -239,6 +245,16 @@ public class FstepSecurityService {
                 .addAll(authentication.getAuthorities().stream().map(GrantedAuthoritySid::new).collect(Collectors.toSet()))
                 .build();
     }
+    
+    private String getPrincipalSidAsString(Authentication authentication) {
+        return new PrincipalSid(authentication).getPrincipal();
+    }
+    
+    private List<String> getAuthoritiesSidsAsString(Authentication authentication) {
+        return ImmutableList.<String>builder()
+                .addAll(authentication.getAuthorities().stream().map(a -> a.getAuthority()).collect(Collectors.toSet()))
+                .build();
+    }
 
     private boolean hasFstepPermission(Authentication authentication, FstepPermission permission, ObjectIdentity objectIdentity) {
         return permission.getAclPermissions().stream()
@@ -298,4 +314,20 @@ public class FstepSecurityService {
     public boolean isReadableByCurrentUser(Class<?> objectClass, Long objectId) {
         return isSuperUser() || hasFstepPermission(getCurrentAuthentication(), FstepPermission.READ, new ObjectIdentityImpl(objectClass, objectId));
     }
+
+	public SubQueryExpression<Long> getVisibleQuery(Class<?> objectClass) {
+		return JPAExpressions.selectDistinct(QAclObjectIdentity.aclObjectIdentity.objectIdIdentity)
+				.from(QAclEntry.aclEntry).join(QAclObjectIdentity.aclObjectIdentity)
+				.on(QAclEntry.aclEntry.aclObjectIdentity.eq(QAclObjectIdentity.aclObjectIdentity))
+				.where(QAclObjectIdentity.aclObjectIdentity.objectIdClass.classStr.eq(objectClass.getCanonicalName())
+						.and(QAclEntry.aclEntry.sid.sid.eq(getPrincipalSidAsString(getCurrentAuthentication()))
+								.and(QAclEntry.aclEntry.sid.principal.eq(true))
+								.or(QAclEntry.aclEntry.sid.sid
+										.in(getAuthoritiesSidsAsString(getCurrentAuthentication()))
+										.and(QAclEntry.aclEntry.sid.principal.eq(false)))))
+
+		;
+	}
+	
+
 }
