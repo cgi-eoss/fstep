@@ -76,15 +76,9 @@ import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.MapType;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.mysema.commons.lang.Pair;
@@ -101,6 +95,7 @@ public class FstepJobUpdatesManager {
     private final CachingWorkerFactory workerFactory;
     private final CatalogueService catalogueService;
     private final FstepSecurityService securityService;
+	private final PlatformParameterExtractor platformParameterExtractor;
 	 @Autowired
 	    public FstepJobUpdatesManager(JobDataService jobDataService, 
 	    		DynamicProxyService dynamicProxyService, 
@@ -114,25 +109,25 @@ public class FstepJobUpdatesManager {
 	        this.workerFactory = workerFactory;
 	        this.catalogueService = catalogueService;
 	        this.securityService = securityService;
+	        this.platformParameterExtractor = new PlatformParameterExtractor();
 	    }
 
     @JmsListener(destination = FstepQueueService.jobUpdatesQueueName)
     public void receiveJobUpdateMessage(@Payload ObjectMessage objectMessage, @Header("workerId") String workerId,
             @Header("jobId") String internalJobId) {
-        Job job = jobDataService.reload(Long.parseLong(internalJobId));
-        // TODO change into Chain of Responsibility type pattern
-        Serializable update = null;
         try {
-            update = objectMessage.getObject();
+        	// TODO change into Chain of Responsibility type pattern
+        	Serializable update = objectMessage.getObject();
             receiveJobUpdate(update, workerId, internalJobId);
         } catch (JMSException e) {
+        	Job job = jobDataService.refreshFull(Long.parseLong(internalJobId));
             onJobError(job, e);
         }
 
     }
     
     public void receiveJobUpdate(Object update, String workerId, String internalJobId) {
-        Job job = jobDataService.reload(Long.parseLong(internalJobId));
+        Job job = jobDataService.refreshFull(Long.parseLong(internalJobId));
         if (update instanceof JobEvent) {
             JobEvent jobEvent = (JobEvent) update;
             JobEventType jobEventType = jobEvent.getJobEventType();
@@ -289,6 +284,7 @@ public class FstepJobUpdatesManager {
     }
 
     private boolean allChildJobCompleted(Job parentJob) {
+    	parentJob = jobDataService.refreshFull(parentJob);
         return !parentJob.getSubJobs().stream().anyMatch(j -> j.getStatus() != Job.Status.COMPLETED);
     }
 
@@ -337,8 +333,8 @@ public class FstepJobUpdatesManager {
         List<RetrievedOutputFile> retrievedOutputFiles = new ArrayList<RetrievedOutputFile>(outputsByRelativePath.size());
 
         Multimap<String, FstepFile> outputFiles = ArrayListMultimap.create();
-        Map<String, GeoServerSpec> geoServerSpecs = getGeoServerSpecs(inputs);
-        Map<String, String> collectionSpecs = getCollectionSpecs(inputs);
+        Map<String, GeoServerSpec> geoServerSpecs = platformParameterExtractor.getGeoServerSpecs(job);
+        Map<String, String> collectionSpecs = platformParameterExtractor.getCollectionSpecs(job);
 
         for (String outputId : outputsByRelativePath.keySet()) {
             OutputProductMetadata outputProduct = getOutputMetadata(job, geoServerSpecs, collectionSpecs, outputId);
@@ -484,31 +480,7 @@ public class FstepJobUpdatesManager {
 
         return retrievedOutputFiles;
     }
-
     
-    private Map<String, GeoServerSpec> getGeoServerSpecs(Multimap<String, String> inputs) throws JsonParseException, JsonMappingException, IOException {
-        String geoServerSpecsStr = Iterables.getOnlyElement(inputs.get("geoServerSpec"), null);
-        Map<String, GeoServerSpec> geoServerSpecs = new HashMap<String, GeoServerSpec>();
-        if (geoServerSpecsStr != null && geoServerSpecsStr.length() > 0) {
-            ObjectMapper mapper = new ObjectMapper();
-                TypeFactory typeFactory = mapper.getTypeFactory();
-                MapType mapType = typeFactory.constructMapType(HashMap.class, String.class, GeoServerSpec.class);
-                geoServerSpecs.putAll(mapper.readValue(geoServerSpecsStr, mapType));
-        }
-        return geoServerSpecs;
-    }
-    
-    private Map<String, String> getCollectionSpecs(Multimap<String, String> inputs) throws JsonParseException, JsonMappingException, IOException {
-        String collectionsStr = Iterables.getOnlyElement(inputs.get("collection"), null);
-        Map<String, String> collectionSpecs = new HashMap<String, String>();
-        if (collectionsStr != null && collectionsStr.length() > 0) {
-            ObjectMapper mapper = new ObjectMapper();
-                TypeFactory typeFactory = mapper.getTypeFactory();
-                MapType mapType = typeFactory.constructMapType(HashMap.class, String.class, String.class);
-                collectionSpecs.putAll(mapper.readValue(collectionsStr, mapType));
-        }
-        return collectionSpecs;
-    }
 
     private String getOutputCrs(Path outputPath) {
         try {

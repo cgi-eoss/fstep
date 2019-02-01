@@ -95,17 +95,26 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         return dao.save(new Job(jobConfig, extId, owner, parentJob));
     }
     
-    public Job reload(Long id) {
-        Job job = this.getById(id);
+    public Job refreshFull(Long id) {
+        Job job = dao.findOne(id);
         job.getOwner().getGroups().size();
         job.getOutputFiles().size();
+        job.getSubJobs().size();
+        return job;
+    }
+    
+    public Job refreshFull(Job job) {
+        job = refresh(job);
+        job.getOwner().getGroups().size();
+        job.getOutputFiles().size();
+        job.getSubJobs().size();
         return job;
     }
 
 	@Override
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
     public Job updateParentJob(Job job) {
-		Job parentJob = job.getParentJob();
+		Job parentJob = this.refreshFull(job.getParentJob());
 		if (parentJob.getOutputs() == null) {
 			parentJob.setOutputs(ArrayListMultimap.create());
 		} 

@@ -36,7 +36,7 @@ import lombok.ToString;
  */
 @Data
 @ToString(exclude = {"parentJob"})
-@EqualsAndHashCode(exclude = {"id", "subJobs"})
+@EqualsAndHashCode(exclude = {"id", "subJobs", "outputFiles"})
 @Table(name = "fstep_jobs",
         indexes = {@Index(name = "fstep_jobs_job_config_idx", columnList = "job_config"), @Index(name = "fstep_jobs_owner_idx", columnList = "owner")},
         uniqueConstraints = {@UniqueConstraint(columnNames = "ext_id")})
@@ -140,7 +140,7 @@ public class Job implements FstepEntityWithOwner<Job> {
     /**
      * <p>The subjobs produced from a job related to a parallel processor</p>
      */
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "parentJob")
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "parentJob")
     private Set<Job> subJobs = new HashSet<>();
     
     /**

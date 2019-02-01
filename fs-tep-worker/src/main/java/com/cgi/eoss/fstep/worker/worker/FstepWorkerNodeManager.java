@@ -12,7 +12,6 @@ import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import com.cgi.eoss.fstep.clouds.service.StorageProvisioningException;
-import lombok.Synchronized;
 import lombok.extern.log4j.Log4j2;
 @Log4j2
 public class FstepWorkerNodeManager {
@@ -43,7 +42,6 @@ public class FstepWorkerNodeManager {
         return findAvailableNode() != null;
     }
 
-    @Synchronized
     public boolean reserveNodeForJob(String jobId) {
         Node availableNode = findAvailableNode();
         if (availableNode != null) {
@@ -98,7 +96,6 @@ public class FstepWorkerNodeManager {
         }
     }
     
-    @Synchronized
     public int destroyNodes(int count, String tag, Path environmentBaseDir, long minimumHourFractionUptimeSeconds){
         Set<Node> freeWorkerNodes = findNFreeWorkerNodes(count, tag, minimumHourFractionUptimeSeconds);
         int destroyableNodes = freeWorkerNodes.size();

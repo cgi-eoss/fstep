@@ -19,6 +19,7 @@ import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.WalletTransaction;
 import com.cgi.eoss.fstep.persistence.service.CostingExpressionDataService;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
+import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.WalletDataService;
 import com.google.common.base.Strings;
 
@@ -32,14 +33,16 @@ public class CostingServiceImpl implements CostingService {
     private final WalletDataService walletDataService;
     private final CostingExpression defaultJobCostingExpression;
     private final CostingExpression defaultDownloadCostingExpression;
-	private DatabasketDataService databasketDataService;
-
+	private final DatabasketDataService databasketDataService;
+	private final JobDataService jobDataService;
+	
     public CostingServiceImpl(ExpressionParser costingExpressionParser, CostingExpressionDataService costingDataService,
-                              WalletDataService walletDataService, DatabasketDataService databasketDataService, String defaultJobCostingExpression, String defaultDownloadCostingExpression) {
+                              WalletDataService walletDataService, DatabasketDataService databasketDataService, JobDataService jobDataService, String defaultJobCostingExpression, String defaultDownloadCostingExpression) {
         this.expressionParser = costingExpressionParser;
         this.costingDataService = costingDataService;
         this.walletDataService = walletDataService;
         this.databasketDataService = databasketDataService;
+        this.jobDataService = jobDataService;
         this.defaultJobCostingExpression = CostingExpression.builder().costExpression(defaultJobCostingExpression).build();
         this.defaultDownloadCostingExpression = CostingExpression.builder().costExpression(defaultDownloadCostingExpression).build();
     }
@@ -58,6 +61,7 @@ public class CostingServiceImpl implements CostingService {
     @Override
     public Integer estimateJobRelaunchCost(Job job) {
         if (job.isParent()) {
+        	job = jobDataService.refreshFull(job.getId());
         	return job.getSubJobs()
         			.stream()
         			.filter(j -> j.getStatus() == Job.Status.ERROR && j.getStage() != null && !j.getStage().equals("Step 1 of 3: Data-Fetch"))

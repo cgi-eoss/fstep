@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -57,6 +58,7 @@ import com.cgi.eoss.fstep.orchestrator.service.DynamicProxyService;
 import com.cgi.eoss.fstep.orchestrator.service.FstepGuiServiceManager;
 import com.cgi.eoss.fstep.orchestrator.service.FstepJobLauncher;
 import com.cgi.eoss.fstep.orchestrator.service.FstepJobUpdatesManager;
+import com.cgi.eoss.fstep.orchestrator.service.JobValidator;
 import com.cgi.eoss.fstep.orchestrator.service.ReverseProxyEntry;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
@@ -192,11 +194,12 @@ public class FstepServicesClientIT {
         FstepQueueService queueService = new FstepJMSQueueService(jmsTemplate);
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         when(workerFactory.getWorkerById(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
-        FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, databasketDataService, guiService, 
-        		catalogueService, costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService);
-        String workerId = "local1";
         FstepJobUpdatesManager updatesManager = new FstepJobUpdatesManager(jobDataService, dynamicProxyService, guiService, workerFactory, 
         		catalogueService, securityService);
+        String workerId = "local1";
+        JobValidator jobValidator = new JobValidator(costingService, catalogueService);
+        FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, databasketDataService, guiService, 
+        		 costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService, jobValidator);
         
         FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1);
         fstepWorker.allocateMinNodes();
@@ -277,7 +280,7 @@ public class FstepServicesClientIT {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
         
-        when(jobDataService.reload(any())).thenAnswer(invocation -> {
+        when(jobDataService.refreshFull(anyLong())).thenAnswer(invocation -> {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
       
@@ -346,7 +349,7 @@ public class FstepServicesClientIT {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
         
-        when(jobDataService.reload(any())).thenAnswer(invocation -> {
+        when(jobDataService.refreshFull(anyLong())).thenAnswer(invocation -> {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
         
@@ -421,7 +424,7 @@ public class FstepServicesClientIT {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
         
-        when(jobDataService.reload(any())).thenAnswer(invocation -> {
+        when(jobDataService.refreshFull(anyLong())).thenAnswer(invocation -> {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
         

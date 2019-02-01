@@ -51,8 +51,6 @@ public class FstepWorkerAutoscaler {
 
     private long minimumHourFractionUptimeSeconds;
 
-    private boolean autoscalingOngoing;
-
     @Autowired
     public FstepWorkerAutoscaler(FstepWorkerNodeManager nodeManager, FstepQueueService queueService, QueueMetricsService queueMetricsService,
             JobEnvironmentService jobEnvironmentService, 
@@ -79,13 +77,12 @@ public class FstepWorkerAutoscaler {
         queueMetricsService.updateMetric(queueLength, STATISTICS_WINDOW_MS/1000L);
     }
 
-    @Scheduled(fixedRate = AUTOSCALER_INTERVAL_MS, initialDelay = 10000L)
-    public void decide() {
+    @Scheduled(fixedDelay = AUTOSCALER_INTERVAL_MS, initialDelay = 10000L)
+    public void autoscale() {
         long nowEpoch = Instant.now().getEpochSecond();
-        if(autoscalingOngoing || lastAutoscalingActionTime != 0L && (nowEpoch - lastAutoscalingActionTime) < minSecondsBetweenScalingActions) {
+        if(lastAutoscalingActionTime != 0L && (nowEpoch - lastAutoscalingActionTime) < minSecondsBetweenScalingActions) {
             return;
         }
-        autoscalingOngoing = true;
         // We check that currentNodes are already equal or greather than minWorkerNodes to be sure that allocation of
         // minNodes has already happened
         try {
@@ -105,11 +102,9 @@ public class FstepWorkerAutoscaler {
 	        else {
 	            LOG.info("Metrics coverage of {} not enough to take scaling decision", coverage);
 	        }
-	        autoscalingOngoing = false;
 
         }
         catch (RuntimeException e) {
-            autoscalingOngoing = false;
             throw e;
         }
     }

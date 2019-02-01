@@ -61,7 +61,7 @@ public class FstepWorkerDispatcher {
     }
 
 
-    @Scheduled(fixedRate = QUEUE_SCHEDULER_INTERVAL_MS, initialDelay = 10000L)
+    @Scheduled(fixedDelay = QUEUE_SCHEDULER_INTERVAL_MS, initialDelay = 10000L)
     public void getNewJobs() {
         while (nodeManager.hasCapacity()) {
             LOG.debug("Checking for available jobs in the queue");

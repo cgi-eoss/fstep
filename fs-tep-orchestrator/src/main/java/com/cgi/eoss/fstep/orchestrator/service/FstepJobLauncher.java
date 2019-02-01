@@ -1,10 +1,8 @@
 package com.cgi.eoss.fstep.orchestrator.service;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 
 import java.io.IOException;
-import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,14 +17,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.CloseableThreadContext;
 import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.logging.Logging;
 import com.cgi.eoss.fstep.model.Databasket;
@@ -36,7 +31,6 @@ import com.cgi.eoss.fstep.model.FstepServiceDockerBuildInfo;
 import com.cgi.eoss.fstep.model.FstepServiceResources;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
-import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.UserMount;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
@@ -69,13 +63,7 @@ import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.rpc.worker.JobSpec;
 import com.cgi.eoss.fstep.rpc.worker.ResourceRequest;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.MapType;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.SetMultimap;
@@ -95,40 +83,40 @@ import lombok.extern.log4j.Log4j2;
 @Log4j2
 @GRpcService
 public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplBase {
-
-    private static final String TIMEOUT_PARAM = "timeout";
-
+    
     private static final int SINGLE_JOB_PRIORITY = 9;
 
     private final CachingWorkerFactory workerFactory;
     private final JobDataService jobDataService;
     private final DatabasketDataService databasketDataService;
-    private final CatalogueService catalogueService;
     private final CostingService costingService;
     private final FstepQueueService queueService;
     private final UserMountDataService userMountDataService;
     private final ServiceDataService serviceDataService;
     private final DynamicProxyService dynamicProxyService;
-    @Value("${fstep.orchestrator.gui.baseUrl:http://fstep}")
-    private String baseUrl;
+    private final JobValidator jobValidator;
+    private final PlatformParameterExtractor platformParameterExtractor;
     
     @Autowired
     public FstepJobLauncher(CachingWorkerFactory workerFactory, JobDataService jobDataService,
             DatabasketDataService databasketDataService, FstepGuiServiceManager guiService,
-            CatalogueService catalogueService, CostingService costingService,
+            CostingService costingService,
             FstepSecurityService securityService, FstepQueueService queueService, 
             UserMountDataService userMountDataService,
             ServiceDataService serviceDataService,
-            DynamicProxyService dynamicProxyService) {
+            DynamicProxyService dynamicProxyService,
+            JobValidator jobValidator) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
         this.databasketDataService = databasketDataService;
-        this.catalogueService = catalogueService;
         this.costingService = costingService;
         this.queueService = queueService;
         this.userMountDataService = userMountDataService;
         this.serviceDataService = serviceDataService;
         this.dynamicProxyService = dynamicProxyService;
+        this.jobValidator = jobValidator;
+        this.platformParameterExtractor = new PlatformParameterExtractor();
+        
     }
 
     @Override
@@ -150,7 +138,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             
             if (!Strings.isNullOrEmpty(parentId)) {
                 //this is a request to attach a subjob to an existing parent
-                job = jobDataService.reload(Long.valueOf(parentId));
+                job = jobDataService.refreshFull(Long.valueOf(parentId));
                 FstepService service = job.getConfig().getService();
                 if (service.getType() != FstepService.Type.PARALLEL_PROCESSOR) {
                     throw new ServiceExecutionException(
@@ -170,7 +158,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             FstepService service = job.getConfig().getService();
 
             if (service.getType() == FstepService.Type.PARALLEL_PROCESSOR) {
-                if (!checkInputs(job.getOwner(), rpcInputs)) {
+            	if (!jobValidator.checkInputs(job.getOwner(), rpcInputs)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.error("User {} does not have read access to all requested inputs",
                                 userId);
@@ -179,7 +167,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                             "User does not have read access to all requested inputs");
                 }
                 
-                if (!checkAccessToOutputCollection(job.getOwner(), rpcInputs)) {
+                if (!jobValidator.checkAccessToOutputCollection(job)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.error("User {} does not have read access to all requested output collections",
                                 userId);
@@ -192,9 +180,9 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 
                 Collection<String> parallelInput = inputs.get("parallelInputs");
                 List<String> newInputs = explodeParallelInput(parallelInput);
-                checkCost(job.getOwner(), job.getConfig(), newInputs);
+                jobValidator.checkCost(job.getOwner(), job.getConfig(), newInputs);
 
-                if (!checkInputList(job.getOwner(), newInputs)) {
+                if (!jobValidator.checkInputList(job.getOwner(), newInputs)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.error("User {} does not have read access to all requested inputs",
                                 userId);
@@ -215,8 +203,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 
             } 
             else {
-                checkCost(job.getOwner(), job.getConfig());
-                if (!checkInputs(job.getOwner(), rpcInputs)) {
+            	jobValidator.checkCost(job.getOwner(), job.getConfig());
+                if (!jobValidator.checkInputs(job.getOwner(), rpcInputs)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.error("User {} does not have read access to all requested inputs",
                                 userId);
@@ -225,7 +213,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                             "User does not have read access to all requested inputs");
                 }
               //TODO: Check that the user can use the geoserver spec
-                if (!checkAccessToOutputCollection(job.getOwner(), rpcInputs)) {
+                if (!jobValidator.checkAccessToOutputCollection(job)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.error("User {} does not have read access to all requested output collections",
                                 userId);
@@ -280,7 +268,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 	public void cancelJob(CancelJobParams request,
 	        StreamObserver<CancelJobResponse> responseObserver) {
 	    com.cgi.eoss.fstep.rpc.Job rpcJob = request.getJob();
-	    Job job = jobDataService.getById(Long.parseLong(rpcJob.getIntJobId()));
+	    Job job = jobDataService.refreshFull(Long.parseLong(rpcJob.getIntJobId()));
 	    Set<Job> subJobs = job.getSubJobs();
 	    if (subJobs.size() > 0) {
 	        for (Job subJob : subJobs) {
@@ -302,7 +290,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     public void relaunchFailedJob(RelaunchFailedJobParams request, StreamObserver<RelaunchFailedJobResponse> responseObserver) {
 
         com.cgi.eoss.fstep.rpc.Job rpcJob = request.getJob();
-        Job job = jobDataService.reload(Long.parseLong(rpcJob.getIntJobId()));
+        Job job = jobDataService.refreshFull(Long.parseLong(rpcJob.getIntJobId()));
         responseObserver.onNext(RelaunchFailedJobResponse.newBuilder().build());
         try (CloseableThreadContext.Instance ctc =
                 CloseableThreadContext.push("FS-TEP Service Orchestrator").put("userId", String.valueOf(job.getOwner().getId()))
@@ -311,18 +299,18 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 Set<Job> failedSubJobs =
                         job.getSubJobs().stream().filter(j -> j.getStatus() == Status.ERROR).collect(Collectors.toSet());
                 if (failedSubJobs.size() > 0) {
-                    checkCost(job.getOwner(), job.getConfig(), failedSubJobs.size());
+                    jobValidator.checkCost(job.getOwner(), job.getConfig(), failedSubJobs.size());
                     //TODO: Check that the user can use the geoserver spec
                     for (Job failedSubJob : failedSubJobs) {
                         List<JobParam> failedSubJobInputs = GrpcUtil.mapToParams(failedSubJob.getConfig().getInputs());
-                        if (!checkInputs(job.getOwner(), failedSubJobInputs)) {
+                        if (!jobValidator.checkInputs(job.getOwner(), failedSubJobInputs)) {
                             try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                                 LOG.error("User {} does not have read access to all requested inputs", job.getOwner().getId());
                             }
                             throw new ServiceExecutionException("User does not have read access to all requested inputs");
                         }
 
-                        if (!checkAccessToOutputCollection(job.getOwner(), failedSubJobInputs)) {
+                        if (!jobValidator.checkAccessToOutputCollection(job)) {
                             try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                                 LOG.error("User {} does not have read access to all requested output collections",
                                         job.getOwner().getId());
@@ -348,16 +336,16 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 }
             } else {
                 List<JobParam> jobInputs = GrpcUtil.mapToParams(job.getConfig().getInputs());
-                checkCost(job.getOwner(), job.getConfig());
+                jobValidator.checkCost(job.getOwner(), job.getConfig());
                 //TODO: Check that the user can use the geoserver spec
-                if (!checkInputs(job.getOwner(), jobInputs)) {
+                if (!jobValidator.checkInputs(job.getOwner(), jobInputs)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.error("User {} does not have read access to all requested inputs", job.getOwner().getId());
                     }
                     throw new ServiceExecutionException("User does not have read access to all requested inputs");
                 }
 
-                if (!checkAccessToOutputCollection(job.getOwner(), jobInputs)) {
+                if (!jobValidator.checkAccessToOutputCollection(job)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                         LOG.error("User {} does not have read access to all requested output collections", job.getOwner().getId());
                     }
@@ -457,79 +445,6 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         return 1;
     }
 
-    private void checkCost(User user, JobConfig jobConfig) {
-        int estimatedCost = costingService.estimateJobCost(jobConfig);
-        if (estimatedCost > user.getWallet().getBalance()) {
-            throw new ServiceExecutionException(
-                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
-        }
-    }
-    
-    private void checkCost(User user, JobConfig config, List<String> newInputs) {
-        int singleJobCost = costingService.estimateSingleRunJobCost(config);
-        int estimatedCost = newInputs.size() * singleJobCost;
-        if (estimatedCost > user.getWallet().getBalance()) {
-            throw new ServiceExecutionException(
-                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
-        }
-    }
-    
-    private void checkCost(User user, JobConfig config, int numberOfJobs) {
-        int singleJobCost = costingService.estimateSingleRunJobCost(config);
-        int estimatedCost = numberOfJobs * singleJobCost;
-        if (estimatedCost > user.getWallet().getBalance()) {
-            throw new ServiceExecutionException(
-                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
-        }
-    }
-    
-    private boolean checkInputs(User user, List<JobParam> inputsList) {
-        Multimap<String, String> inputs = GrpcUtil.paramsListToMap(inputsList);
-
-        Set<URI> inputUris = inputs.entries().stream().filter(e -> this.isValidUri(e.getValue()))
-                .flatMap(e -> Arrays.stream(StringUtils.split(e.getValue(), ',')).map(URI::create))
-                .collect(toSet());
-
-        return inputUris.stream().allMatch(uri -> catalogueService.canUserRead(user, uri));
-    }
-
-    private boolean checkInputList(User user, List<String> inputsList) {
-        return inputsList.stream().filter(e -> this.isValidUri(e)).map(URI::create).collect(toSet())
-                .stream().allMatch(uri -> catalogueService.canUserRead(user, uri));
-    }
-        
-    private boolean checkAccessToOutputCollection(User user, List<JobParam> rpcInputs) {
-        Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
-        Map<String, String> collectionSpecs;
-        try {
-            collectionSpecs = getCollectionSpecs(inputs);
-            return collectionSpecs.values().stream()
-                    .allMatch(collectionId -> catalogueService.canUserWrite(user, collectionId));
-        } catch (IOException e) {
-            return false;
-        }
-    }
-    
-    private Map<String, String> getCollectionSpecs(Multimap<String, String> inputs) throws JsonParseException, JsonMappingException, IOException {
-        String collectionsStr = Iterables.getOnlyElement(inputs.get("collection"), null);
-        Map<String, String> collectionSpecs = new HashMap<String, String>();
-        if (collectionsStr != null && collectionsStr.length() > 0) {
-            ObjectMapper mapper = new ObjectMapper();
-                TypeFactory typeFactory = mapper.getTypeFactory();
-                MapType mapType = typeFactory.constructMapType(HashMap.class, String.class, String.class);
-                collectionSpecs.putAll(mapper.readValue(collectionsStr, mapType));
-        }
-        return collectionSpecs;
-    }
-
-    private boolean isValidUri(String test) {
-        try {
-            return URI.create(test).getScheme() != null;
-        } catch (Exception unused) {
-            return false;
-        }
-    }
-
     private void submitJob(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob, List<JobParam> rpcInputs, int priority)
             throws IOException {
         FstepService service = job.getConfig().getService();
@@ -538,11 +453,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         if (service.getType() == FstepService.Type.APPLICATION) {
             jobSpecBuilder.addExposedPorts(FstepGuiServiceManager.GUACAMOLE_PORT);
         }
-        Multimap<String, String> inputs = GrpcUtil.paramsListToMap(rpcInputs);
-
-        if (inputs.containsKey(TIMEOUT_PARAM)) {
-            int timeout = Integer.parseInt(Iterables.getOnlyElement(inputs.get(TIMEOUT_PARAM)));
-            jobSpecBuilder = jobSpecBuilder.setHasTimeout(true).setTimeoutValue(timeout);
+        Integer timeout = platformParameterExtractor.getTimeout(job);
+        if ( timeout > 0)
+        {
+        	jobSpecBuilder = jobSpecBuilder.setHasTimeout(true).setTimeoutValue(timeout);
         }
         
         Map<Long, String> additionalMounts = job.getConfig().getService().getAdditionalMounts();
@@ -632,7 +546,6 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             Job childJob =
                     jobDataService.buildNew(UUID.randomUUID().toString(), userId, service.getName(),
                             parentJob.getConfig().getLabel(), parallelJobParams, parentJob);
-            childJob = jobDataService.reload(childJob.getId());
             parentJob.getSubJobs().add(childJob);
             childJobs.add(childJob);
         }
