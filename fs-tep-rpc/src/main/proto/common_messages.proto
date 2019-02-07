@@ -22,11 +22,12 @@ message Job {
 message JobStatus {
     enum Status {
     	COMPLETED = 0;
-    	FAILED = 1;
-    	RUNNING = 2;
-    	ERROR = 3;
-    	CREATED = 4;
-    
+    	RUNNING = 1;
+    	ERROR = 2;
+    	CREATED = 3;
+    	CANCELLED = 4;
+    	PENDING = 5;
+    	WAITING = 6;
     }
     
     Status status = 1;

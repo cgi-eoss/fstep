@@ -47,6 +47,7 @@ import com.cgi.eoss.fstep.model.Group;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.Project;
+import com.cgi.eoss.fstep.model.Quota;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.orchestrator.OrchestratorConfig;
 import com.cgi.eoss.fstep.persistence.PersistenceConfig;
@@ -122,7 +123,7 @@ public class ApiConfig {
                 config.setBasePath(apiBasePath);
                 config.setDefaultMediaType(MediaTypes.HAL_JSON);
                 // Ensure that the id attribute is returned for all API-mapped types
-                ImmutableList.of(Group.class, JobConfig.class, Job.class, FstepService.class, FstepServiceContextFile.class, FstepServiceTemplate.class, FstepServiceTemplateFile.class, User.class, FstepFile.class, Databasket.class, Project.class)
+                ImmutableList.of(Group.class, JobConfig.class, Job.class, FstepService.class, FstepServiceContextFile.class, FstepServiceTemplate.class, FstepServiceTemplateFile.class, User.class, FstepFile.class, Databasket.class, Project.class, Quota.class)
                         .forEach(config::exposeIdsFor);
             }
         };

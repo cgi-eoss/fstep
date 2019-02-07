@@ -116,6 +116,12 @@ public class Job implements FstepEntityWithOwner<Job> {
      */
     @Column(name = "gui_endpoint")
     private String guiEndpoint;
+    
+    /**
+     * <p>Last known position of this job in the execution queue, -1 for unknown</p>
+     */
+    @Column(name = "queue_position")
+    private Integer queuePosition = -1;
 
     /**
      * <p>The job execution outputs.</p>
@@ -181,6 +187,6 @@ public class Job implements FstepEntityWithOwner<Job> {
     }
 
     public enum Status {
-        CREATED, RUNNING, COMPLETED, ERROR, CANCELLED
+        CREATED, RUNNING, COMPLETED, ERROR, CANCELLED, PENDING, WAITING
     }
 }

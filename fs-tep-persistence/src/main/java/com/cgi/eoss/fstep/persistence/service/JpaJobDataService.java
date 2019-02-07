@@ -124,6 +124,9 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
 		
 	}
     
-    
+	@Override
+	public Integer countByOwnerAndStatusIn(User user, List<Status> status) {
+		return dao.countByOwnerAndStatusIn(user, status);
+	}
 
 }

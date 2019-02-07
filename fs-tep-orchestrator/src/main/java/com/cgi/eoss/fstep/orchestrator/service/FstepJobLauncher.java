@@ -514,19 +514,29 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         }
         
         JobSpec jobSpec = jobSpecBuilder.build();
-        queueService.sendObject(FstepQueueService.jobQueueName, getJobHeaders(job), jobSpec, priority);
+        queueService.sendObject(FstepQueueService.jobPendingQueueName, getJobHeaders(job), jobSpec, priority);
+        job.setStatus(Status.PENDING);
+        jobDataService.save(job);
     }
 
 	private HashMap<String, Object> getJobHeaders(Job job) {
 		HashMap<String, Object> messageHeaders = new HashMap<String, Object>();
-        messageHeaders.put("jobId", job.getId());
+        messageHeaders.put("jobId", String.valueOf(job.getId()));
 		return messageHeaders;
 	}
 
     private void cancelJob(Job job) {
         LOG.info("Cancelling job with id {}", job.getId());
-        JobSpec queuedJobSpec = (JobSpec) queueService
-                .receiveSelectedObject(FstepQueueService.jobQueueName, "jobId = " + job.getId());
+        JobSpec queuedJobSpec = null;
+        if (job.getStatus().equals(Status.PENDING)) {
+        	queuedJobSpec = (JobSpec) queueService
+                .receiveSelectedObjectNoWait(FstepQueueService.jobPendingQueueName, "jobId = '" + job.getId() + "'");
+        }
+        else if (job.getStatus().equals(Status.WAITING)) {
+        	queuedJobSpec = (JobSpec) queueService
+                    .receiveSelectedObjectNoWait(FstepQueueService.jobExecutionQueueName, "jobId = '" + job.getId() +"'");
+        }
+        
         if (queuedJobSpec != null) {
             LOG.info("Refunding user for job id {}", job.getId());
             costingService.refundUser(job.getOwner().getWallet(), job);

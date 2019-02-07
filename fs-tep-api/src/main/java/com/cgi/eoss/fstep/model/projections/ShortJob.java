@@ -19,6 +19,7 @@ public interface ShortJob extends Identifiable<Long> {
     String getStage();
     LocalDateTime getStartTime();
     LocalDateTime getEndTime();
+    Integer getQueuePosition();
     boolean isParent();
     @Value("#{target.config.service.name}")
     String getServiceName();

@@ -27,4 +27,6 @@ public interface JobDataService extends
 	
 	Job refreshFull(Long id);
 	
+	Integer countByOwnerAndStatusIn(User user, List<Status> status);
+
 }

@@ -15,4 +15,6 @@ public interface JobDao extends FstepEntityDao<Job> {
     List<Job> findByStatusAndGuiUrlNotNull(Status status);
 
     List<Job> findByOwnerAndConfig_Service(User user, FstepService service);
+    
+    Integer countByOwnerAndStatusIn(User user, List<Status> status);
 }

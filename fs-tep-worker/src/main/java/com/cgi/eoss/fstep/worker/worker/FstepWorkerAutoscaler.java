@@ -73,7 +73,7 @@ public class FstepWorkerAutoscaler {
 
     @Scheduled(fixedRate = QUEUE_CHECK_INTERVAL_MS, initialDelay = 10000L)
     public void getCurrentQueueLength() {
-        long queueLength = queueService.getQueueLength(FstepQueueService.jobQueueName);
+        long queueLength = queueService.getQueueLength(FstepQueueService.jobExecutionQueueName);
         queueMetricsService.updateMetric(queueLength, STATISTICS_WINDOW_MS/1000L);
     }
 

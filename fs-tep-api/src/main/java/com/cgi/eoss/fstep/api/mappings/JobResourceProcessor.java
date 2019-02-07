@@ -69,7 +69,7 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
     }
     
     private void addCancelLink(Resource resource, Job.Status status) {
-        if (status == Job.Status.CREATED) {
+        if (status == Job.Status.CREATED || status == Job.Status.WAITING || status == Job.Status.PENDING) {
             // TODO Do this properly with a method reference
             resource.add(new Link(resource.getLink("self").getHref() + "/cancel").withRel("cancel"));
         }

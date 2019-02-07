@@ -27,10 +27,18 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
+
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerPlugin;
 import org.apache.activemq.broker.BrokerService;
+import org.apache.activemq.broker.TransportConnector;
+import org.apache.activemq.broker.region.policy.PolicyEntry;
+import org.apache.activemq.broker.region.policy.PolicyMap;
 import org.apache.activemq.plugin.StatisticsBrokerPlugin;
+import org.apache.activemq.pool.PooledConnectionFactory;
 import org.jooq.lambda.Seq;
 import org.junit.After;
 import org.junit.Before;
@@ -50,6 +58,8 @@ import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.model.Quota;
+import com.cgi.eoss.fstep.model.UsageType;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
@@ -59,14 +69,15 @@ import com.cgi.eoss.fstep.orchestrator.service.FstepGuiServiceManager;
 import com.cgi.eoss.fstep.orchestrator.service.FstepJobLauncher;
 import com.cgi.eoss.fstep.orchestrator.service.FstepJobUpdatesManager;
 import com.cgi.eoss.fstep.orchestrator.service.JobValidator;
+import com.cgi.eoss.fstep.orchestrator.service.QueueScheduler;
 import com.cgi.eoss.fstep.orchestrator.service.ReverseProxyEntry;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.persistence.service.QuotaDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
 import com.cgi.eoss.fstep.queues.service.FstepJMSQueueService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
-import com.cgi.eoss.fstep.queues.service.Message;
 import com.cgi.eoss.fstep.rpc.LocalWorker;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
@@ -127,6 +138,8 @@ public class FstepServicesClientIT {
     private Server server;
 	private Timer jobDispatcherTimer;
 	private Timer jobUpdatesTimer;
+	private Timer queueSchedulerTimer;
+	
 	private BrokerService broker;
     
     
@@ -162,7 +175,7 @@ public class FstepServicesClientIT {
             fstepFile.setFilename(ingestedOutputsDir.relativize(outputPath).toString());
             return fstepFile;
         });
-
+       
         JobEnvironmentService jobEnvironmentService = spy(new JobEnvironmentService(workspace));
         ServiceInputOutputManager ioManager = mock(ServiceInputOutputManager.class);
         Mockito.when(ioManager.getServiceContext(SERVICE_NAME)).thenReturn(Paths.get("src/test/resources/service1").toAbsolutePath());
@@ -182,16 +195,38 @@ public class FstepServicesClientIT {
         DatabasketDataService databasketDataService = mock(DatabasketDataService.class);
         UserMountDataService userMountDataService = mock(UserMountDataService.class);
         ServiceDataService serviceDataService = mock(ServiceDataService.class);
+        QuotaDataService quotaDataService = mock(QuotaDataService.class);
         broker = new BrokerService();
         broker.setBrokerName("broker1");
         broker.setUseJmx(false);
         broker.setPlugins(new BrokerPlugin[]{new StatisticsBrokerPlugin()});
         broker.setPersistent(false);
+        PolicyMap pm = new PolicyMap();
+        PolicyEntry pe = new PolicyEntry();
+        pe.setPrioritizedMessages(true);
+        pm.setDefaultEntry(pe);
+        broker.setDestinationPolicy(pm);
+        TransportConnector connector = new TransportConnector();
+        connector.setUri(new URI("vm://broker1"));
+        broker.addConnector(connector);
         broker.start();
         ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("vm://broker1?create=false");
         connectionFactory.setTrustAllPackages(true);
-        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory); 
-        FstepQueueService queueService = new FstepJMSQueueService(jmsTemplate);
+        JmsTemplate nonblockingJmsTemplate = new JmsTemplate(new PooledConnectionFactory(connectionFactory)) {
+	          @Override
+	          protected void doSend(MessageProducer producer, Message message) throws JMSException {
+	        	  producer.send(message, getDeliveryMode(), message.getJMSPriority(), getTimeToLive());
+	          }
+        };
+        nonblockingJmsTemplate.setReceiveTimeout(JmsTemplate.RECEIVE_TIMEOUT_NO_WAIT);
+        JmsTemplate blockingJmsTemplate = new JmsTemplate(new PooledConnectionFactory(connectionFactory)) {
+	          @Override
+	          protected void doSend(MessageProducer producer, Message message) throws JMSException {
+	        	  producer.send(message, getDeliveryMode(), message.getJMSPriority(), getTimeToLive());
+	          }
+        };
+        blockingJmsTemplate.setReceiveTimeout(JmsTemplate.RECEIVE_TIMEOUT_INDEFINITE_WAIT);
+        FstepQueueService queueService = new FstepJMSQueueService(blockingJmsTemplate, nonblockingJmsTemplate);
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         when(workerFactory.getWorkerById(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         FstepJobUpdatesManager updatesManager = new FstepJobUpdatesManager(jobDataService, dynamicProxyService, guiService, workerFactory, 
@@ -204,6 +239,8 @@ public class FstepServicesClientIT {
         FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1);
         fstepWorker.allocateMinNodes();
         FstepWorkerDispatcher fstepWorkerDispatcher = new FstepWorkerDispatcher(queueService, new LocalWorker(channelBuilder), workerId, nodeManager);
+        
+        QueueScheduler q = new QueueScheduler(jobDataService, queueService, quotaDataService);
         jobDispatcherTimer = new Timer();
         jobDispatcherTimer.schedule(new TimerTask() {
             
@@ -215,7 +252,7 @@ public class FstepServicesClientIT {
             	fstepWorkerDispatcher.getNewJobs();
                 
             }
-        }, 0, 5000);
+        }, 0, 1000);
         
         jobUpdatesTimer = new Timer();
         jobUpdatesTimer.schedule(new TimerTask() {
@@ -225,13 +262,24 @@ public class FstepServicesClientIT {
             	if (broker.isStopped() || broker.isStopping()) {
             		return;
             	}
-            	Message message =  queueService.receiveWithTimeout(FstepQueueService.jobUpdatesQueueName, 100);
+            	com.cgi.eoss.fstep.queues.service.Message message =  queueService.receiveNoWait(FstepQueueService.jobUpdatesQueueName);
             	while (message != null) {
             		updatesManager.receiveJobUpdate(message.getPayload(), (String) message.getHeaders().get("workerId"), (String) message.getHeaders().get("jobId"));
-            		message =  queueService.receiveWithTimeout(FstepQueueService.jobUpdatesQueueName, 100);
+            		message =  queueService.receiveNoWait(FstepQueueService.jobUpdatesQueueName);
             	}
             }
-        }, 0, 3000);
+        }, 0, 1000);
+        
+        queueSchedulerTimer = new Timer();
+        queueSchedulerTimer.schedule(new TimerTask() {
+            
+            @Override
+            public void run() {
+            	if (broker.isStopped() || broker.isStopping()) {
+            		return;
+            	}
+            	q.updateQueues();            }
+        }, 0, 1000);
         inProcessServerBuilder.addService(fstepJobLauncher);
         inProcessServerBuilder.addService(fstepWorker);
 
@@ -284,6 +332,10 @@ public class FstepServicesClientIT {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
       
+        when(jobDataService.refreshFull(any(Job.class))).thenAnswer(invocation -> {
+            return launchedJobs.stream().filter(j -> j.getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
+        });
+        
         when (guiService.getGuiPortBinding(any(), any())).thenReturn(PortBinding.newBuilder().setBinding(Binding.newBuilder().setIp("test").setPort(8080).build()).build());
         when(dynamicProxyService.getProxyEntry(any(),any(), anyInt())).thenReturn(new ReverseProxyEntry("test", "test"));
         
@@ -353,6 +405,10 @@ public class FstepServicesClientIT {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
         
+        when(jobDataService.refreshFull(any(Job.class))).thenAnswer(invocation -> {
+            return launchedJobs.stream().filter(j -> j.getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
+        });
+        
         String jobId = UUID.randomUUID().toString();
         String userId = "userId";
         Multimap<String, String> inputs = ImmutableMultimap.<String, String>builder()
@@ -420,6 +476,7 @@ public class FstepServicesClientIT {
             launchedJobs.add(job);
             return job;
         });
+        
         when(jobDataService.getById(any())).thenAnswer(invocation -> {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
@@ -427,7 +484,11 @@ public class FstepServicesClientIT {
         when(jobDataService.refreshFull(anyLong())).thenAnswer(invocation -> {
             return launchedJobs.stream().filter(j -> j.getId() == invocation.getArgument(0)).findFirst().get();
         });
-        
+      
+        when(jobDataService.refreshFull(any(Job.class))).thenAnswer(invocation -> {
+            return launchedJobs.stream().filter(j -> j.getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
+        });
+      
         when(jobDataService.updateParentJob(any())).thenAnswer(invocation -> {
         	Job job = launchedJobs.stream().filter(j -> j.getId().equals(((Job) invocation.getArgument(0)).getId())).findFirst().get();
             Job parentJob = job.getParentJob();

@@ -4,7 +4,9 @@ import java.util.Map;
 
 public interface FstepQueueService {
 
-    final static String jobQueueName = "fstep-jobs";
+    final static String jobExecutionQueueName = "fstep-jobs";
+    
+    final static String jobPendingQueueName = "fstep-pending-jobs";
 
     final static String jobUpdatesQueueName = "fstep-jobs-updates";
     
@@ -16,13 +18,15 @@ public interface FstepQueueService {
     
     void sendObject(String queueName, Map<String, Object> additionalHeaders, Object object, int priority);
 
+    void send(String queueName, Message message);
+    
     public Object receiveObject(String queueName);
     
-    public Object receiveObjectWithTimeout(String queueName, long timeout);
+    public Object receiveObjectNoWait(String queueName);
    
     public Object receiveSelectedObject(String queueName, String messageSelector);
     
-    public Object receiveSelectedObjectWithTimeout(String queueName, String messageSelector, long timeout);
+    public Object receiveSelectedObjectNoWait(String queueName, String messageSelector);
 
     public long getQueueLength(String queueName);
 
@@ -30,6 +34,8 @@ public interface FstepQueueService {
 	
 	public Message receive(String queueName);
 	
-	public Message receiveWithTimeout(String queueName, long timeout);
+	public Message receiveNoWait(String queueName);
+
+	public void browse(String queueName, BrowserClient browserClient);
 
 }
