@@ -8,7 +8,7 @@
 'use strict';
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('AdminCtrl', ['$scope', 'UserService', 'MessageService', 'WalletService', 'TabService', function ($scope, UserService, MessageService, WalletService, TabService) {
+    fstepmodules.controller('AdminCtrl', ['$scope', 'UserService', 'MessageService', 'WalletService', 'QuotaService', 'TabService', function ($scope, UserService, MessageService, WalletService, QuotaService, TabService) {
 
         /* Sidenav & Bottombar */
         $scope.navInfo = TabService.navInfo.admin;
@@ -36,6 +36,10 @@ define(['../../fstepmodules'], function (fstepmodules) {
 
         UserService.getUsersByFilter('admin');
 
+        QuotaService.getUsageTypes().then(function(types) {
+            $scope.quotaUsageTypes = types;
+        })
+
         $scope.filter = function(){
             UserService.getUsersByFilter('admin');
         };
@@ -49,6 +53,16 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 WalletService.getUserWallet($scope.userParams.selectedUser).then(function(wallet){
                    $scope.userParams.wallet = wallet;
                 });
+
+
+                QuotaService.getUserQuotas($scope.userParams.selectedUser._links.self.href).then(function(quotas) {
+                    $scope.userParams.quotas = {};
+                    quotas.forEach(function(quota) {
+                        $scope.userParams.quotas[quota.usageType] = quota;
+                    })
+                });
+
+
             }
         };
 
@@ -65,6 +79,16 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 $scope.getUserData();
             });
         };
+
+        $scope.updateQuotas = function() {
+            for (var usageType in $scope.userParams.quotas) {
+                let quota = $scope.userParams.quotas[usageType];
+                quota.usageType = usageType;
+                QuotaService.setQuotaForUser($scope.userParams.selectedUser._links.self.href, quota).then(function(response) {
+                    $scope.userParams.quotas[usageType] = response;
+                })
+            }
+        }
 
         $scope.hideContent = true;
         var navbar, sidenav, management;

@@ -76,12 +76,27 @@
                 <span ng-if="job.stage"><b>Stage:</b> <span ng-bind="job.stage" /></span>
                 <span>
                     <b>Status:</b>
-                    <span ng-bind="job.status" />
+
                     <span style="{{getColorForStatus(job.status)}};display:inline-block;margin-top:-3px;margin-left:2px;vertical-align:middle;">
-                        <i class="material-icons" ng-if="job.status === 'CREATED'">pause</i>
-                        <i class="material-icons" ng-if="job.status === 'COMPLETED'">done</i>
+                        <i class="material-icons" ng-if="job.status === 'COMPLETED'" >check_circle_outline</i>
+                        <i class="material-icons" ng-if="job.status === 'WAITING'" >hourglass_empty</i>
+                        <i class="material-icons" ng-if="job.status === 'PENDING'">pause_circle_filled</i>
                         <i class="material-icons" ng-if="job.status === 'ERROR'">error</i>
-                        <i class="material-icons" ng-if="job.status === 'RUNNING'">hourglass_empty</i>
+                        <i class="material-icons" ng-if="job.status === 'CANCELLED'">cancel</i>
+                        <i class="material-icons" ng-if="job.status === 'RUNNING'">play_circle_outline</i>
+                    </span>
+                    <span>
+                        {{formatJobStatus(job)}}
+                        <md-button class="toolbar-button"
+                                ng-if="job.status === 'WAITING' && job.queuePosition === -1"
+                                style="min-height: auto; line-height: 0; margin-top: -1px"
+                                aria-label="Queue Info"
+                                uib-tooltip="Position in queue not available (>100 or not yet computed)"
+                                tooltip-placement="right"
+                                tooltip-trigger="'mouseenter'"
+                                tooltip-append-to-body="true">
+                        <i class="material-icons">help_outline</i>
+                        </md-button>
                     </span>
                 </span>
             </div>

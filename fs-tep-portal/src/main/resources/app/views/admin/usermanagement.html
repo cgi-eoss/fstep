@@ -73,6 +73,35 @@
                 </md-card-actions>
             </md-card>
         </form>
+
+        <form id="setQuotaForm" name="setQuotaForm" ng-if="userParams.selectedUser">
+            <md-card md-theme-watch class="fstep-card">
+                <md-card-title>
+                    <md-card-title-text>
+                        <h2>Set user quotas</h2>
+                    </md-card-title-text>
+                </md-card-title>
+                <md-card-content>
+                    <form id="addCoinsForm" name="addCoinsForm" ng-show="userParams.selectedUser && userParams.wallet">
+                        <h3 class="md-headline" ng-bind="userParams.selectedUser.name" />
+                        <div layout="row">
+                            <md-input-container class="md-block" ng-repeat="usageType in quotaUsageTypes">
+                                <label>{{usageType}}</label>
+                                <input ng-model="userParams.quotas[usageType].value" type="number" step="1" min="0" placeholder="(default)">
+                            </md-input-container>
+                        </div>
+                    </form>
+                </md-card-content>
+                <md-card-actions layout="row" layout-align="end center" ng-show="userParams.selectedUser">
+                        <md-button id="update-quota"
+                                type="submit"
+                                form="setQuotaForm"
+                                aria-label="Save"
+                                ng-disabled="setQuotaForm.$invalid"
+                                ng-click="updateQuotas()">Save</md-button>
+                    </md-card-actions>
+            </md-card>
+        </form>
     </section>
 
     <section id="role-container" class="column-container col-md-12 col-lg-4 no-padding">

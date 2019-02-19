@@ -8,7 +8,7 @@
 'use strict';
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', 'UserService', 'ApiKeyService', 'WalletService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, UserService, ApiKeyService, WalletService, TabService, MessageService, $mdDialog) {
+    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, UserService, ApiKeyService, WalletService, QuotaService, TabService, MessageService, $mdDialog) {
 
 
         var onUserChange = function() {
@@ -18,6 +18,17 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 if ($scope.user.role !== 'ADMIN' && $scope.user.role !== 'CONTENT_AUTHORITY') {
                     $scope.checkForApiKey();
                 }
+
+                $scope.quotaUsageTypes = {};
+                QuotaService.getUsageTypes().then(function(types) {
+
+                     types.forEach(function(type) {
+                        $scope.quotaUsageTypes[type] = '';
+                        QuotaService.getQuotaValue(type).then(function(value) {
+                            $scope.quotaUsageTypes[type] = value;
+                        })
+                    })
+                });
             }
         }
         /* Sidenav & Bottombar */
@@ -39,12 +50,6 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.fstepURL = fstepProperties.FSTEP_URL;
         $scope.ssoURL = fstepProperties.SSO_URL;
         $scope.walletParams = WalletService.params.account;
-
-        //$scope.user = UserService.params.activeUser;
-
-
-
-
 
 
         $scope.checkForApiKey = function() {

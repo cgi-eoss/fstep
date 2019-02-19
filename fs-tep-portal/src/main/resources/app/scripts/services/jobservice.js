@@ -27,12 +27,13 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             SHARED_JOBS: { id: 2, name: 'Shared', searchUrl: 'search/findByFilterAndIsNotSubjobAndNotOwner', subjobsSearchUrl: 'search/findByFilterAndParentAndNotOwner' }
         };
 
-        var JOB_STATUSES_STRING = "COMPLETED,RUNNING,ERROR,CREATED,CANCELLED";
         this.JOB_STATUSES = [
             { title: "Completed", name: "COMPLETED" },
             { title: "Running", name: "RUNNING" },
             { title: "Error", name: "ERROR" },
             { title: "Created", name: "CREATED" },
+            { title: "Pending", name: "PENDING"},
+            { title: "Waiting", name: "WAITING"},
             { title: "Cancelled", name: "CANCELLED" }
          ];
 

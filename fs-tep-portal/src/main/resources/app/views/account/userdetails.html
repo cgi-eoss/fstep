@@ -28,6 +28,20 @@
             </md-card-content>
         </md-card>
 
+        <md-card id="quota-info" md-theme-watch class="fstep-card">
+            <md-card-title>
+                <md-card-title-text>
+                    <h2>Quota</h2>
+                </md-card-title-text>
+            </md-card-title>
+            <md-card-content>
+                <div class="row" ng-repeat="(usageType,value) in quotaUsageTypes">
+                    <b class="col-md-5">{{usageType}}:</b>
+                    <div class="col-md-7">{{value}}</div>
+                </div>
+            </md-card-content>
+        </md-card>
+
         <md-card id="api-key-panel" md-theme-watch class="fstep-card" ng-if="(user.role !== 'ADMIN' && user.role !== 'CONTENT_AUTHORITY')">
             <md-card-title>
                 <md-card-title-text>

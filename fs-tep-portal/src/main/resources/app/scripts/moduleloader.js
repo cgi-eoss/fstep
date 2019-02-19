@@ -82,7 +82,8 @@ define([
     './services/map/aoilayerservice',
     './services/map/resultlayerservice',
     './services/map/basketlayerservice',
-    './services/map/productlayerservice'
+    './services/map/productlayerservice',
+    './services/quotaservice'
 
 
 ], function () {});

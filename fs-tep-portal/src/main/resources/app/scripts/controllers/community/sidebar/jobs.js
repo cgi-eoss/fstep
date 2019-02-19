@@ -133,6 +133,32 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             }
         };
 
+        $scope.formatJobStatus = function(job) {
+            if (job.status !== 'WAITING') {
+                return job.status;
+            } else if (typeof(job.queuePosition) === 'number' && job.queuePosition !== -1) {
+                var lastChar = job.queuePosition.toString().substr(-1);
+                var postfix;
+                switch(lastChar) {
+                    case '1':
+                        postfix = 'st';
+                        break;
+                    case '2':
+                        postfix = 'nd';
+                        break;
+                    case '3':
+                        postfix = 'rd';
+                        break;
+                    default:
+                        postfix = 'th';
+                }
+
+                return job.queuePosition + postfix + ' in queue';
+            } else {
+                return 'QUEUED';
+            }
+        }
+
 
     }]);
 });
