@@ -9,6 +9,7 @@ export class Processor {
     mapSource;
     domainConfig;
     legendConfig;
+    infoFormat;
     timeRange?: {start: moment.Moment, end: moment.Moment, frequency: moment.Duration, list: Array<moment.Moment>}
 
     constructor(config) {
@@ -28,6 +29,7 @@ export class Processor {
         }
         this.domainConfig = config.domain;
         this.legendConfig = config.legend;
+        this.infoFormat = config.infoFormat;
         this.mapSource = this.createMapSource(config.layer);
     }
 
@@ -56,7 +58,7 @@ export class Processor {
 
     private createMapSource(params) {
         if (params.type == 'WMS') {
-            return new ProcessorWMSSource(params.config, this.timeRange, this.domainConfig, this.legendConfig);
+            return new ProcessorWMSSource(params.config, this.timeRange, this.domainConfig, this.legendConfig, this.infoFormat);
         }
     }
 }

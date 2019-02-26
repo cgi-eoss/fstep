@@ -16,13 +16,15 @@ export class ProcessorWMSSource {
     private timeRange: {start: moment.Moment, end: moment.Moment, frequency: moment.Duration}
     private domainConfig;
     private legendConfig;
+    private infoFormat;
 
-    constructor(config, timeRange, domainConfig, legendConfig) {
+    constructor(config, timeRange, domainConfig, legendConfig, infoFormat) {
 
         this.config = config;
         this.timeRange = timeRange;
         this.domainConfig = domainConfig;
         this.legendConfig = legendConfig || {};
+        this.infoFormat = infoFormat || 'application/json';
 
         let source =  new TileWMS({
             url: config.url,
@@ -113,7 +115,7 @@ export class ProcessorWMSSource {
 
     getFeatureInfo(coordinates, viewRes, viewProj) {
         return this.source.getGetFeatureInfoUrl(coordinates, viewRes, viewProj || 'EPSG:4326', {
-            INFO_FORMAT: 'application/json'
+            INFO_FORMAT: this.infoFormat
         })
     }
 

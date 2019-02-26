@@ -11,8 +11,8 @@
         </ng-container>
         <div>
             <i *ngIf="data.status == 'loading'" class="fa fa-refresh fa-spin"></i>
-            <div *ngIf="data.status == 'ready'">
-                {{data.value}}
+            <div [innerHTML]="data.value" *ngIf="data.status == 'ready'">
+                
             </div>
             <a *ngIf="showTimeseriesButton" (click)="onTimeSeriesClick()"><span class="icon is-small"><i class="fa fa-line-chart"></i></span></a>
         </div>

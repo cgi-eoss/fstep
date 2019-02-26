@@ -105,17 +105,21 @@ export class ProcessorLayer {
         return this.http.get(url)
             .toPromise()
             .then((response)=>{
-                let features =  response.json().features;
-                if (features.length) {
-                    let val =  dataSource.scaleValue(features[0].properties.GRAY_INDEX);
-                    if (typeof(val) === "number") {
-                        return val.toFixed(2);
-                    } else {
-                        return val;
+                try {
+                    let features =  response.json().features;
+                    if (features.length) {
+                        let val =  dataSource.scaleValue(features[0].properties.GRAY_INDEX);
+                        if (typeof(val) === "number") {
+                            return val.toFixed(2);
+                        } else {
+                            return val;
+                        }
                     }
-                }
-                else {
-                    return 'No data';
+                    else {
+                        return 'No data';
+                    }
+                } catch(e) {
+                    return response.text();
                 }
             })
             .catch((error)=>{

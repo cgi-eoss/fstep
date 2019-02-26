@@ -24,6 +24,12 @@
     border-top-right-radius: 5px;
     border-bottom-right-radius: 5px;
     user-select: none;
+
+    ::ng-deep {
+        li {
+        white-space: nowrap;
+        }
+    }
 }
 
 .popup .delete {
