@@ -35,6 +35,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.Hashing;
 import com.google.common.io.MoreFiles;
 
+import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
@@ -53,121 +54,127 @@ public class FilesystemReferenceDataService implements ReferenceDataService {
         this.jsonMapper = jsonMapper;
     }
 
-    @Override
-    public FstepFileIngestion ingest(User owner, String filename, UploadableFileType filetype, Map<String, Object> userProperties, MultipartFile multipartFile) throws IOException {
-        Path dest = referenceDataBasedir.resolve(String.valueOf(owner.getId())).resolve(filename);
-        LOG.info("Saving new reference data to: {}", dest);
+	@Override
+	public FstepFileIngestion ingest(User owner, String filename, UploadableFileType filetype,
+			Map<String, Object> userProperties, MultipartFile multipartFile) throws IOException {
+		Path dest = referenceDataBasedir.resolve(String.valueOf(owner.getId())).resolve(filename);
+		LOG.info("Saving new reference data to: {}", dest);
 
-        if (Files.exists(dest)) {
-            LOG.warn("Found already-existing reference data, overwriting: {}", dest);
-        }
+		if (Files.exists(dest)) {
+			LOG.warn("Found already-existing reference data, overwriting: {}", dest);
+		}
 
-        Files.createDirectories(dest.getParent());
-        Files.copy(multipartFile.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+		Files.createDirectories(dest.getParent());
+		Files.copy(multipartFile.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
 
-        URI uri = CatalogueUri.REFERENCE_DATA.build(
-                ImmutableMap.of(
-                        "ownerId", owner.getId().toString(),
-                        "filename", filename));
+		URI uri = CatalogueUri.REFERENCE_DATA
+				.build(ImmutableMap.of("ownerId", owner.getId().toString(), "filename", filename));
 
-        Map<String, Object> properties = new HashMap<>();
+		Map<String, Object> properties = new HashMap<>();
 
-        // Add automatically-determined properties
-        properties.put("productIdentifier", owner.getName() + "_" + filename);
-        properties.put("owner", owner.getName());
-        properties.put("filename", filename);
-        properties.put("fstepUrl", uri);
-        // TODO Get the proper MIME type
-        properties.put("resourceMimeType", "application/unknown");
-        long filesize = Files.size(dest);
+		// Add automatically-determined properties
+		properties.put("productIdentifier", owner.getName() + "_" + filename);
+		properties.put("owner", owner.getName());
+		properties.put("filename", filename);
+		properties.put("fstepUrl", uri);
+		// TODO Get the proper MIME type
+		properties.put("resourceMimeType", "application/unknown");
+		long filesize = Files.size(dest);
 		properties.put("resourceSize", filesize);
-        properties.put("resourceChecksum", "sha256=" + MoreFiles.asByteSource(dest).hash(Hashing.sha256()));
-        
-        String startTime = (String) userProperties.remove("startTime");
-        String endTime = (String) userProperties.remove("endTime");
-       
-        if (startTime != null) {
-        	properties.put("startDate", startTime.toString());
-        }
-        if (endTime != null) {
-        	properties.put("completionDate", endTime.toString());
-        }
-        
-        String description = (String) userProperties.remove("description");
-        if (description != null) {
-        	properties.put("description", description.toString());
-        }
-        
-        GeoJsonObject geometry = null;
-        String ingestionStatusMessage = null;
-        switch (filetype) {
-    	case GEOTIFF: 
-    		   geometry = GeoUtil.extractBoundingBox(dest); 
-    		   ingestionStatusMessage = "OK";
-    		   break;
-    	case SHAPEFILE:{
-    		//Try to get shapefile as multipolygon, if not possible resort to bounding box
-    					try {
-    						geometry = GeoUtil.shapeFileToGeojson(dest, GEOMETRY_BOUNDING_BOX_THRESHOLD);
-    						if (isValidRestoGeometry(geometry) == false) {
-    							throw new GeometryException("Invalid Resto Geometry");
-    						}
-    						ingestionStatusMessage = "OK";
-    						break;
-    					}
-    					catch(GeometryException e) {
-    						geometry = GeoUtil.extractBoundingBox(dest);
-    						ingestionStatusMessage = "Shapefile geometry too complex - converted to bounding box";
-    						break;
-    					}
-    			}
-    	case OTHER: {
-    			String userWktGeometry = (String) userProperties.remove("geometry");
-    			if (userWktGeometry != null) {
-    				try {
-    				geometry =  GeoUtil.getGeoJsonGeometry(userWktGeometry);
-    				}
-    				catch (GeometryException e) {
-    					ingestionStatusMessage = "Shapefile geometry too complex - converted to bounding box";
-    					geometry = GeoUtil.defaultGeometry();
-    				}
-    			}
-    	}
-        }
+		properties.put("resourceChecksum", "sha256=" + MoreFiles.asByteSource(dest).hash(Hashing.sha256()));
 
-        if (geometry == null) {
-        	ingestionStatusMessage = "Unrecognized geometry - product ingested with default geometry";
+		String startTime = (String) userProperties.remove("startTime");
+		String endTime = (String) userProperties.remove("endTime");
+
+		if (startTime != null) {
+			properties.put("startDate", startTime.toString());
+		}
+		if (endTime != null) {
+			properties.put("completionDate", endTime.toString());
+		}
+
+		String description = (String) userProperties.remove("description");
+		if (description != null) {
+			properties.put("description", description.toString());
+		}
+
+		GeoJsonObject geometry = null;
+		String ingestionStatusMessage = null;
+
+		switch (filetype) {
+			case GEOTIFF:{
+				try {
+					geometry = GeoUtil.extractBoundingBox(dest);
+				} catch (GeometryException e) {
+					ingestionStatusMessage = "Could not extract bounding box";
+				}
+	
+				break;
+			}
+			case SHAPEFILE: {
+				// Try to get shapefile as multipolygon, if not possible resort to bounding box
+				try {
+					geometry = GeoUtil.shapeFileToGeojson(dest, GEOMETRY_BOUNDING_BOX_THRESHOLD);
+					if (isValidRestoGeometry(geometry) == false) {
+						throw new GeometryException("Invalid Geometry - Difference in longitude > 180 degrees ");
+					}
+				} catch (GeometryException e) {
+					ingestionStatusMessage = "Shapefile geometry not recognized - converting to bounding box. Reason: "
+							+ e.getMessage();
+					try {
+						geometry = GeoUtil.extractBoundingBox(dest);
+	
+					} catch (GeometryException e1) {
+						ingestionStatusMessage += "Could not extract bounding box from shapefile";
+					}
+				}
+				break;
+			}
+			case OTHER: {
+				String userWktGeometry = (String) userProperties.remove("geometry");
+				if (userWktGeometry != null) {
+					try {
+						geometry = GeoUtil.getGeoJsonGeometry(userWktGeometry);
+					} catch (GeometryException e) {
+						ingestionStatusMessage = "Provided geometry is not recognized. Converted to "
+								+ GeoUtil.defaultGeometry().toString();
+					}
+				}
+			}
+		}
+
+		if (geometry == null) {
 			geometry = GeoUtil.defaultGeometry();
-        }
-        
-        // TODO Validate extra properties?
-        properties.put("extraParams", jsonMapper.writeValueAsString(userProperties));
+			ingestionStatusMessage = "Unrecognized geometry - product ingested with default geometry POINT(0,0)" ;
+		}
 
-        Feature feature = new Feature();
-        feature.setId(owner.getName() + "_" + filename);
-        feature.setGeometry(geometry);        
-        feature.setProperties(properties);
+		// TODO Validate extra properties?
+		properties.put("extraParams", jsonMapper.writeValueAsString(userProperties));
 
-        UUID restoId;
-        try {
-            restoId = resto.ingestReferenceData(feature);
-            LOG.info("Ingested reference data with Resto id {} and URI {}", restoId, uri);
-        } catch (Exception e) {
-            LOG.error("Failed to ingest reference data to Resto, continuing...", e);
-            // TODO Add GeoJSON to FstepFile model
-            restoId = UUID.randomUUID();
-        }
+		Feature feature = new Feature();
+		feature.setId(owner.getName() + "_" + filename);
+		feature.setGeometry(geometry);
+		feature.setProperties(properties);
 
-        FstepFile fstepFile = new FstepFile(uri, restoId);
-        fstepFile.setOwner(owner);
-        fstepFile.setType(FstepFile.Type.REFERENCE_DATA);
-        fstepFile.setFilename(referenceDataBasedir.relativize(dest).toString());
-        fstepFile.setFilesize(filesize);
-        return new FstepFileIngestion(ingestionStatusMessage, fstepFile);
-    }
+		UUID restoId;
+		try {
+			restoId = resto.ingestReferenceData(feature);
+			LOG.info("Ingested reference data with Resto id {} and URI {}", restoId, uri);
+		} catch (Exception e) {
+			LOG.error("Failed to ingest reference data to Resto, continuing...", e);
+			// TODO Add GeoJSON to FstepFile model
+			restoId = UUID.randomUUID();
+		}
+
+		FstepFile fstepFile = new FstepFile(uri, restoId);
+		fstepFile.setOwner(owner);
+		fstepFile.setType(FstepFile.Type.REFERENCE_DATA);
+		fstepFile.setFilename(referenceDataBasedir.relativize(dest).toString());
+		fstepFile.setFilesize(filesize);
+		return new FstepFileIngestion(ingestionStatusMessage, fstepFile);
+	}
 
     
-
 	private boolean isValidRestoGeometry(GeoJsonObject geometry) {
 		if (geometry instanceof MultiPoint) {
 			MultiPoint multipoint = (MultiPoint) geometry;

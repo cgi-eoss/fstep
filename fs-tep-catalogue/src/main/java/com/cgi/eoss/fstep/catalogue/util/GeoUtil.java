@@ -276,8 +276,9 @@ public class GeoUtil {
 	    			throw new IOException();
 	    		}
 	    	} catch (IOException e) {
-				 LOG.error("Could not extract geojson from file: {}", shapeFile, e);
-		         throw new GeometryException(e);
+	    		 String errorMessage = "Could not extract geojson from file: " + shapeFile;
+				 LOG.error(errorMessage, e);
+		         throw new GeometryException(errorMessage, e);
 			}
 			finally{
 				try {
@@ -310,14 +311,14 @@ public class GeoUtil {
         	ArrayList<Geometry> geometries = new ArrayList<>();
         	int pointCount = 0;
         	String basicGeometryType = null;
-        	while (features.hasNext() && pointCount <= threshold) {
+        	while (features.hasNext()) {
         		SimpleFeature feature = features.next();
         		Geometry featureGeometrySource = (Geometry) feature.getDefaultGeometry();
         		Geometry featureGeometry = JTS.transform(featureGeometrySource, transform);
         		String featureGeometryType = featureGeometry.getGeometryType();
         		String featureBasicGeometryType = getBasicGeometryType(featureGeometryType);
         		if (basicGeometryType != null && !basicGeometryType.equals(featureBasicGeometryType)) {
-        			throw new Exception ("Heterogeneous feature geometries");
+        			throw new Exception ("Unsupported heterogeneous feature geometries found in shapefile: " + basicGeometryType  + " - " + featureBasicGeometryType);
         		}
         		basicGeometryType = featureBasicGeometryType;
         		if (featureGeometryType.equals("Polygon")) {
@@ -347,12 +348,12 @@ public class GeoUtil {
 	        		}
         		}
         		else {
-        			throw new Exception("Unsupported geometry");
+        			throw new Exception("Unsupported geometry found in shapefile:" + featureGeometryType);
         		}
         	}
         	features.close();
         	if (pointCount > threshold) {
-        		throw new Exception("Geometry contains more points than allowed threshold " + threshold );
+        		throw new Exception("Geometry contains more points - " + pointCount +  " - than allowed threshold " + threshold );
         	}
         	GeometryFactory gf = new GeometryFactory();
         	Geometry combinedGeometry = null;
@@ -370,7 +371,7 @@ public class GeoUtil {
     	}
     	catch(Exception e) {
     		LOG.error("Could not extract geometry from " + shapeFile.toString());
-    		throw new GeometryException(e);
+    		throw new GeometryException(e.getMessage(), e);
     	}
 		finally
 		{

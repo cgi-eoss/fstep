@@ -926,6 +926,9 @@
   text-align: center;
   width: 100%;
 }
+#refDataForm .progress {
+  height: auto;
+}
 #job-manage-container #job-overview h5,
 #job-share-container #job-overview h5 {
   font-size: 0.7rem;
