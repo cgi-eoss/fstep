@@ -18,4 +18,6 @@ public interface FstepFileDataService extends
     List<FstepFile> findByOwner(User user);
 
     List<FstepFile> getByType(FstepFile.Type type);
+
+	Long sumFilesizeByOwner(User user);
 }

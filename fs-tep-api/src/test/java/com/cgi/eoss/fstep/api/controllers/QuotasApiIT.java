@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Arrays;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -85,7 +87,7 @@ public class QuotasApiIT {
     @Test
     public void testGetUsageTypes() throws Exception {
        mockMvc.perform(get("/api/quotas/usageTypes").header("REMOTE_USER", fstepUser1.getName()))
-        		.andExpect(status().isOk()).andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$").value(contains(UsageType.MAX_RUNNABLE_JOBS.toString())));
+        		.andExpect(status().isOk()).andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$").value(contains(Arrays.stream(UsageType.values()).map(e -> e.toString()).toArray())));
     }
     
     @Test

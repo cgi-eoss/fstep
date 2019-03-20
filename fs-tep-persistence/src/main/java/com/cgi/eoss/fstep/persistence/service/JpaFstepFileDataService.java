@@ -1,19 +1,20 @@
 package com.cgi.eoss.fstep.persistence.service;
 
-import com.cgi.eoss.fstep.model.FstepFile;
-import com.cgi.eoss.fstep.model.User;
-import com.cgi.eoss.fstep.persistence.dao.FstepEntityDao;
-import com.cgi.eoss.fstep.persistence.dao.FstepFileDao;
-import com.querydsl.core.types.Predicate;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import static com.cgi.eoss.fstep.model.QFstepFile.fstepFile;
 
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
-import static com.cgi.eoss.fstep.model.QFstepFile.fstepFile;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.persistence.dao.FstepEntityDao;
+import com.cgi.eoss.fstep.persistence.dao.FstepFileDao;
+import com.querydsl.core.types.Predicate;
 
 @Service
 @Transactional(readOnly = true)
@@ -59,6 +60,15 @@ public class JpaFstepFileDataService extends AbstractJpaDataService<FstepFile> i
     @Override
     public List<FstepFile> getByType(FstepFile.Type type) {
         return dao.findByType(type);
+    }
+    
+    @Override
+    public Long sumFilesizeByOwner(User user) {
+    	Long sum = dao.sumFilesizeByOwner(user);
+    	if (sum != null) {
+    		return sum;
+    	}
+    	return 0L;
     }
 
 }

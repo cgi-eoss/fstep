@@ -59,5 +59,29 @@ public class FstepFileDataServiceIT {
         assertThat(dataService.getByRestoId(fstepFile.getRestoId()), is(fstepFile));
         assertThat(dataService.getByRestoId(fstepFile2.getRestoId()), is(fstepFile2));
     }
+    
+    @Test
+    public void testFileSizeSum() throws Exception {
+        User owner = new User("owner-uid");
+        User owner2 = new User("owner-uid2");
+        userService.save(ImmutableSet.of(owner, owner2));
+
+        FstepFile fstepFile = new FstepFile();
+        fstepFile.setUri(URI.create("fstep://fstepFile"));
+        fstepFile.setRestoId(UUID.randomUUID());
+        fstepFile.setFilesize(10000L);
+        fstepFile.setOwner(owner);
+
+        FstepFile fstepFile2 = new FstepFile();
+        fstepFile2.setUri(URI.create("fstep://fstepFile2"));
+        fstepFile2.setRestoId(UUID.randomUUID());
+        fstepFile2.setFilesize(100000L);
+        fstepFile2.setOwner(owner);
+
+        dataService.save(ImmutableSet.of(fstepFile, fstepFile2));
+
+        assertThat(dataService.sumFilesizeByOwner(owner), is(100000L + 10000L));
+        assertThat(dataService.sumFilesizeByOwner(owner2), is(0L));
+    }
 
 }
