@@ -64,6 +64,12 @@ public class ServicesApiExtension {
                 .collect(Collectors.toList()));
     }
     
+    @GetMapping("/available")
+    public Resources<FstepService> getAvailableServices() {
+        return new Resources<>(serviceDataService.findAllAvailable().stream().filter(s -> fstepSecurityService.isPublic(FstepService.class, s.getId()))
+                .collect(Collectors.toList()));
+    }
+    
     /**
      * <p>Provides information on the status of the service Docker build</p>
      */

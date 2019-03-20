@@ -29,7 +29,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
         $scope.applications = [];
         $scope.processors = [];
 
-        ProductService.getDefaultServices().then(function (services) {
+        ProductService.getAvailableServices().then(function (services) {
             if(services){
                 for(var i=0; i<services.length; i++){
                     if(services[i].type === 'APPLICATION'){

@@ -345,6 +345,23 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
             });
             return deferred.promise;
         };
+        
+        /* Get list of available services */
+        this.getAvailableServices = function(){
+            var deferred = $q.defer();
+            halAPI.from(rootUri + '/services/available')
+                       .newRequest()
+                       .getResource()
+                       .result
+                       .then(
+            function (document) {
+                deferred.resolve(document._embedded.services);
+            }, function (error) {
+                MessageService.addError('Could not get Services', error);
+                deferred.reject();
+            });
+            return deferred.promise;
+        };
 
         /* Fetch a new page */
         this.getServicesPage = function(page, url){
