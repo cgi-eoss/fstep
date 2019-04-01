@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.logging.Logging;
+import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepService.Type;
@@ -32,10 +33,12 @@ import com.cgi.eoss.fstep.model.FstepServiceDockerBuildInfo;
 import com.cgi.eoss.fstep.model.FstepServiceResources;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
+import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.UserMount;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
@@ -91,6 +94,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 
     private final CachingWorkerFactory workerFactory;
     private final JobDataService jobDataService;
+    private final JobProcessingDataService jobProcessingDataService;
     private final DatabasketDataService databasketDataService;
     private final CostingService costingService;
     private final FstepQueueService queueService;
@@ -103,6 +107,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     
     @Autowired
     public FstepJobLauncher(CachingWorkerFactory workerFactory, JobDataService jobDataService,
+    		JobProcessingDataService jobProcessingDataService,
             DatabasketDataService databasketDataService, FstepGuiServiceManager guiService,
             CostingService costingService,
             FstepSecurityService securityService, FstepQueueService queueService, 
@@ -113,6 +118,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             FstepJobUpdatesManager fstepJobUpdatesManager) {
         this.workerFactory = workerFactory;
         this.jobDataService = jobDataService;
+        this.jobProcessingDataService = jobProcessingDataService;
         this.databasketDataService = databasketDataService;
         this.costingService = costingService;
         this.queueService = queueService;
@@ -195,7 +201,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 
                 int i = 0;
                 for (Job subJob : subJobs) {
-                    chargeUser(subJob.getOwner(), subJob);
+                	JobProcessing jobProcessing = jobProcessingDataService.buildNew(subJob);
+                    chargeUserForProcessing(subJob.getOwner(), jobProcessing);
                     submitJob(subJob, GrpcUtil.toRpcJob(subJob),
                             GrpcUtil.mapToParams(subJob.getConfig().getInputs()), getJobPriority(i));
                     i++;
@@ -245,8 +252,11 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
 		    throw new ServiceExecutionException(
 		            "User does not have read access to all requested output collections");
 		}
-		
-		chargeUser(job.getOwner(), job);
+        CostQuotation costQuotation = costingService.estimateJobCost(job.getConfig());
+        job.setCostQuotation(costQuotation);
+        jobDataService.save(job);
+        JobProcessing jobProcessing = jobProcessingDataService.buildNew(job);
+        chargeUserForProcessing(job.getOwner(), jobProcessing);
 		submitJob(job, rpcJob, rpcInputs, SINGLE_JOB_PRIORITY);
 	}
     
@@ -339,7 +349,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 Set<Job> failedSubJobs =
                         job.getSubJobs().stream().filter(j -> j.getStatus() == Status.ERROR).collect(Collectors.toSet());
                 if (failedSubJobs.size() > 0) {
-                    jobValidator.checkCost(job.getOwner(), job.getConfig(), failedSubJobs.size());
+                	jobValidator.checkCost(job.getOwner(), failedSubJobs);
                     //TODO: Check that the user can use the geoserver spec
                     for (Job failedSubJob : failedSubJobs) {
                         List<JobParam> failedSubJobInputs = GrpcUtil.mapToParams(failedSubJob.getConfig().getInputs());
@@ -361,11 +371,11 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     int i = 0;
                     for (Job failedSubJob : failedSubJobs) {
                         List<JobParam> failedSubJobInputs = GrpcUtil.mapToParams(failedSubJob.getConfig().getInputs());
+                        JobProcessing jobProcessing = jobProcessingDataService.buildNew(failedSubJob);
                         if (failedSubJob.getStage().equals("Step 1 of 3: Data-Fetch") == false) {
-                        	chargeUser(failedSubJob.getOwner(), failedSubJob);
+                        	chargeUserForProcessing(failedSubJob.getOwner(), jobProcessing);
                         }
                         failedSubJob.setStatus(Status.CREATED);
-                        failedSubJob.setStartTime(null);
                         failedSubJob.setEndTime(null);
                         failedSubJob.setStage(null);
                         failedSubJob.setWorkerId(null);
@@ -376,7 +386,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 }
             } else {
                 List<JobParam> jobInputs = GrpcUtil.mapToParams(job.getConfig().getInputs());
-                jobValidator.checkCost(job.getOwner(), job.getConfig());
+                jobValidator.checkCost(job.getOwner(), job);
                 //TODO: Check that the user can use the geoserver spec
                 if (!jobValidator.checkInputs(job.getOwner(), jobInputs)) {
                     try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
@@ -391,11 +401,11 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     }
                     throw new ServiceExecutionException("User does not have read access to all requested output collections");
                 }
+                JobProcessing jobProcessing = jobProcessingDataService.buildNew(job);
                 if (job.getStage() != null && !job.getStage().equals("Step 1 of 3: Data-Fetch")) {
-                	chargeUser(job.getOwner(), job);
+                	chargeUserForProcessing(job.getOwner(), jobProcessing);
                 }
                 job.setStatus(Status.CREATED);
-                job.setStartTime(null);
                 job.setEndTime(null);
                 job.setStage(null);
                 job.setWorkerId(null);
@@ -541,7 +551,10 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         
         if (queuedJobSpec != null) {
             LOG.info("Refunding user for job id {}", job.getId());
-            costingService.refundUser(job.getOwner().getWallet(), job);
+            JobProcessing jobProcessing = jobProcessingDataService.findByJobAndMaxSequenceNum(job);
+            if (jobProcessing != null) {
+            	costingService.refundJobProcessing(job.getOwner().getWallet(), jobProcessing);
+            }
             job.setStatus(Status.CANCELLED);
             jobDataService.save(job);
         }
@@ -603,6 +616,9 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             Job childJob =
                     jobDataService.buildNew(UUID.randomUUID().toString(), userId, service.getName(),
                             parentJob.getConfig().getLabel(), parallelJobParams, parentJob);
+            CostQuotation costQuotation = costingService.estimateSingleRunJobCost(childJob.getConfig());
+            childJob.setCostQuotation(costQuotation);
+            childJob = jobDataService.save(childJob);
             parentJob.getSubJobs().add(childJob);
             childJobs.add(childJob);
         }
@@ -612,8 +628,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     }
     
 
-    private void chargeUser(User user, Job job) {
-        costingService.chargeForJob(user.getWallet(), job);
+    private void chargeUserForProcessing(User user, JobProcessing jobProcessing) {
+        costingService.chargeForJobProcessing(user.getWallet(), jobProcessing);
     }
  
     @Override

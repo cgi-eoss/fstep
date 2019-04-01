@@ -54,6 +54,8 @@ import org.springframework.jms.core.JmsTemplate;
 
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.clouds.local.LocalNodeFactory;
+import com.cgi.eoss.fstep.model.CostQuotation;
+import com.cgi.eoss.fstep.model.CostQuotation.Recurrence;
 import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.model.FstepFile;
@@ -61,6 +63,7 @@ import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
@@ -74,9 +77,11 @@ import com.cgi.eoss.fstep.orchestrator.service.QueueScheduler;
 import com.cgi.eoss.fstep.orchestrator.service.ReverseProxyEntry;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
 import com.cgi.eoss.fstep.persistence.service.QuotaDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
+import com.cgi.eoss.fstep.persistence.service.WalletTransactionDataService;
 import com.cgi.eoss.fstep.queues.service.FstepJMSQueueService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.rpc.LocalWorker;
@@ -137,6 +142,12 @@ public class FstepServicesClientIT {
     
     @Mock
     private DynamicProxyService dynamicProxyService;
+    
+    @Mock
+    private JobProcessingDataService jobProcessingDataService;
+    
+    @Mock
+    private WalletTransactionDataService walletTransactionDataService;
 
     private Path workspace;
     private Path ingestedOutputsDir;
@@ -241,10 +252,10 @@ public class FstepServicesClientIT {
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         when(workerFactory.getWorkerById(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         FstepJobUpdatesManager updatesManager = new FstepJobUpdatesManager(jobDataService, dynamicProxyService, guiService, workerFactory, 
-        		catalogueService, securityService);
+        		catalogueService, securityService, jobProcessingDataService, costingService, walletTransactionDataService);
         String workerId = "local1";
         JobValidator jobValidator = new JobValidator(costingService, catalogueService);
-        FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, databasketDataService, guiService, 
+        FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, jobProcessingDataService, databasketDataService, guiService, 
         		 costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService, jobValidator, updatesManager);
         LocalEventCollectorNodePreparer nodePreparer = new LocalEventCollectorNodePreparer(blockingJmsTemplate, DockerEventsListener.DOCKER_EVENTS_QUEUE);
 		FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(new LocalNodeFactory(-1, "unix:///var/run/docker.sock"), workspace.resolve("dl"), 2, workerDataService, nodePreparer);
@@ -344,6 +355,7 @@ public class FstepServicesClientIT {
         when(service.getType()).thenReturn(FstepService.Type.APPLICATION); // Trigger ingestion of all outputs
         when(service.getServiceDescriptor()).thenReturn(serviceDescriptor);
         List<Job> launchedJobs = new ArrayList<>();
+        List<JobProcessing> launchedJobProcessings = new ArrayList<>();
         when(jobDataService.buildNew(any(), any(), any(), any(), any())).thenAnswer(invocation -> {
             JobConfig config = new JobConfig(user, service);
             config.setLabel(Strings.isNullOrEmpty(invocation.getArgument(3)) ? null : invocation.getArgument(3));
@@ -364,6 +376,16 @@ public class FstepServicesClientIT {
       
         when(jobDataService.refreshFull(any(Job.class))).thenAnswer(invocation -> {
             return launchedJobs.stream().filter(j -> j.getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
+        });
+        
+        when(jobProcessingDataService.buildNew(any(Job.class))).thenAnswer(invocation -> {
+        	JobProcessing jobProcessing = new JobProcessing(invocation.getArgument(0), 1L);
+        	launchedJobProcessings.add(jobProcessing);
+            return jobProcessing;
+        });
+        
+        when(jobProcessingDataService.findByJobAndMaxSequenceNum(any(Job.class))).thenAnswer(invocation -> {
+            return launchedJobProcessings.stream().filter(jp -> jp.getJob().getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
         });
         
         when (guiService.getGuiPortBinding(any(), any())).thenReturn(PortBinding.newBuilder().setBinding(Binding.newBuilder().setIp("test").setPort(8080).build()).build());
@@ -401,7 +423,9 @@ public class FstepServicesClientIT {
                 .putAll("inputKey2", ImmutableList.of("inputVal2-1", "inputVal2-2"))
                 .build();
         
-        when(costingService.estimateJobCost(any())).thenReturn(20);
+        when(costingService.estimateJobCost(any())).thenReturn(new CostQuotation(20, Recurrence.ONE_OFF));
+        
+        when(costingService.estimateSingleRunJobCost(any())).thenReturn(new CostQuotation(20, Recurrence.ONE_OFF));
 
         Multimap<String, String> outputs = fstepServicesClient.launchService(userId, SERVICE_NAME, jobId, inputs);
         
@@ -419,7 +443,7 @@ public class FstepServicesClientIT {
         List<String> outputFileLines = Files.readAllLines(ingestedOutputsDir.resolve(launchedJobs.get(0).getExtId()).resolve("output/output_file_1"));
         assertThat(outputFileLines, is(ImmutableList.of("INPUT PARAM: inputVal1")));
 
-        verify(costingService).chargeForJob(eq(wallet), any());
+        verify(costingService).chargeForJobProcessing(eq(wallet), any());
     }
 
     @Test
@@ -440,6 +464,7 @@ public class FstepServicesClientIT {
                 FstepServiceDescriptor.Parameter.builder().id("output").build()
         ));
         List<Job> launchedJobs = new ArrayList<>();
+        List<JobProcessing> launchedJobProcessings = new ArrayList<>();
         
 
         when(jobDataService.buildNew(any(), any(), any(), any(), any())).thenAnswer(invocation -> {
@@ -463,6 +488,17 @@ public class FstepServicesClientIT {
         when(jobDataService.refreshFull(any(Job.class))).thenAnswer(invocation -> {
             return launchedJobs.stream().filter(j -> j.getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
         });
+        
+        when(jobProcessingDataService.buildNew(any(Job.class))).thenAnswer(invocation -> {
+        	JobProcessing jobProcessing = new JobProcessing(invocation.getArgument(0), 1L);
+        	launchedJobProcessings.add(jobProcessing);
+            return jobProcessing;
+        });
+        
+        when(jobProcessingDataService.findByJobAndMaxSequenceNum(any(Job.class))).thenAnswer(invocation -> {
+            return launchedJobProcessings.stream().filter(jp -> jp.getJob().getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
+        });
+        
         Set<WorkerJob> workerJobs = new HashSet<>();
         when(workerDataService.save(any())).thenAnswer(invocation -> {
         	WorkerJob workerJob = invocation.getArgument(0);
@@ -494,7 +530,8 @@ public class FstepServicesClientIT {
                 .putAll("inputKey2", ImmutableList.of("inputVal2-1", "inputVal2-2"))
                 .build();
 
-        when(costingService.estimateJobCost(any())).thenReturn(20);
+        when(costingService.estimateJobCost(any())).thenReturn(new CostQuotation(20, Recurrence.ONE_OFF));
+        when(costingService.estimateSingleRunJobCost(any())).thenReturn(new CostQuotation(20, Recurrence.ONE_OFF));
 
         Multimap<String, String> outputs = fstepServicesClient.launchService(userId, SERVICE_NAME, jobId, inputs);
         assertThat(launchedJobs.size(), is(1));
@@ -511,7 +548,7 @@ public class FstepServicesClientIT {
         List<String> outputFileLines = Files.readAllLines(ingestedOutputsDir.resolve(launchedJobs.get(0).getExtId()).resolve("output/output_file_1"));
         assertThat(outputFileLines, is(ImmutableList.of("INPUT PARAM: inputVal1")));
 
-        verify(costingService).chargeForJob(eq(wallet), any());
+        verify(costingService).chargeForJobProcessing(eq(wallet), any());
     }
 
     @Test
@@ -534,7 +571,8 @@ public class FstepServicesClientIT {
 
         final long[] jobCount = {0L};
         List<Job> launchedJobs = new ArrayList<>();
-
+        List<JobProcessing> launchedJobProcessings = new ArrayList<>();
+       
         when(jobDataService.buildNew(any(), any(), any(), any(), any())).thenAnswer(invocation -> {
             JobConfig config = new JobConfig(user, service);
             config.setLabel(Strings.isNullOrEmpty(invocation.getArgument(3)) ? null : invocation.getArgument(3));
@@ -552,6 +590,11 @@ public class FstepServicesClientIT {
             Job job = new Job(config, invocation.getArgument(0), user, invocation.getArgument(5));
             job.setId(jobCount[0]++);
             launchedJobs.add(job);
+            return job;
+        });
+        
+        when(jobDataService.save(any(Job.class))).thenAnswer(invocation -> {
+            Job job = invocation.getArgument(0);
             return job;
         });
         
@@ -577,6 +620,17 @@ public class FstepServicesClientIT {
     		parentJob.getOutputFiles().addAll(ImmutableSet.copyOf(job.getOutputFiles()));
             return parentJob;
         });
+        
+        when(jobProcessingDataService.buildNew(any(Job.class))).thenAnswer(invocation -> {
+        	JobProcessing jobProcessing = new JobProcessing(invocation.getArgument(0), 1L);
+        	launchedJobProcessings.add(jobProcessing);
+            return jobProcessing;
+        });
+        
+        when(jobProcessingDataService.findByJobAndMaxSequenceNum(any(Job.class))).thenAnswer(invocation -> {
+            return launchedJobProcessings.stream().filter(jp -> jp.getJob().getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
+        });
+        
         Set<WorkerJob> workerJobs = new HashSet<>();
         when(workerDataService.save(any())).thenAnswer(invocation -> {
         	WorkerJob workerJob = invocation.getArgument(0);
@@ -610,7 +664,8 @@ public class FstepServicesClientIT {
                 .put("sharedInputBarBaz", "bar,baz")
                 .build();
 
-        when(costingService.estimateJobCost(any())).thenReturn(20);
+        when(costingService.estimateJobCost(any())).thenReturn(new CostQuotation(20, Recurrence.ONE_OFF));
+        when(costingService.estimateSingleRunJobCost(any())).thenReturn(new CostQuotation(20, Recurrence.ONE_OFF));
 
         Multimap<String, String> outputs = fstepServicesClient.launchService(userId, PARALLEL_SERVICE_NAME, jobId, inputs);
 
@@ -652,7 +707,7 @@ public class FstepServicesClientIT {
                 "INPUT PARAM: parallelInput3"
         )));
 
-        verify(costingService, times(3)).chargeForJob(eq(wallet), any());
+        verify(costingService, times(3)).chargeForJobProcessing(eq(wallet), any());
     }
 
 }

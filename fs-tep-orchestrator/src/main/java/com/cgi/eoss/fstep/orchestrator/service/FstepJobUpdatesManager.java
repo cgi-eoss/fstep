@@ -14,6 +14,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -46,19 +47,26 @@ import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
+import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.logging.Logging;
+import com.cgi.eoss.fstep.model.CostQuotation;
+import com.cgi.eoss.fstep.model.CostQuotation.Recurrence;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Parameter;
 import com.cgi.eoss.fstep.model.Job;
+import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.JobStep;
+import com.cgi.eoss.fstep.model.WalletTransaction.Type;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata.OutputFileMetadataBuilder;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata.OutputProductMetadataBuilder;
 import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
+import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
+import com.cgi.eoss.fstep.persistence.service.WalletTransactionDataService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.rpc.FileStream;
 import com.cgi.eoss.fstep.rpc.FileStreamClient;
@@ -80,6 +88,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
+import com.google.protobuf.Timestamp;
 import com.mysema.commons.lang.Pair;
 
 import lombok.extern.log4j.Log4j2;
@@ -94,6 +103,9 @@ public class FstepJobUpdatesManager {
     private final CachingWorkerFactory workerFactory;
     private final CatalogueService catalogueService;
     private final FstepSecurityService securityService;
+    private final JobProcessingDataService jobProcessingDataService;
+    private final CostingService costingService;
+    private final WalletTransactionDataService walletTransactionDataService;
 	private final PlatformParameterExtractor platformParameterExtractor;
 	 @Autowired
 	    public FstepJobUpdatesManager(JobDataService jobDataService, 
@@ -101,13 +113,19 @@ public class FstepJobUpdatesManager {
 	    		FstepGuiServiceManager guiService, 
 	    		CachingWorkerFactory workerFactory,
 	    		CatalogueService catalogueService,
-	    		FstepSecurityService securityService) {
+	    		FstepSecurityService securityService,
+	    		JobProcessingDataService jobProcessingDataService,
+	    		CostingService costingService, 
+	    		WalletTransactionDataService walletTransactionDataService) {
 	        this.jobDataService = jobDataService;
 	        this.dynamicProxyService = dynamicProxyService;
 	        this.guiService = guiService;
 	        this.workerFactory = workerFactory;
 	        this.catalogueService = catalogueService;
 	        this.securityService = securityService;
+	        this.jobProcessingDataService = jobProcessingDataService;
+	        this.costingService = costingService;
+	        this.walletTransactionDataService = walletTransactionDataService;
 	        this.platformParameterExtractor = new PlatformParameterExtractor();
 	    }
 
@@ -135,7 +153,10 @@ public class FstepJobUpdatesManager {
             } else if (jobEventType == JobEventType.DATA_FETCHING_COMPLETED) {
                 onJobDataFetchingCompleted(job);
             } else if (jobEventType == JobEventType.PROCESSING_STARTED) {
-                onJobProcessingStarted(job, workerId);
+                onJobProcessingStarted(job, workerId, jobEvent.getTimestamp());
+            }
+            else if (jobEventType == JobEventType.HEARTBEAT) {
+                onJobHeartbeat(job, workerId, jobEvent.getTimestamp());
             }
         } else if (update instanceof JobError) {
             JobError jobError = (JobError) update;
@@ -144,17 +165,48 @@ public class FstepJobUpdatesManager {
             ContainerExit containerExit = (ContainerExit) update;
             try {
                 onContainerExit(job, workerId, containerExit.getOutputRootPath(),
-                        containerExit.getExitCode());
+                        containerExit.getExitCode(), containerExit.getTimestamp());
             } catch (Exception e) {
                 onJobError(job, e);
             }
         }
     }
 
-    private void onJobDataFetchingStarted(Job job, String workerId) {
+    private void onJobHeartbeat(Job job, String workerId, Timestamp timestamp) {
+    	LOG.debug("Received heartbeat for job {}", job.getId());
+    	JobProcessing jobProcessing = jobProcessingDataService.findByJobAndMaxSequenceNum(job);
+    	if (jobProcessing == null) {
+    		return;
+    	}
+    	OffsetDateTime newHeartbeat = GrpcUtil.offsetDateTimeFromTimestamp(timestamp);
+		CostQuotation costQuotation = job.getCostQuotation();
+		if (costQuotation == null) {
+			costQuotation = costingService.estimateSingleRunJobCost(job.getConfig());
+		}
+		if (costQuotation.getRecurrence().equals(Recurrence.HOURLY)) {
+			OffsetDateTime lastHeartbeat = jobProcessing.getLastHeartbeat();
+			Duration lastHeartbeatDifference = Duration.between(jobProcessing.getStartProcessingTime(), lastHeartbeat);
+			Duration newHeartbeatDifference = Duration.between(jobProcessing.getStartProcessingTime(), newHeartbeat);
+			long hoursWithLastHeartbeat = lastHeartbeatDifference.toHours();
+			long hoursWithNewHeartbeat = newHeartbeatDifference.toHours();
+			if (hoursWithNewHeartbeat > hoursWithLastHeartbeat) {
+				long hoursToCharge = hoursWithNewHeartbeat - hoursWithLastHeartbeat;
+				for (long i = 0; i < hoursToCharge; i++) {
+					costingService.chargeForJobProcessing(job.getOwner().getWallet(), jobProcessing);
+				}
+			}
+		}
+    	jobProcessing.setLastHeartbeat(newHeartbeat);
+    	jobProcessingDataService.save(jobProcessing);
+    }
+
+	private void onJobDataFetchingStarted(Job job, String workerId) {
         LOG.info("Downloading input data for {}", job.getExtId());
         job.setWorkerId(workerId);
-        job.setStartTime(LocalDateTime.now());
+        //Update the start time if this is the first job execution
+        if (job.getStartTime() == null) {
+        	job.setStartTime(LocalDateTime.now());
+        }
         job.setStatus(Job.Status.RUNNING);
         job.setStage(JobStep.DATA_FETCH.getText());
         jobDataService.save(job);
@@ -165,7 +217,7 @@ public class FstepJobUpdatesManager {
         LOG.info("Launching docker container for job {}", job.getExtId());
     }
 
-    private void onJobProcessingStarted(Job job, String workerId) {
+    private void onJobProcessingStarted(Job job, String workerId, Timestamp timestamp) {
         FstepService service = job.getConfig().getService();
         LOG.info("Job {} ({}) launched for service: {}", job.getId(), job.getExtId(),
                 service.getName());
@@ -183,13 +235,25 @@ public class FstepJobUpdatesManager {
             jobDataService.save(job);
             dynamicProxyService.update();
         }
+        JobProcessing jobProcessing = jobProcessingDataService.findByJobAndMaxSequenceNum(job);
+        if (jobProcessing != null) {
+	        OffsetDateTime startProcessingTime = GrpcUtil.offsetDateTimeFromTimestamp(timestamp);
+			jobProcessing.setStartProcessingTime(startProcessingTime);
+	        jobProcessing.setLastHeartbeat(startProcessingTime);
+	        jobProcessingDataService.save(jobProcessing);
+        }
         job.setStage(JobStep.PROCESSING.getText());
         jobDataService.save(job);
 
     }
 
     private void onContainerExit(Job job, String workerId, String outputRootPath,
-            int exitCode) throws Exception {
+            int exitCode, Timestamp timestamp) throws Exception {
+        JobProcessing jobProcessing = jobProcessingDataService.findByJobAndMaxSequenceNum(job);
+        if (jobProcessing != null) {
+	        jobProcessing.setEndProcessingTime(GrpcUtil.offsetDateTimeFromTimestamp(timestamp));
+	        jobProcessingDataService.save(jobProcessing);
+        }
         switch (exitCode) {
             case 0:
                 // Normal exit
@@ -207,6 +271,7 @@ public class FstepJobUpdatesManager {
         }
         job.setStage(JobStep.OUTPUT_LIST.getText());
         job.setEndTime(LocalDateTime.now()); // End time is when processing ends
+        reconcileCost(job);
         job.setGuiUrl(null); // Any GUI services will no longer be available
         job.setGuiEndpoint(null); // Any GUI services will no longer be available
         jobDataService.save(job);
@@ -218,7 +283,36 @@ public class FstepJobUpdatesManager {
         }
     }
 
-    private void onJobError(Job job, String description) {
+    private void reconcileCost(Job job) {
+    	CostQuotation costQuotation = job.getCostQuotation();
+		if (costQuotation == null) {
+			costQuotation = costingService.estimateSingleRunJobCost(job.getConfig());
+		}
+		if (costQuotation.getRecurrence().equals(Recurrence.HOURLY)) {
+			//Find the latest job processing for this job
+	    	JobProcessing jobProcessing = jobProcessingDataService.findByJobAndMaxSequenceNum(job);
+	    	if (jobProcessing == null) {
+	    		return;
+	    	}
+			//check how many coins have been charged for this job processing
+	    	int amountCharged = walletTransactionDataService.findByTypeAndAssociatedId(Type.JOB_PROCESSING, jobProcessing.getId()).stream().mapToInt(t -> t.getBalanceChange() * -1).sum();
+	    	//check how many coins should be charged for this job processing
+	    	Duration totalRuntime = Duration.between(jobProcessing.getStartProcessingTime(), jobProcessing.getEndProcessingTime());
+	    	long runtimeMinutes = totalRuntime.toMinutes();
+			int numHours = (int) (runtimeMinutes/60);
+	    	if (runtimeMinutes % 60  != 0) {
+	    		numHours++;
+	    	}
+	    	int amountChargeable = costQuotation.getCost() * numHours;
+	    	//Transaction amount is positive if we charged more than we should have
+			int transactionAmount = amountCharged - amountChargeable;
+			if (transactionAmount != 0) {
+				costingService.transactForJobProcessing(job.getOwner().getWallet(), jobProcessing, transactionAmount);
+			}
+		}
+	}
+
+	private void onJobError(Job job, String description) {
         LOG.error("Error in Job {}: {}",
                 job.getExtId(), description);
         endJobWithError(job);

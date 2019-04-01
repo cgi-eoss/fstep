@@ -7,10 +7,13 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import javax.servlet.http.HttpServletRequest;
+
 import com.cgi.eoss.fstep.costing.CostingService;
+import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.model.CostQuotation.Recurrence;
 import com.cgi.eoss.fstep.search.api.SearchFacade;
 import com.cgi.eoss.fstep.search.api.SearchParameters;
 import com.cgi.eoss.fstep.search.api.SearchResults;
@@ -61,40 +64,42 @@ public class EstimateCostApi {
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#jobConfig, 'read')")
     public ResponseEntity estimateJobConfigCost(@ModelAttribute("jobConfigId") JobConfig jobConfig) {
         int walletBalance = fstepSecurityService.getCurrentUser().getWallet().getBalance();
-        int cost = costingService.estimateJobCost(jobConfig);
-
+        CostQuotation costEstimate = costingService.estimateJobCost(jobConfig);
+        Integer cost = costEstimate.getCost();
+        
         return ResponseEntity
                 .status(cost > walletBalance ? HttpStatus.PAYMENT_REQUIRED : HttpStatus.OK)
-                .body(CostEstimationResponse.builder().estimatedCost(cost).currentWalletBalance(walletBalance).build());
+                .body(CostEstimationResponse.builder().estimatedCost(cost).recurrence(costEstimate.getRecurrence()).currentWalletBalance(walletBalance).build());
     }
     
     @GetMapping("/jobRelaunch/{jobId}")
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#job, 'read')")
     public ResponseEntity estimateJobConfigCost(@ModelAttribute("jobId") Job job) {
         int walletBalance = fstepSecurityService.getCurrentUser().getWallet().getBalance();
-        int cost = costingService.estimateJobRelaunchCost(job);
+        CostQuotation costEstimate = costingService.estimateJobRelaunchCost(job);
+        Integer cost = costEstimate.getCost();
 
         return ResponseEntity
                 .status(cost > walletBalance ? HttpStatus.PAYMENT_REQUIRED : HttpStatus.OK)
-                .body(CostEstimationResponse.builder().estimatedCost(cost).currentWalletBalance(walletBalance).build());
+                .body(CostEstimationResponse.builder().estimatedCost(cost).recurrence(costEstimate.getRecurrence()).currentWalletBalance(walletBalance).build());
     }
 
     @GetMapping("/download/{fstepFileId}")
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#fstepFile, 'read')")
     public ResponseEntity estimateDownloadCost(@ModelAttribute("fstepFileId") FstepFile fstepFile) {
         int walletBalance = fstepSecurityService.getCurrentUser().getWallet().getBalance();
-        int cost = costingService.estimateDownloadCost(fstepFile);
-
-        return ResponseEntity
+        CostQuotation costEstimate = costingService.estimateDownloadCost(fstepFile);
+        Integer cost = costEstimate.getCost();
+		return ResponseEntity
                 .status(cost > walletBalance ? HttpStatus.PAYMENT_REQUIRED : HttpStatus.OK)
-                .body(CostEstimationResponse.builder().estimatedCost(cost).currentWalletBalance(walletBalance).build());
+                .body(CostEstimationResponse.builder().estimatedCost(cost).recurrence(costEstimate.getRecurrence()).currentWalletBalance(walletBalance).build());
     }
     
     @PostMapping("/systematic")
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or (#jobConfigTemplate.id == null) or hasPermission(#jobConfigTemplate, 'read')")
     public ResponseEntity estimateSystematicCost(HttpServletRequest request, @RequestBody JobConfig jobConfigTemplate) throws InterruptedException, JsonParseException, JsonMappingException, JsonProcessingException, IOException {
         int walletBalance = fstepSecurityService.getCurrentUser().getWallet().getBalance();
-        int singleRunCost =  costingService.estimateSingleRunJobCost(jobConfigTemplate);
+        CostQuotation singleRunCostEstimate =  costingService.estimateSingleRunJobCost(jobConfigTemplate);
         
         Map<String, String[]> requestParameters = request.getParameterMap();
         ListMultimap<String, String> queryParameters = ArrayListMultimap.create(); 
@@ -119,12 +124,12 @@ public class EstimateCostApi {
         SearchResults results = searchFacade.search(searchParameters);
         
         //Overwrite query params using last month
-        int monthlyCost =  (int) results.getPage().getTotalElements() * singleRunCost;
+        int monthlyCost =  (int) results.getPage().getTotalElements() * singleRunCostEstimate.getCost();
         
         
         return ResponseEntity
                 .status(monthlyCost > walletBalance ? HttpStatus.PAYMENT_REQUIRED : HttpStatus.OK)
-                .body(CostEstimationResponse.builder().estimatedCost(monthlyCost).currentWalletBalance(walletBalance).build());
+                .body(CostEstimationResponse.builder().estimatedCost(monthlyCost).recurrence(Recurrence.MONTHLY).currentWalletBalance(walletBalance).build());
 
     }
 
@@ -132,6 +137,7 @@ public class EstimateCostApi {
     @Builder
     private static class CostEstimationResponse {
         int estimatedCost;
+        Recurrence recurrence;
         int currentWalletBalance;
     }
 

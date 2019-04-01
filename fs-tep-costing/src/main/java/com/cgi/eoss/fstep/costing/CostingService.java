@@ -1,8 +1,10 @@
 package com.cgi.eoss.fstep.costing;
 
+import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.Wallet;
 
 /**
@@ -10,18 +12,20 @@ import com.cgi.eoss.fstep.model.Wallet;
  */
 public interface CostingService {
 
-    Integer estimateJobCost(JobConfig jobConfig);
+    CostQuotation estimateJobCost(JobConfig jobConfig);
     
-    Integer estimateJobRelaunchCost(Job job);
+    CostQuotation estimateJobRelaunchCost(Job job);
     
-    Integer estimateSingleRunJobCost(JobConfig jobConfig);
+    CostQuotation estimateSingleRunJobCost(JobConfig jobConfig);
     
-    Integer estimateDownloadCost(FstepFile download);
-
-    void chargeForJob(Wallet wallet, Job job);
+    CostQuotation estimateDownloadCost(FstepFile download);
 
     void chargeForDownload(Wallet wallet, FstepFile download);
-
-    void refundUser(Wallet wallet, Job job);
+    
+	void chargeForJobProcessing(Wallet wallet, JobProcessing jobProcessing);
+	
+	void transactForJobProcessing(Wallet wallet, JobProcessing jobProcessing, int amount);
+	
+	void refundJobProcessing(Wallet wallet, JobProcessing jobProcessing);
 
 }

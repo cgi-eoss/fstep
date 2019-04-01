@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toSet;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
+import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
@@ -37,30 +39,51 @@ public class JobValidator {
 	}
 	
 	public void checkCost(User user, JobConfig jobConfig) {
-        int estimatedCost = costingService.estimateJobCost(jobConfig);
-        if (estimatedCost > user.getWallet().getBalance()) {
+        CostQuotation costEstimate = costingService.estimateJobCost(jobConfig);
+        Integer cost = costEstimate.getCost();
+        if (cost > user.getWallet().getBalance()) {
             throw new ServiceExecutionException(
-                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
+                    "Estimated cost (" + cost + " coins) exceeds current wallet balance");
         }
     }
-    
-    public void checkCost(User user, JobConfig config, List<String> newInputs) {
-        int singleJobCost = costingService.estimateSingleRunJobCost(config);
-        int estimatedCost = newInputs.size() * singleJobCost;
-        if (estimatedCost > user.getWallet().getBalance()) {
+	
+	 public void checkCost(User user, JobConfig config, List<String> newInputs) {
+	    	CostQuotation singleJobCostEstimate = costingService.estimateSingleRunJobCost(config);
+	        int estimatedCost = newInputs.size() * singleJobCostEstimate.getCost();
+	        if (estimatedCost > user.getWallet().getBalance()) {
+	            throw new ServiceExecutionException(
+	                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
+	        }
+	    }
+	
+	public void checkCost(User user, Job job) {
+		Integer cost = getJobCost(job);
+        if (cost > user.getWallet().getBalance()) {
             throw new ServiceExecutionException(
-                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
+                    "Estimated cost (" + cost + " coins) exceeds current wallet balance");
         }
     }
-    
-    public void checkCost(User user, JobConfig config, int numberOfJobs) {
-        int singleJobCost = costingService.estimateSingleRunJobCost(config);
-        int estimatedCost = numberOfJobs * singleJobCost;
-        if (estimatedCost > user.getWallet().getBalance()) {
+	
+	public void checkCost(User user, Collection<Job> jobs) {
+		int totalCost = 0;
+		for (Job job: jobs) {
+			totalCost += getJobCost(job);
+		}
+		if (totalCost > user.getWallet().getBalance()) {
             throw new ServiceExecutionException(
-                    "Estimated cost (" + estimatedCost + " coins) exceeds current wallet balance");
+                    "Estimated cost (" + totalCost + " coins) exceeds current wallet balance");
         }
     }
+	
+	private Integer getJobCost(Job job) {
+		CostQuotation jobCost = job.getCostQuotation();
+		if (jobCost == null) {
+			jobCost = costingService.estimateJobCost(job.getConfig());
+		}
+        Integer cost = jobCost.getCost();
+		return cost;
+	}
+	
     
     public boolean checkInputs(User user, List<JobParam> inputsList) {
         Multimap<String, String> inputs = GrpcUtil.paramsListToMap(inputsList);

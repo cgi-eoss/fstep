@@ -26,7 +26,7 @@ CREATE TABLE fstep_wallet_transactions (
   wallet           BIGINT                      NOT NULL FOREIGN KEY REFERENCES fstep_wallets (id),
   balance_change   INT                         NOT NULL,
   transaction_time TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-  type             CHARACTER VARYING(255)      NOT NULL CHECK (type IN ('CREDIT', 'JOB', 'DOWNLOAD')),
+  type             CHARACTER VARYING(255)      NOT NULL CHECK (type IN ('CREDIT', 'JOB', 'JOB_PROCESSING', 'DOWNLOAD')),
   associated_id    BIGINT
 );
 CREATE INDEX fstep_wallet_transactions_wallet_idx
@@ -141,6 +141,7 @@ CREATE TABLE fstep_jobs (
   owner      BIGINT                 NOT NULL FOREIGN KEY REFERENCES fstep_users (uid),
   parent_job_id BIGINT REFERENCES fstep_jobs (id),
   queue_position INTEGER,
+  cost_quotation CLOB,
   worker_id CHARACTER VARYING(255)
 );
 CREATE UNIQUE INDEX fstep_jobs_ext_id_idx
@@ -153,6 +154,19 @@ CREATE INDEX fstep_jobs_owner_idx
 --Reference to parent in job config
 ALTER TABLE fstep_job_configs ADD FOREIGN KEY (parent) REFERENCES fstep_jobs(id);
   
+
+CREATE TABLE fstep_job_processings (
+  id         BIGINT IDENTITY PRIMARY KEY,
+  job		 BIGINT NOT NULL FOREIGN KEY REFERENCES fstep_jobs(id),
+  sequence_num BIGINT NOT NULL,
+  start_processing_time   TIMESTAMP WITH TIME ZONE,
+  end_processing_time   TIMESTAMP WITH TIME ZONE,
+  last_heartbeat 		TIMESTAMP WITH TIME ZONE
+);
+CREATE UNIQUE INDEX fstep_job_processings_job_sequence_num_time_idx
+  ON fstep_job_processings (job, sequence_num);
+CREATE INDEX fstep_job_processings_job_idx
+  ON fstep_job_processings (job);
 
 -- Data sources
 

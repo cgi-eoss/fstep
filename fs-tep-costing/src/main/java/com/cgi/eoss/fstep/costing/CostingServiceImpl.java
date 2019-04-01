@@ -9,14 +9,17 @@ import java.util.regex.Pattern;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.CostingExpression;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.WalletTransaction;
+import com.cgi.eoss.fstep.model.CostQuotation.Recurrence;
 import com.cgi.eoss.fstep.persistence.service.CostingExpressionDataService;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
@@ -35,8 +38,7 @@ public class CostingServiceImpl implements CostingService {
     private final CostingExpression defaultDownloadCostingExpression;
 	private final DatabasketDataService databasketDataService;
 	private final JobDataService jobDataService;
-	
-    public CostingServiceImpl(ExpressionParser costingExpressionParser, CostingExpressionDataService costingDataService,
+	public CostingServiceImpl(ExpressionParser costingExpressionParser, CostingExpressionDataService costingDataService,
                               WalletDataService walletDataService, DatabasketDataService databasketDataService, JobDataService jobDataService, String defaultJobCostingExpression, String defaultDownloadCostingExpression) {
         this.expressionParser = costingExpressionParser;
         this.costingDataService = costingDataService;
@@ -48,10 +50,10 @@ public class CostingServiceImpl implements CostingService {
     }
 
     @Override
-    public Integer estimateJobCost(JobConfig jobConfig) {
-        int singleJobCost =  estimateSingleRunJobCost(jobConfig);
+    public CostQuotation estimateJobCost(JobConfig jobConfig) {
+        CostQuotation singleJobCost =  estimateSingleRunJobCost(jobConfig);
         if (jobConfig.getService().getType() == FstepService.Type.PARALLEL_PROCESSOR) {
-        		return calculateNumberOfInputs(jobConfig.getInputs().get("parallelInputs")) * singleJobCost;
+        		return new CostQuotation(calculateNumberOfInputs(jobConfig.getInputs().get("parallelInputs")) * singleJobCost.getCost(), singleJobCost.getRecurrence());
         }
         else {
         		return singleJobCost;
@@ -59,34 +61,43 @@ public class CostingServiceImpl implements CostingService {
     }
     
     @Override
-    public Integer estimateJobRelaunchCost(Job job) {
+    public CostQuotation estimateJobRelaunchCost(Job job) {
         if (job.isParent()) {
         	job = jobDataService.refreshFull(job.getId());
-        	return job.getSubJobs()
+        	return new CostQuotation(job.getSubJobs()
         			.stream()
         			.filter(j -> j.getStatus() == Job.Status.ERROR && j.getStage() != null && !j.getStage().equals("Step 1 of 3: Data-Fetch"))
-        			.mapToInt(j -> estimateSingleRunJobCost(j.getConfig()))
-        			.sum();
+        			.mapToInt(j -> estimateSingleRunJobCost(j.getConfig()).getCost())
+        			.sum(), Recurrence.ONE_OFF);
         }
         else {
         	if( job.getStage() == null || job.getStage().equals("Step 1 of 3: Data-Fetch")) {
-        		return 0;
+        		return new CostQuotation(0, Recurrence.ONE_OFF);
         	}
         	return estimateSingleRunJobCost(job.getConfig());
         }
     }
     
     @Override
-    public Integer estimateSingleRunJobCost(JobConfig jobConfig) {
-        CostingExpression costingExpression = getCostingExpression(jobConfig.getService());
-
-        String expression = Strings.isNullOrEmpty(costingExpression.getEstimatedCostExpression())
-                ? costingExpression.getCostExpression()
-                : costingExpression.getEstimatedCostExpression();
-        return ((Number) expressionParser.parseExpression(expression).getValue(jobConfig)).intValue();
+    public CostQuotation estimateSingleRunJobCost(JobConfig jobConfig) {
+    	Optional<CostingExpression> serviceCostingExpression = getServiceCostingExpression(jobConfig.getService());
+    	Recurrence recurrence;
+    	CostingExpression jobCostingExpression;
+    	if (serviceCostingExpression.isPresent()){
+    		recurrence = Recurrence.ONE_OFF;
+    		jobCostingExpression = serviceCostingExpression.get();
+    	} 
+    	else {
+    		recurrence = Recurrence.HOURLY;
+    		jobCostingExpression = defaultJobCostingExpression;
+    	}
+    	
+        String estimateExpression = Strings.isNullOrEmpty(jobCostingExpression.getEstimatedCostExpression())
+                ? jobCostingExpression.getCostExpression()
+                : jobCostingExpression.getEstimatedCostExpression();
+        Integer cost = ((Number) expressionParser.parseExpression(estimateExpression).getValue(jobConfig)).intValue();
+        return new CostQuotation(cost, recurrence);
     }
-    
-    
 
 	private int calculateNumberOfInputs(Collection<String> inputUris){
 		int inputCount = 1;
@@ -119,45 +130,83 @@ public class CostingServiceImpl implements CostingService {
     }
     
     @Override
-    public Integer estimateDownloadCost(FstepFile fstepFile) {
+    public CostQuotation estimateDownloadCost(FstepFile fstepFile) {
         CostingExpression costingExpression = getCostingExpression(fstepFile);
 
         String expression = Strings.isNullOrEmpty(costingExpression.getEstimatedCostExpression())
                 ? costingExpression.getCostExpression()
                 : costingExpression.getEstimatedCostExpression();
-
-        return ((Number) expressionParser.parseExpression(expression).getValue(fstepFile)).intValue();
+        Integer cost = ((Number) expressionParser.parseExpression(expression).getValue(fstepFile)).intValue();
+        return new CostQuotation(cost, Recurrence.ONE_OFF);
     }
-
+    
     @Override
     @Transactional
-    public void chargeForJob(Wallet wallet, Job job) {
-        CostingExpression costingExpression = getCostingExpression(job.getConfig().getService());
-
-        String expression = costingExpression.getCostExpression();
-
-        int cost = ((Number) expressionParser.parseExpression(expression).getValue(job)).intValue();
+    public void chargeForJobProcessing(Wallet wallet, JobProcessing jobProcessing) {
+    	CostQuotation costQuotation = jobProcessing.getJob().getCostQuotation();
+    	if (costQuotation == null) {
+    		costQuotation = getCostQuotation(jobProcessing.getJob());
+    	}
+        int cost = costQuotation.getCost();
         WalletTransaction walletTransaction = WalletTransaction.builder()
                 .wallet(walletDataService.refreshFull(wallet))
                 .balanceChange(-cost)
-                .type(WalletTransaction.Type.JOB)
-                .associatedId(job.getId())
+                .type(WalletTransaction.Type.JOB_PROCESSING)
+                .associatedId(jobProcessing.getId())
                 .transactionTime(LocalDateTime.now())
                 .build();
         walletDataService.transact(walletTransaction);
     }
-
+    
     @Override
     @Transactional
-    public void refundUser(Wallet wallet, Job job) {
-        int cost = estimateJobCost(job.getConfig());
-        WalletTransaction walletTransaction =
-                WalletTransaction.builder().wallet(walletDataService.refreshFull(wallet)).balanceChange(cost)
-                        .type(WalletTransaction.Type.JOB).associatedId(job.getId()).transactionTime(LocalDateTime.now()).build();
+    public void transactForJobProcessing(Wallet wallet, JobProcessing jobProcessing, int amount) {
+    	WalletTransaction walletTransaction = WalletTransaction.builder()
+                .wallet(walletDataService.refreshFull(wallet))
+                .balanceChange(amount)
+                .type(WalletTransaction.Type.JOB_PROCESSING)
+                .associatedId(jobProcessing.getId())
+                .transactionTime(LocalDateTime.now())
+                .build();
         walletDataService.transact(walletTransaction);
     }
-
+    
     @Override
+    @Transactional
+    public void refundJobProcessing(Wallet wallet, JobProcessing jobProcessing) {
+    	CostQuotation costQuotation = jobProcessing.getJob().getCostQuotation();
+    	if (costQuotation == null) {
+    		costQuotation = getCostQuotation(jobProcessing.getJob());
+    	}
+        WalletTransaction walletTransaction =
+                WalletTransaction.builder().wallet(walletDataService.refreshFull(wallet)).balanceChange(costQuotation.getCost())
+                        .type(WalletTransaction.Type.JOB_PROCESSING).associatedId(jobProcessing.getId()).transactionTime(LocalDateTime.now()).build();
+        walletDataService.transact(walletTransaction);
+    }
+    
+    private CostQuotation getCostQuotation(Job job) {
+    	Optional<CostingExpression> serviceCostingExpression = getServiceCostingExpression(job.getConfig().getService());
+    	Recurrence recurrence;
+    	CostingExpression jobCostingExpression;
+    	if (serviceCostingExpression.isPresent()){
+    		recurrence = Recurrence.ONE_OFF;
+    		jobCostingExpression = serviceCostingExpression.get();
+    	} 
+    	else {
+    		recurrence = Recurrence.HOURLY;
+    		jobCostingExpression = defaultJobCostingExpression;
+    	}
+    	
+        String expression = jobCostingExpression.getCostExpression();
+        int cost = ((Number) expressionParser.parseExpression(expression).getValue(job)).intValue();
+        return new CostQuotation(cost, recurrence);
+    }
+    
+    private Optional<CostingExpression> getServiceCostingExpression(FstepService fstepService) {
+        return Optional.ofNullable(costingDataService.getServiceCostingExpression(fstepService));
+    }
+
+	@Override
     @Transactional
     public void chargeForDownload(Wallet wallet, FstepFile fstepFile) {
         CostingExpression costingExpression = getCostingExpression(fstepFile);
@@ -173,10 +222,6 @@ public class CostingServiceImpl implements CostingService {
                 .transactionTime(LocalDateTime.now())
                 .build();
         walletDataService.transact(walletTransaction);
-    }
-
-    private CostingExpression getCostingExpression(FstepService fstepService) {
-        return Optional.ofNullable(costingDataService.getServiceCostingExpression(fstepService)).orElse(defaultJobCostingExpression);
     }
 
     private CostingExpression getCostingExpression(FstepFile fstepFile) {

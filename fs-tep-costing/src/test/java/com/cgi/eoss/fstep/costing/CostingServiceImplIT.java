@@ -1,11 +1,13 @@
 package com.cgi.eoss.fstep.costing;
 
+import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.CostingExpression;
 import com.cgi.eoss.fstep.model.DataSource;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
+import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.WalletTransaction;
 import com.cgi.eoss.fstep.persistence.service.CostingExpressionDataService;
@@ -48,8 +50,8 @@ public class CostingServiceImplIT {
         jobConfig.setId(1L);
         jobConfig.setService(service);
 
-        int defaultCost = costingService.estimateJobCost(jobConfig);
-        assertThat(defaultCost, is(1));
+        CostQuotation defaultCost = costingService.estimateJobCost(jobConfig);
+        assertThat(defaultCost.getCost(), is(1));
 
         CostingExpression costingExpression = CostingExpression.builder()
                 .type(CostingExpression.Type.SERVICE)
@@ -59,7 +61,8 @@ public class CostingServiceImplIT {
                 .build();
         costingExpressionDataService.save(costingExpression);
 
-        int cost = costingService.estimateJobCost(jobConfig);
+        CostQuotation costEstimate = costingService.estimateJobCost(jobConfig);
+        Integer cost = costEstimate.getCost();
         assertThat(cost, is(service.getName().length()));
     }
 
@@ -73,7 +76,8 @@ public class CostingServiceImplIT {
         fstepFile.setDataSource(dataSource);
         fstepFile.setFilesize(585L);
 
-        int defaultCost = costingService.estimateDownloadCost(fstepFile);
+        CostQuotation costEstimate = costingService.estimateDownloadCost(fstepFile);
+        Integer defaultCost = costEstimate.getCost();
         assertThat(defaultCost, is(1));
 
         CostingExpression costingExpression = CostingExpression.builder()
@@ -84,9 +88,10 @@ public class CostingServiceImplIT {
                 .build();
         costingExpressionDataService.save(costingExpression);
 
-        int cost = costingService.estimateDownloadCost(fstepFile);
-        assertThat(cost, is(2 * (int) Math.ceil((double) fstepFile.getFilesize() / 100)));
-        assertThat(cost, is(12));
+        CostQuotation downloadCostEstimate = costingService.estimateDownloadCost(fstepFile);
+        Integer downloadCost = downloadCostEstimate.getCost();
+        assertThat(downloadCost, is(2 * (int) Math.ceil((double) fstepFile.getFilesize() / 100)));
+        assertThat(downloadCost, is(12));
     }
 
     @Test
@@ -102,8 +107,8 @@ public class CostingServiceImplIT {
         jobConfig.setId(1L);
         jobConfig.setService(service);
         Job job = new Job(jobConfig, "jobId", owner);
-
-        costingService.chargeForJob(owner.getWallet(), job);
+        JobProcessing jobProcessing = new JobProcessing(job, 1);
+        costingService.chargeForJobProcessing(owner.getWallet(), jobProcessing);
         assertThat(owner.getWallet().getBalance(), is(startingBalance - 1));
 
         CostingExpression costingExpression = CostingExpression.builder()
@@ -113,8 +118,8 @@ public class CostingServiceImplIT {
                 .estimatedCostExpression("1")
                 .build();
         costingExpressionDataService.save(costingExpression);
-
-        costingService.chargeForJob(owner.getWallet(), job);
+        
+        costingService.chargeForJobProcessing(owner.getWallet(), jobProcessing);
         assertThat(owner.getWallet().getBalance(), is(startingBalance - 1 - service.getName().length()));
 
         List<WalletTransaction> transactions = owner.getWallet().getTransactions();

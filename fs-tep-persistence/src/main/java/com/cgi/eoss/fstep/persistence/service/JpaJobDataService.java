@@ -82,17 +82,13 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         config.setInputs(inputs);
         config.setParent(parentJob);
 
-        return buildNew(jobConfigDataService.save(config), extId, owner, parentJob);
+        return dao.save(new Job(jobConfigDataService.save(config), extId, owner, parentJob));
     }
     
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Job buildNew(String extId, String ownerId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs) {
     		return buildNew(extId, ownerId, serviceId, jobConfigLabel, inputs, null);
-    }
-
-    private Job buildNew(JobConfig jobConfig, String extId, User owner, Job parentJob) {
-        return dao.save(new Job(jobConfig, extId, owner, parentJob));
     }
     
     public Job refreshFull(Long id) {
@@ -108,6 +104,7 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         job.getOwner().getGroups().size();
         job.getOutputFiles().size();
         job.getSubJobs().size();
+        job.getJobProcessings().size();        
         return job;
     }
 

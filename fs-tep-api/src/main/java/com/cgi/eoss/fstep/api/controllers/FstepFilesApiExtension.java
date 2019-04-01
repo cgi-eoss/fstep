@@ -32,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.catalogue.CatalogueUri;
 import com.cgi.eoss.fstep.costing.CostingService;
+import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
@@ -109,8 +110,8 @@ public class FstepFilesApiExtension {
     public void downloadFile(@ModelAttribute("fileId") FstepFile file, HttpServletResponse response) throws IOException {
         User user = fstepSecurityService.getCurrentUser();
 
-        int estimatedCost = costingService.estimateDownloadCost(file);
-        if (estimatedCost > user.getWallet().getBalance()) {
+        CostQuotation estimatedCost = costingService.estimateDownloadCost(file);
+        if (estimatedCost.getCost() > user.getWallet().getBalance()) {
             response.setStatus(HttpStatus.PAYMENT_REQUIRED.value());
             String message = "Estimated download cost (" + estimatedCost + " coins) exceeds current wallet balance";
             response.getOutputStream().write(message.getBytes());

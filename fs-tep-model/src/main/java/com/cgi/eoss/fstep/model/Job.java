@@ -23,6 +23,8 @@ import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
+
+import com.cgi.eoss.fstep.model.converters.CostQuotationYamlConverter;
 import com.cgi.eoss.fstep.model.converters.StringMultimapYamlConverter;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Multimap;
@@ -36,7 +38,7 @@ import lombok.ToString;
  */
 @Data
 @ToString(exclude = {"parentJob"})
-@EqualsAndHashCode(exclude = {"id", "subJobs", "outputFiles"})
+@EqualsAndHashCode(exclude = {"id", "subJobs", "outputFiles", "jobProcessings"})
 @Table(name = "fstep_jobs",
         indexes = {@Index(name = "fstep_jobs_job_config_idx", columnList = "job_config"), @Index(name = "fstep_jobs_owner_idx", columnList = "owner")},
         uniqueConstraints = {@UniqueConstraint(columnNames = "ext_id")})
@@ -73,13 +75,13 @@ public class Job implements FstepEntityWithOwner<Job> {
     private User owner;
 
     /**
-     * <p>The date and time this job was launched.</p>
+     * <p>The date and time this job was launched for the first time.</p>
      */
     @Column(name = "start_time")
     private LocalDateTime startTime;
 
     /**
-     * <p>The date and time this job execution ended.</p>
+     * <p>The date and time the last execution of this job ended.</p>
      */
     @Column(name = "end_time")
     private LocalDateTime endTime;
@@ -160,6 +162,20 @@ public class Job implements FstepEntityWithOwner<Job> {
      */
     @Column(name = "is_parent")
     private boolean parent;
+    
+    /**
+     * <p>The different job processing</p>
+     */
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "job")
+    private Set<JobProcessing> jobProcessings = new HashSet<>();
+    
+    /**
+     * <p>The cost accepted by the user for this job</p>
+     */
+    @Lob
+    @Convert(converter = CostQuotationYamlConverter.class)
+    @Column(name = "cost_quotation")
+    private CostQuotation costQuotation;
     
     
     public Job(JobConfig config, String extId, User owner, Job parentJob) {

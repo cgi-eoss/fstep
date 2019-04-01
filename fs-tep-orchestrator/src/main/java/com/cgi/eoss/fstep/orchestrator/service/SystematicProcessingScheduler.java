@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.orchestrator.service;
 
 import com.cgi.eoss.fstep.costing.CostingService;
+import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.SystematicProcessing;
 import com.cgi.eoss.fstep.model.User;
@@ -102,8 +103,8 @@ public class SystematicProcessingScheduler {
                     inputs.putAll(configTemplate.getInputs());
                     inputs.replaceValues(configTemplate.getSystematicParameter(), Arrays.asList(new String[] {url}));
                     configTemplate.getInputs().put(configTemplate.getSystematicParameter(), url);
-                    int jobCost = costingService.estimateSingleRunJobCost(configTemplate);
-                    if (jobCost > systematicProcessing.getOwner().getWallet().getBalance()) {
+                    CostQuotation jobCostEstimate = costingService.estimateSingleRunJobCost(configTemplate);
+                    if (jobCostEstimate.getCost() > systematicProcessing.getOwner().getWallet().getBalance()) {
                         systematicProcessing.setStatus(Status.BLOCKED);
                         systematicProcessingDataService.save(systematicProcessing);
                         return;

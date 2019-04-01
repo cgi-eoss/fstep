@@ -95,7 +95,7 @@ public class WalletTransaction implements FstepEntityWithOwner<WalletTransaction
     }
 
     public enum Type {
-        CREDIT(null), JOB(Job.class), DOWNLOAD(FstepFile.class);
+        CREDIT(null), JOB(Job.class), DOWNLOAD(FstepFile.class), JOB_PROCESSING(JobProcessing.class);
 
         private final Class<?> typeClass;
 
