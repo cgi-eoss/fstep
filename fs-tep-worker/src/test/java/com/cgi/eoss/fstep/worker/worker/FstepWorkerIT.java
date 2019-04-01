@@ -88,7 +88,7 @@ public class FstepWorkerIT {
 
         String tag = UUID.randomUUID().toString();
 
-        worker.getJobClients().put("jobid-1", dockerClient);
+        worker.getJobClientsCache().put("jobid-1", dockerClient);
 
         JobDockerConfig request = JobDockerConfig.newBuilder()
                 .setServiceName("service1")

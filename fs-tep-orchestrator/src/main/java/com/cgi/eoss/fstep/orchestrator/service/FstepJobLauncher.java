@@ -47,10 +47,10 @@ import com.cgi.eoss.fstep.rpc.FstepJobLauncherGrpc;
 import com.cgi.eoss.fstep.rpc.FstepJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
-import com.cgi.eoss.fstep.rpc.JobOutputsResponse;
-import com.cgi.eoss.fstep.rpc.JobOutputsResponse.JobOutputs;
 import com.cgi.eoss.fstep.rpc.IngestJobOutputsParams;
 import com.cgi.eoss.fstep.rpc.IngestJobOutputsResponse;
+import com.cgi.eoss.fstep.rpc.JobOutputsResponse;
+import com.cgi.eoss.fstep.rpc.JobOutputsResponse.JobOutputs;
 import com.cgi.eoss.fstep.rpc.JobParam;
 import com.cgi.eoss.fstep.rpc.JobStatus;
 import com.cgi.eoss.fstep.rpc.JobStatusResponse;
@@ -60,11 +60,9 @@ import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
 import com.cgi.eoss.fstep.rpc.StopServiceResponse;
 import com.cgi.eoss.fstep.rpc.WorkersList;
-import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
 import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
-import com.cgi.eoss.fstep.rpc.worker.JobEnvironment;
 import com.cgi.eoss.fstep.rpc.worker.JobSpec;
 import com.cgi.eoss.fstep.rpc.worker.ResourceRequest;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
@@ -489,10 +487,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             jobSpecBuilder.addExposedPorts(FstepGuiServiceManager.GUACAMOLE_PORT);
         }
         Integer timeout = platformParameterExtractor.getTimeout(job);
-        if ( timeout > 0)
-        {
-        	jobSpecBuilder = jobSpecBuilder.setHasTimeout(true).setTimeoutValue(timeout);
-        }
+        jobSpecBuilder = jobSpecBuilder.setTimeoutValue(timeout);
         
         Map<Long, String> additionalMounts = job.getConfig().getService().getAdditionalMounts();
         
@@ -550,8 +545,8 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     	//TODO The output location is hardwired, but there is no way for the server to know it in this retry call because
     	//it is normally transmitted to the server by the worker in the containerExit rpc call
     	//Either the location should be saved together with the job status or the outputLocation call should be made available by the worker
-    	JobEnvironment jobEnvironment = JobEnvironment.newBuilder().setOutputDir("/data/jobs/Job_" + job.getExtId() + "/outDir").build();
-        fstepJobUpdatesManager.ingestOutput(job, GrpcUtil.toRpcJob(job), worker, jobEnvironment);
+    	String outputRootPath = "/data/jobs/Job_" + job.getExtId() + "/outDir";
+        fstepJobUpdatesManager.ingestOutput(job, GrpcUtil.toRpcJob(job), worker, outputRootPath);
         
     }
     

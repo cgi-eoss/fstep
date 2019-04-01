@@ -36,7 +36,7 @@ public class LocalNodeFactory implements NodeFactory {
         // TODO Check against maxPoolSize
         LOG.info("Provisioning LOCAL node");
         Node node = Node.builder()
-                .id(UUID.randomUUID().toString())
+                .id("local")
                 .name("LOCAL node")
                 .tag(tag)
                 .creationEpochSecond(Instant.now().getEpochSecond())

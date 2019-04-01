@@ -67,7 +67,6 @@ import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.rpc.worker.GetOutputFileParam;
-import com.cgi.eoss.fstep.rpc.worker.JobEnvironment;
 import com.cgi.eoss.fstep.rpc.worker.JobError;
 import com.cgi.eoss.fstep.rpc.worker.JobEvent;
 import com.cgi.eoss.fstep.rpc.worker.JobEventType;
@@ -144,7 +143,7 @@ public class FstepJobUpdatesManager {
         } else if (update instanceof ContainerExit) {
             ContainerExit containerExit = (ContainerExit) update;
             try {
-                onContainerExit(job, workerId, containerExit.getJobEnvironment(),
+                onContainerExit(job, workerId, containerExit.getOutputRootPath(),
                         containerExit.getExitCode());
             } catch (Exception e) {
                 onJobError(job, e);
@@ -189,7 +188,7 @@ public class FstepJobUpdatesManager {
 
     }
 
-    private void onContainerExit(Job job, String workerId, JobEnvironment jobEnvironment,
+    private void onContainerExit(Job job, String workerId, String outputRootPath,
             int exitCode) throws Exception {
         switch (exitCode) {
             case 0:
@@ -213,7 +212,7 @@ public class FstepJobUpdatesManager {
         jobDataService.save(job);
         try {
         	FstepWorkerBlockingStub worker = workerFactory.getWorkerById(workerId);
-            ingestOutput(job, GrpcUtil.toRpcJob(job), worker, jobEnvironment);
+            ingestOutput(job, GrpcUtil.toRpcJob(job), worker, outputRootPath);
         } catch (IOException e) {
             throw new Exception("Error ingesting output for : " + e.getMessage());
         }
@@ -242,14 +241,14 @@ public class FstepJobUpdatesManager {
     }
     
     public void ingestOutput(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
-            FstepWorkerBlockingStub worker, JobEnvironment jobEnvironment)
+            FstepWorkerBlockingStub worker, String outputRootPath)
             throws IOException, Exception {
         // Enumerate files in the job output directory
         Multimap<String, String> outputsByRelativePath =
-                listOutputFiles(job, rpcJob, worker, jobEnvironment);
+                listOutputFiles(job, rpcJob, worker, outputRootPath);
         // Repatriate output files
         Multimap<String, FstepFile> outputFiles = repatriateAndIngestOutputFiles(job, rpcJob, worker,
-                job.getConfig().getInputs(), jobEnvironment, outputsByRelativePath);
+                job.getConfig().getInputs(), outputRootPath, outputsByRelativePath);
         job.setStatus(Job.Status.COMPLETED);
         job.setOutputs(outputFiles.entries().stream()
                 .collect(toMultimap(e -> e.getKey(), e -> e.getValue().getUri().toString(),
@@ -289,12 +288,12 @@ public class FstepJobUpdatesManager {
     }
 
     private Multimap<String, String> listOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
-            FstepWorkerGrpc.FstepWorkerBlockingStub worker, JobEnvironment jobEnvironment)
+            FstepWorkerGrpc.FstepWorkerBlockingStub worker, String outputRootPath)
             throws Exception {
         FstepService service = job.getConfig().getService();
 
         OutputFileList outputFileList = worker.listOutputFiles(ListOutputFilesParam.newBuilder()
-                .setJob(rpcJob).setOutputsRootPath(jobEnvironment.getOutputDir()).build());
+                .setJob(rpcJob).setOutputsRootPath(outputRootPath).build());
         List<String> relativePaths = outputFileList.getItemsList().stream()
                 .map(OutputFileItem::getRelativePath).collect(toList());
 
@@ -328,7 +327,7 @@ public class FstepJobUpdatesManager {
     }
 
     private Multimap<String, FstepFile> repatriateAndIngestOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
-            FstepWorkerGrpc.FstepWorkerBlockingStub worker, Multimap<String, String> inputs, JobEnvironment jobEnvironment,
+            FstepWorkerGrpc.FstepWorkerBlockingStub worker, Multimap<String, String> inputs, String outputRootPath,
             Multimap<String, String> outputsByRelativePath) throws IOException, InterruptedException {
         List<RetrievedOutputFile> retrievedOutputFiles = new ArrayList<RetrievedOutputFile>(outputsByRelativePath.size());
 
@@ -341,7 +340,7 @@ public class FstepJobUpdatesManager {
 
             for (String relativePath : outputsByRelativePath.get(outputId)) {
                 GetOutputFileParam getOutputFileParam = GetOutputFileParam.newBuilder().setJob(rpcJob)
-                        .setPath(Paths.get(jobEnvironment.getOutputDir()).resolve(relativePath).toString()).build();
+                        .setPath(Paths.get(outputRootPath).resolve(relativePath).toString()).build();
 
                 FstepWorkerGrpc.FstepWorkerStub asyncWorker = FstepWorkerGrpc.newStub(worker.getChannel());
 

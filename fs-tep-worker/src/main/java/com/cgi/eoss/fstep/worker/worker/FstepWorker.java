@@ -1,7 +1,37 @@
 package com.cgi.eoss.fstep.worker.worker;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import javax.annotation.PostConstruct;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.CloseableThreadContext;
+import org.jooq.lambda.Unchecked;
+import org.lognet.springboot.grpc.GRpcService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
+import com.cgi.eoss.fstep.clouds.service.StorageProvisioningException;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.logging.Logging;
@@ -30,8 +60,11 @@ import com.cgi.eoss.fstep.rpc.worker.PortBindings;
 import com.cgi.eoss.fstep.rpc.worker.PrepareDockerImageResponse;
 import com.cgi.eoss.fstep.rpc.worker.StopContainerResponse;
 import com.cgi.eoss.fstep.worker.DockerRegistryConfig;
+import com.cgi.eoss.fstep.worker.docker.DockerClientCreationException;
 import com.cgi.eoss.fstep.worker.docker.DockerClientFactory;
 import com.cgi.eoss.fstep.worker.docker.Log4jContainerCallback;
+import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
+import com.cgi.eoss.fstep.worker.jobs.WorkerJob;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -39,19 +72,11 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.MultimapBuilder;
-import com.google.common.collect.Sets;
+
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-import javax.annotation.PostConstruct;
 import lombok.extern.log4j.Log4j2;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.CloseableThreadContext;
-import org.jooq.lambda.Unchecked;
-import org.lognet.springboot.grpc.GRpcService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
 import shadow.dockerjava.com.github.dockerjava.api.command.BuildImageCmd;
 import shadow.dockerjava.com.github.dockerjava.api.command.CreateContainerCmd;
@@ -69,26 +94,6 @@ import shadow.dockerjava.com.github.dockerjava.core.command.BuildImageResultCall
 import shadow.dockerjava.com.github.dockerjava.core.command.PullImageResultCallback;
 import shadow.dockerjava.com.github.dockerjava.core.command.PushImageResultCallback;
 import shadow.dockerjava.com.github.dockerjava.core.command.WaitContainerResultCallback;
-
-import static io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall;
-
-import java.io.IOException;
-import java.net.URI;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 /**
  * <p>Service for executing FS-TEP (WPS) services inside Docker containers.</p>
  */
@@ -100,25 +105,24 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     private final JobEnvironmentService jobEnvironmentService;
     private final ServiceInputOutputManager inputOutputManager;
     
-    // Track which DockerClient is used for each job
-    private final Map<String, DockerClient> jobClients = new HashMap<>();
-    // Track which container ID is used for each job
-    private final Map<String, String> jobContainers = new HashMap<>();
-    // Track which input URIs are used for each job
-    private final Multimap<String, URI> jobInputs = MultimapBuilder.hashKeys().hashSetValues().build();
-
+    // A cache of DockerClient for the jobs
+    private final Map<String, DockerClient> jobClientsCache = new HashMap<>();
+    
     private int minWorkerNodes;
 
     private DockerRegistryConfig dockerRegistryConfig;
     
+    private WorkerJobDataService workerJobDataService;
     
     @Autowired
     public FstepWorker(FstepWorkerNodeManager nodeManager, JobEnvironmentService jobEnvironmentService,
-            ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes) {
+            ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes,
+            WorkerJobDataService workerJobDataService) {
         this.nodeManager = nodeManager;
         this.jobEnvironmentService = jobEnvironmentService;
         this.inputOutputManager = inputOutputManager;
         this.minWorkerNodes = minWorkerNodes;
+        this.workerJobDataService = workerJobDataService;
     }
     
     @Autowired(required = false)
@@ -142,28 +146,21 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     @Override
     public void prepareEnvironment(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
             try {
-                nodeManager.provisionNodeForJob(jobEnvironmentService.getBaseDir(), request.getJob().getId());
+            	WorkerJob workerJob = new WorkerJob(request.getJob().getId(), request.getJob().getIntJobId());
+            	workerJobDataService.save(workerJob);
+                nodeManager.provisionNodeForJob(jobEnvironmentService.getBaseDir(), workerJob);
+                prepareInputs(request, responseObserver);
             } catch (NodeProvisioningException e) {
                 responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
             }
-        prepareInputs(request, responseObserver);
     }
     
     @Override
     public void prepareInputs(JobInputs request, StreamObserver<JobEnvironment> responseObserver) {
-        try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
-            try {
-                Node node = nodeManager.getJobNode(request.getJob().getId());
-                DockerClient dockerClient;
-                if (dockerRegistryConfig != null) {
-                    dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl(), 
-                        dockerRegistryConfig);
-                }
-                else {
-                    dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl());
-                }
-                jobClients.put(request.getJob().getId(), dockerClient);
-            } catch (Exception e) {
+    	try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
+        	try {
+            	getDockerClientForJob(request.getJob().getId());
+            } catch(DockerClientCreationException e) {
                 try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
                     LOG.error("Failed to prepare Docker context: {}", e.getMessage());
                 }
@@ -185,7 +182,6 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                         // Just hope no one has used a comma in their url...
                         Set<URI> inputUris = Arrays.stream(StringUtils.split(e.getValue(), ',')).map(URI::create).collect(Collectors.toSet());
                         inputOutputManager.prepareInput(subdirPath, inputUris);
-                        jobInputs.putAll(request.getJob().getId(), inputUris);
                     }
                 }
 
@@ -194,7 +190,14 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                         .setOutputDir(jobEnv.getOutputDir().toAbsolutePath().toString())
                         .setWorkingDir(jobEnv.getWorkingDir().toAbsolutePath().toString())
                         .build();
-
+                WorkerJob workerJob = workerJobDataService.findByJobId(request.getJob().getId());
+                if (workerJob == null) {
+                	workerJob = new WorkerJob(request.getJob().getId(), request.getJob().getIntJobId());
+            	}
+                workerJob.setOutputRootPath(ret.getOutputDir());
+                workerJob.setStart(OffsetDateTime.now(ZoneId.of("Z")));
+    			workerJob.setStatus(com.cgi.eoss.fstep.worker.jobs.WorkerJob.Status.RUNNING);
+    			workerJobDataService.save(workerJob);
                 responseObserver.onNext(ret);
                 responseObserver.onCompleted();
             } catch (Exception e) {
@@ -237,10 +240,18 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     
     @Override
     public void launchContainer(JobDockerConfig request, StreamObserver<LaunchContainerResponse> responseObserver) {
-        try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
-            Preconditions.checkArgument(jobClients.containsKey(request.getJob().getId()), "Job ID %s is not attached to a DockerClient", request.getJob().getId());
-
-            DockerClient dockerClient = jobClients.get(request.getJob().getId());
+    	try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
+            DockerClient dockerClient;
+            try {
+            	dockerClient = getDockerClientForJob(request.getJob().getId());
+            } catch(DockerClientCreationException e) {
+                try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                    LOG.error("Failed to prepare Docker context: {}", e.getMessage());
+                }
+                LOG.error("Failed to prepare Docker context for {}", request.getJob().getId(), e);
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+                return;
+            }
             String containerId = null;
 
             try {
@@ -292,9 +303,16 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                     createContainerCmd.withEnv(environmentVariables);
 
                     containerId = createContainerCmd.exec().getId();
-                    jobContainers.put(request.getJob().getId(), containerId);
                 }
-
+                WorkerJob workerJob = workerJobDataService.findByJobId(request.getJob().getId());
+                if (workerJob == null) {
+                	workerJob = new WorkerJob(request.getJob().getId(), request.getJob().getIntJobId());
+            	}
+                workerJob.setContainerId(containerId);
+                workerJob.setStart(OffsetDateTime.now());
+    			workerJob.setStatus(com.cgi.eoss.fstep.worker.jobs.WorkerJob.Status.RUNNING);
+    			workerJobDataService.save(workerJob);
+    			
                 LOG.info("Launching container {} for job {}", containerId, request.getJob().getId());
                 dockerClient.startContainerCmd(containerId).exec();
 
@@ -319,11 +337,19 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     @Override
     public void getPortBindings(Job request, StreamObserver<PortBindings> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request)) {
-            Preconditions.checkArgument(jobClients.containsKey(request.getId()), "Job ID %s is not attached to a DockerClient", request.getId());
-            Preconditions.checkArgument(jobContainers.containsKey(request.getId()), "Job ID %s does not have a known container ID", request.getId());
-
-            DockerClient dockerClient = jobClients.get(request.getId());
-            String containerId = jobContainers.get(request.getId());
+        	String containerId = workerJobDataService.findByJobId(request.getId()).getContainerId();
+            Preconditions.checkArgument(containerId != null, "Job ID %s does not have a known container ID", request.getId());
+            DockerClient dockerClient;
+            try {
+            	dockerClient = getDockerClientForJob(request.getId());
+            } catch(DockerClientCreationException e) {
+                try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                    LOG.error("Failed to prepare Docker context: {}", e.getMessage());
+                }
+                LOG.error("Failed to prepare Docker context for {}", request.getId(), e);
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+                return;
+            }
             try {
                 LOG.debug("Inspecting container for port bindings: {}", containerId);
                 InspectContainerResponse inspectContainerResponse = dockerClient.inspectContainerCmd(containerId).exec();
@@ -332,7 +358,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                 LOG.debug("Returning port map: {}", exposedPortMap);
                 
                 String nodeIpAddress = null;
-                Node jobNode = nodeManager.getJobNode(request.getId());
+                Node jobNode = nodeManager.getNodeById(workerJobDataService.findByJobId(request.getId()).getWorkerNodeId());
                 if (jobNode != null && jobNode.getIpAddress() != null) {
                     nodeIpAddress = jobNode.getIpAddress();
                 }
@@ -362,12 +388,21 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     @Override
     public void stopContainer(Job request, StreamObserver<StopContainerResponse> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request)) {
-            Preconditions.checkArgument(jobClients.containsKey(request.getId()), "Job ID %s is not attached to a DockerClient", request.getId());
-            Preconditions.checkArgument(jobContainers.containsKey(request.getId()), "Job ID %s does not have a known container ID", request.getId());
+        	String containerId = workerJobDataService.findByJobId(request.getId()).getContainerId();
+            Preconditions.checkArgument(containerId != null, "Job ID %s does not have a known container ID", request.getId());
 
-            DockerClient dockerClient = jobClients.get(request.getId());
-            String containerId = jobContainers.get(request.getId());
-
+            DockerClient dockerClient;
+            try {
+            	dockerClient = getDockerClientForJob(request.getId());
+            } catch(DockerClientCreationException e) {
+                try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                    LOG.error("Failed to prepare Docker context: {}", e.getMessage());
+                }
+                LOG.error("Failed to prepare Docker context for {}", request.getId(), e);
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+                return;
+            }
+            
             LOG.info("Stop requested for job {} running in container {}", request.getId(), containerId);
 
             try {
@@ -385,11 +420,19 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     @Override
     public void waitForContainerExit(ExitParams request, StreamObserver<ContainerExitCode> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
-            Preconditions.checkArgument(jobClients.containsKey(request.getJob().getId()), "Job ID %s is not attached to a DockerClient", request.getJob().getId());
-            Preconditions.checkArgument(jobContainers.containsKey(request.getJob().getId()), "Job ID %s does not have a known container ID", request.getJob().getId());
-
-            DockerClient dockerClient = jobClients.get(request.getJob().getId());
-            String containerId = jobContainers.get(request.getJob().getId());
+        	String containerId = workerJobDataService.findByJobId(request.getJob().getId()).getContainerId();
+            Preconditions.checkArgument(containerId != null, "Job ID %s does not have a known container ID", request.getJob().getId());
+            DockerClient dockerClient;
+            try {
+            	dockerClient = getDockerClientForJob(request.getJob().getId());
+            } catch(DockerClientCreationException e) {
+                try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                    LOG.error("Failed to prepare Docker context: {}", e.getMessage());
+                }
+                LOG.error("Failed to prepare Docker context for {}", request.getJob().getId(), e);
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+                return;
+            }
             try {
                 int exitCode = waitForContainer(dockerClient, containerId).awaitStatusCode();
                 LOG.info("Received exit code from container {}: {}", containerId, exitCode);
@@ -407,11 +450,20 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     @Override
     public void waitForContainerExitWithTimeout(ExitWithTimeoutParams request, StreamObserver<ContainerExitCode> responseObserver) {
         try (CloseableThreadContext.Instance ctc = getJobLoggingContext(request.getJob())) {
-            Preconditions.checkArgument(jobClients.containsKey(request.getJob().getId()), "Job ID %s is not attached to a DockerClient", request.getJob().getId());
-            Preconditions.checkArgument(jobContainers.containsKey(request.getJob().getId()), "Job ID %s does not have a known container ID", request.getJob().getId());
+        	String containerId = workerJobDataService.findByJobId(request.getJob().getId()).getContainerId();
+            Preconditions.checkArgument(containerId != null, "Job ID %s does not have a known container ID", request.getJob().getId());
 
-            DockerClient dockerClient = jobClients.get(request.getJob().getId());
-            String containerId = jobContainers.get(request.getJob().getId());
+            DockerClient dockerClient;
+            try {
+            	dockerClient = getDockerClientForJob(request.getJob().getId());
+            } catch(DockerClientCreationException e) {
+                try (CloseableThreadContext.Instance userCtc = Logging.userLoggingContext()) {
+                    LOG.error("Failed to prepare Docker context: {}", e.getMessage());
+                }
+                LOG.error("Failed to prepare Docker context for {}", request.getJob().getId(), e);
+                responseObserver.onError(new StatusRuntimeException(Status.fromCode(Status.Code.ABORTED).withCause(e)));
+                return;
+            }
             try {
                 int exitCode = waitForContainer(dockerClient, containerId).awaitStatusCode(request.getTimeout(), TimeUnit.MINUTES);
                 responseObserver.onNext(ContainerExitCode.newBuilder().setExitCode(exitCode).build());
@@ -500,19 +552,62 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     public void cleanUp(com.cgi.eoss.fstep.rpc.Job request,
             io.grpc.stub.StreamObserver<com.cgi.eoss.fstep.rpc.worker.CleanUpResponse> responseObserver) {
         String jobId = request.getId();
-    	jobContainers.remove(jobId);
-        jobClients.remove(jobId);
+        DockerClient dockerClient = null;
+		try {
+			dockerClient = getDockerClientForJob(jobId);
+		} catch (DockerClientCreationException e) {
+			LOG.warn("Failed to prepare Docker context: {}", e.getMessage());
+		}
+        WorkerJob workerJob = workerJobDataService.findByJobId(jobId);
+        if (dockerClient != null) {
+        	removeContainer(dockerClient, workerJob.getContainerId());
+        }
+        if (workerJob.getExitCode() == null || workerJob.getExitCode() != 0) {
+        	workerJob.setStatus(com.cgi.eoss.fstep.worker.jobs.WorkerJob.Status.ERROR);
+		}
+		else {
+			workerJob.setStatus(com.cgi.eoss.fstep.worker.jobs.WorkerJob.Status.COMPLETED);
+		}
+		workerJob.setEnd(OffsetDateTime.now(ZoneId.of("Z")));
+		String deviceId = workerJob.getDeviceId();
+		if (deviceId != null) {
+			LOG.debug("Device id is: {}", deviceId);
+            try {
+                nodeManager.releaseJobStorage(workerJob, deviceId);
+            } catch (StorageProvisioningException e) {
+               LOG.error("Exception releasing storage", e);
+            }
+        }
+		workerJobDataService.save(workerJob);
+		jobClientsCache.remove(jobId);
         nodeManager.releaseJobNode(jobId);
-        Set<URI> finishedJobInputs = ImmutableSet.copyOf(jobInputs.removeAll(jobId));
-        LOG.debug("Finished job URIs: {}", finishedJobInputs);
-        Set<URI> unusedUris = Sets.difference(finishedJobInputs, ImmutableSet.copyOf(jobInputs.values()));
-        LOG.debug("Unused URIs to be cleaned: {}", unusedUris);
-        inputOutputManager.cleanUp(unusedUris);
         CleanUpResponse.Builder responseBuilder = CleanUpResponse.newBuilder();
         responseObserver.onNext(responseBuilder.build());
         responseObserver.onCompleted();
     }
 
+    private DockerClient getDockerClientForJob(String jobId) throws DockerClientCreationException{
+    	if (jobClientsCache.containsKey(jobId)){
+    		return jobClientsCache.get(jobId);
+    	}
+    	WorkerJob workerJob = workerJobDataService.findByJobId(jobId);
+    	String workerNodeId = workerJob.getWorkerNodeId();
+    	Node node = nodeManager.getNodeById(workerNodeId);
+    	if (node == null) {
+    		throw new DockerClientCreationException("Node is not available anymore");
+    	}
+        DockerClient dockerClient;
+        if (dockerRegistryConfig != null) {
+            dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl(), 
+                dockerRegistryConfig);
+        }
+        else {
+            dockerClient = DockerClientFactory.buildDockerClient(node.getDockerEngineUrl());
+        }
+        jobClientsCache.put(jobId, dockerClient);
+        return dockerClient;
+    }
+    
     private WaitContainerResultCallback waitForContainer(DockerClient dockerClient, String containerId) {
         return dockerClient.waitContainerCmd(containerId).exec(new WaitContainerResultCallback());
     }
@@ -634,15 +729,10 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     }
 
     @VisibleForTesting
-    Map<String, DockerClient> getJobClients() {
-        return jobClients;
+    Map<String, DockerClient> getJobClientsCache() {
+        return jobClientsCache;
     }
-
-    @VisibleForTesting
-    Map<String, String> getJobContainers() {
-        return jobContainers;
-    }
-
+ 
     private static CloseableThreadContext.Instance getJobLoggingContext(Job job) {
         return CloseableThreadContext.push("FS-TEP Worker")
                 .put("zooId", job.getId())

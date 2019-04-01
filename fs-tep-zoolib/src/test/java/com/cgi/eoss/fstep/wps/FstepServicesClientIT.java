@@ -22,7 +22,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -58,8 +61,6 @@ import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
-import com.cgi.eoss.fstep.model.Quota;
-import com.cgi.eoss.fstep.model.UsageType;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
@@ -83,10 +84,16 @@ import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
+import com.cgi.eoss.fstep.worker.jobs.WorkerJob;
+import com.cgi.eoss.fstep.worker.worker.DockerEventsListener;
 import com.cgi.eoss.fstep.worker.worker.FstepWorker;
 import com.cgi.eoss.fstep.worker.worker.FstepWorkerDispatcher;
 import com.cgi.eoss.fstep.worker.worker.FstepWorkerNodeManager;
+import com.cgi.eoss.fstep.worker.worker.FstepWorkerUpdateManager;
 import com.cgi.eoss.fstep.worker.worker.JobEnvironmentService;
+import com.cgi.eoss.fstep.worker.worker.JobExecutionController;
+import com.cgi.eoss.fstep.worker.worker.LocalEventCollectorNodePreparer;
 import com.google.common.base.Strings;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -99,6 +106,7 @@ import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import shadow.dockerjava.com.github.dockerjava.api.DockerClient;
+import shadow.dockerjava.com.github.dockerjava.api.model.Event;
 import shadow.dockerjava.com.github.dockerjava.core.DefaultDockerClientConfig;
 import shadow.dockerjava.com.github.dockerjava.core.DockerClientBuilder;
 import shadow.dockerjava.com.github.dockerjava.core.DockerClientConfig;
@@ -139,10 +147,14 @@ public class FstepServicesClientIT {
 	private Timer jobDispatcherTimer;
 	private Timer jobUpdatesTimer;
 	private Timer queueSchedulerTimer;
+	private Timer dockerEventsTimer;
+	
 	
 	private BrokerService broker;
     
-    
+	@Mock
+    private WorkerJobDataService workerDataService;
+	
     @BeforeClass
     public static void precondition() {
         // Shortcut if docker socket is not accessible to the current user
@@ -185,8 +197,7 @@ public class FstepServicesClientIT {
                 .withDockerHost("unix:///var/run/docker.sock")
                 .build();
         DockerClient dockerClient = DockerClientBuilder.getInstance(dockerClientConfig).build();
-        FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(new LocalNodeFactory(-1, "unix:///var/run/docker.sock"), workspace.resolve("dl"), 2);
-
+        
         InProcessServerBuilder inProcessServerBuilder = InProcessServerBuilder.forName(RPC_SERVER_NAME).directExecutor();
         InProcessChannelBuilder channelBuilder = InProcessChannelBuilder.forName(RPC_SERVER_NAME).directExecutor();
 
@@ -207,10 +218,10 @@ public class FstepServicesClientIT {
         pm.setDefaultEntry(pe);
         broker.setDestinationPolicy(pm);
         TransportConnector connector = new TransportConnector();
-        connector.setUri(new URI("vm://broker1"));
+        connector.setUri(new URI("tcp://0.0.0.0:61616"));
         broker.addConnector(connector);
         broker.start();
-        ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("vm://broker1?create=false");
+        ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://0.0.0.0:61616");
         connectionFactory.setTrustAllPackages(true);
         JmsTemplate nonblockingJmsTemplate = new JmsTemplate(new PooledConnectionFactory(connectionFactory)) {
 	          @Override
@@ -235,10 +246,14 @@ public class FstepServicesClientIT {
         JobValidator jobValidator = new JobValidator(costingService, catalogueService);
         FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, databasketDataService, guiService, 
         		 costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService, jobValidator, updatesManager);
-        
-        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1);
+        LocalEventCollectorNodePreparer nodePreparer = new LocalEventCollectorNodePreparer(blockingJmsTemplate, DockerEventsListener.DOCKER_EVENTS_QUEUE);
+		FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(new LocalNodeFactory(-1, "unix:///var/run/docker.sock"), workspace.resolve("dl"), 2, workerDataService, nodePreparer);
+
+        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1, workerDataService);
         fstepWorker.allocateMinNodes();
-        FstepWorkerDispatcher fstepWorkerDispatcher = new FstepWorkerDispatcher(queueService, new LocalWorker(channelBuilder), workerId, nodeManager);
+        FstepWorkerUpdateManager fstepWorkerUpdateManager = new FstepWorkerUpdateManager(queueService, workerId);
+        JobExecutionController jobExecutionController = new JobExecutionController(new LocalWorker(channelBuilder), nodeManager, workerDataService, fstepWorkerUpdateManager);
+        FstepWorkerDispatcher fstepWorkerDispatcher = new FstepWorkerDispatcher(queueService, jobExecutionController);
         
         QueueScheduler q = new QueueScheduler(jobDataService, queueService, quotaDataService);
         jobDispatcherTimer = new Timer();
@@ -279,6 +294,21 @@ public class FstepServicesClientIT {
             		return;
             	}
             	q.updateQueues();            }
+        }, 0, 1000);
+        dockerEventsTimer = new Timer();
+        dockerEventsTimer.schedule(new TimerTask() {
+            
+            @Override
+            public void run() {
+            	if (broker.isStopped() || broker.isStopping()) {
+            		return;
+            	}
+            	com.cgi.eoss.fstep.queues.service.Message message =  queueService.receiveNoWait(DockerEventsListener.DOCKER_EVENTS_QUEUE);
+            	while (message != null) {
+            		fstepWorkerDispatcher.receiveDockerEvent((Event) message.getPayload());
+            		message =  queueService.receiveNoWait(DockerEventsListener.DOCKER_EVENTS_QUEUE);
+            	}
+            }
         }, 0, 1000);
         inProcessServerBuilder.addService(fstepJobLauncher);
         inProcessServerBuilder.addService(fstepWorker);
@@ -339,13 +369,38 @@ public class FstepServicesClientIT {
         when (guiService.getGuiPortBinding(any(), any())).thenReturn(PortBinding.newBuilder().setBinding(Binding.newBuilder().setIp("test").setPort(8080).build()).build());
         when(dynamicProxyService.getProxyEntry(any(),any(), anyInt())).thenReturn(new ReverseProxyEntry("test", "test"));
         
+        Set<WorkerJob> workerJobs = new HashSet<>();
+        when(workerDataService.save(any())).thenAnswer(invocation -> {
+        	WorkerJob workerJob = invocation.getArgument(0);
+        	if (workerJobs.contains(workerJob)) {
+        		workerJobs.remove(workerJob);
+        	}
+        	workerJobs.add(workerJob);
+            return workerJob;
+        });
+        
+        when(workerDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
+        	WorkerJob workerJob = invocation.getArgument(1);
+        	workerJob.setWorkerNodeId(invocation.getArgument(2));
+        	workerJobs.add(workerJob);
+            return true;
+        });
+        
+        when(workerDataService.findByJobId(any())).thenAnswer(invocation -> {
+        	Optional<WorkerJob> workerJob = workerJobs.stream().filter(j -> j.getJobId().equals(invocation.getArgument(0))).findFirst();
+        	if (workerJob.isPresent()) {
+        		return workerJob.get();
+        	}
+        	return null;
+        });
+        
         String jobId = UUID.randomUUID().toString();
         String userId = "userId";
         Multimap<String, String> inputs = ImmutableMultimap.<String, String>builder()
                 .put("input", "inputVal1")
                 .putAll("inputKey2", ImmutableList.of("inputVal2-1", "inputVal2-2"))
                 .build();
-
+        
         when(costingService.estimateJobCost(any())).thenReturn(20);
 
         Multimap<String, String> outputs = fstepServicesClient.launchService(userId, SERVICE_NAME, jobId, inputs);
@@ -408,7 +463,30 @@ public class FstepServicesClientIT {
         when(jobDataService.refreshFull(any(Job.class))).thenAnswer(invocation -> {
             return launchedJobs.stream().filter(j -> j.getId() == ((Job)invocation.getArgument(0)).getId()).findFirst().get();
         });
+        Set<WorkerJob> workerJobs = new HashSet<>();
+        when(workerDataService.save(any())).thenAnswer(invocation -> {
+        	WorkerJob workerJob = invocation.getArgument(0);
+        	if (workerJobs.contains(workerJob)) {
+        		workerJobs.remove(workerJob);
+        	}
+        	workerJobs.add(workerJob);
+            return workerJob;
+        });
         
+        when(workerDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
+        	WorkerJob workerJob = invocation.getArgument(1);
+        	workerJob.setWorkerNodeId(invocation.getArgument(2));
+        	workerJobs.add(workerJob);
+            return true;
+        });
+        
+        when(workerDataService.findByJobId(any())).thenAnswer(invocation -> {
+        	Optional<WorkerJob> workerJob = workerJobs.stream().filter(j -> j.getJobId().equals(invocation.getArgument(0))).findFirst();
+        	if (workerJob.isPresent()) {
+        		return workerJob.get();
+        	}
+        	return null;
+        });
         String jobId = UUID.randomUUID().toString();
         String userId = "userId";
         Multimap<String, String> inputs = ImmutableMultimap.<String, String>builder()
@@ -499,7 +577,30 @@ public class FstepServicesClientIT {
     		parentJob.getOutputFiles().addAll(ImmutableSet.copyOf(job.getOutputFiles()));
             return parentJob;
         });
+        Set<WorkerJob> workerJobs = new HashSet<>();
+        when(workerDataService.save(any())).thenAnswer(invocation -> {
+        	WorkerJob workerJob = invocation.getArgument(0);
+        	if (workerJobs.contains(workerJob)) {
+        		workerJobs.remove(workerJob);
+        	}
+        	workerJobs.add(workerJob);
+            return workerJob;
+        });
         
+        when(workerDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
+        	WorkerJob workerJob = invocation.getArgument(1);
+        	workerJob.setWorkerNodeId(invocation.getArgument(2));
+        	workerJobs.add(workerJob);
+            return true;
+        });
+        
+        when(workerDataService.findByJobId(any())).thenAnswer(invocation -> {
+        	Optional<WorkerJob> workerJob = workerJobs.stream().filter(j -> j.getJobId().equals(invocation.getArgument(0))).findFirst();
+        	if (workerJob.isPresent()) {
+        		return workerJob.get();
+        	}
+        	return null;
+        });
        
         String jobId = UUID.randomUUID().toString();
         String userId = "userId";

@@ -11,10 +11,19 @@ import com.cgi.eoss.fstep.io.download.UnzipStrategy;
 import com.cgi.eoss.fstep.queues.QueuesConfig;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
 import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
+import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
+import com.cgi.eoss.fstep.worker.worker.DockerEventCollectorNodePreparer;
+import com.cgi.eoss.fstep.worker.worker.DockerEventsListener;
 import com.cgi.eoss.fstep.worker.worker.FstepWorkerNodeManager;
 import com.cgi.eoss.fstep.worker.worker.JobEnvironmentService;
+import com.cgi.eoss.fstep.worker.worker.LocalEventCollectorNodePreparer;
+import com.cgi.eoss.fstep.worker.worker.NodePreparer;
 import com.google.common.base.Strings;
 import okhttp3.OkHttpClient;
+
+import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.pool.PooledConnectionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,6 +35,8 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
+import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -34,6 +45,12 @@ import java.net.Proxy;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
 
 @Configuration
 @ComponentScan(
@@ -150,8 +167,8 @@ public class WorkerConfig {
     
     @Bean
     public FstepWorkerNodeManager workerNodeManager(NodeFactory nodeFactory, @Qualifier("cacheRoot") Path dataBaseDir, JobEnvironmentService jobEnvironmentService,
-            @Qualifier("maxJobsPerNode") Integer maxJobsPerNode) {
-        FstepWorkerNodeManager workerNodeManager = new FstepWorkerNodeManager(nodeFactory, dataBaseDir, maxJobsPerNode);
+            @Qualifier("maxJobsPerNode") Integer maxJobsPerNode, WorkerJobDataService workerJobDataService, @Autowired(required = false) NodePreparer nodePreparer) {
+        FstepWorkerNodeManager workerNodeManager = new FstepWorkerNodeManager(nodeFactory, dataBaseDir, maxJobsPerNode, workerJobDataService, nodePreparer);
         return workerNodeManager;
     }
     
@@ -162,6 +179,59 @@ public class WorkerConfig {
         return scheduler;
     }
 
-
+    @Value("${fstep.worker.updatesBrokerUrl:vm://embeddedBroker}")
+    private String updatesBrokerUrl;
+    
+    @Value("${fstep.worker.updatesBrokerUsername:fstepbroker}")
+    private String updatesBrokerUsername;
+    
+    @Value("${fstep.worker.updatesBrokerPassword:fstepbroker}")
+    private String updatesBrokerPassword;
+    
+    @Value("${fstep.worker.updatesImageName:fs-tep-docker-event-collector}")
+    private String updatesImageName;
+    
+    @Bean(name = "dockerEventListenerFactory")
+    public DefaultJmsListenerContainerFactory dockerEventListenerFactory() {
+      DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+      factory.setConnectionFactory(dockerEventActiveMQConnectionFactory());
+      factory.setConcurrency("1-1");
+      return factory;
+    }
+    
+    @Bean(name = "dockerEventActiveMQConnectionFactory")
+    public ActiveMQConnectionFactory dockerEventActiveMQConnectionFactory() {
+      ActiveMQConnectionFactory activeMQConnectionFactory = new ActiveMQConnectionFactory();
+      activeMQConnectionFactory.setUserName(updatesBrokerUsername);
+      activeMQConnectionFactory.setPassword(updatesBrokerPassword);
+      activeMQConnectionFactory.setBrokerURL(updatesBrokerUrl);
+      activeMQConnectionFactory.setTrustedPackages(new ArrayList<>(Arrays.asList("shadow.dockerjava,java.util,java.lang".split(","))));
+      return activeMQConnectionFactory;
+    }
+    
+    @Bean
+    @ConditionalOnProperty(name="fstep.worker.dockerEventCollector", havingValue = "true", matchIfMissing = false)
+    public NodePreparer dockerNodePreparer(@Autowired(required = false) DockerRegistryConfig dockerRegistryConfig) {
+    	return new DockerEventCollectorNodePreparer(dockerRegistryConfig, updatesImageName, updatesBrokerUrl, updatesBrokerUsername, updatesBrokerPassword, DockerEventsListener.DOCKER_EVENTS_QUEUE);
+    }
+    
+    @Bean
+    @ConditionalOnProperty(name="fstep.worker.localEventCollector", havingValue = "true", matchIfMissing = true)
+    public NodePreparer localNodePreparer(@Qualifier(value = "dockerEventsJmsTemplate") JmsTemplate jmsTemplate) {
+    	return new LocalEventCollectorNodePreparer(jmsTemplate, DockerEventsListener.DOCKER_EVENTS_QUEUE);
+    }
+    
+    @Bean(name = "dockerEventsJmsTemplate")
+    @ConditionalOnProperty(name="fstep.worker.localEventCollector", havingValue = "true", matchIfMissing = true)
+    public JmsTemplate dockerEventsJmsTemplate() {
+      JmsTemplate jmsTemplate = new JmsTemplate(new PooledConnectionFactory(dockerEventActiveMQConnectionFactory())) {
+          @Override
+        protected void doSend(MessageProducer producer, Message message) throws JMSException {
+            producer.send(message, getDeliveryMode(), message.getJMSPriority(), getTimeToLive());
+        }
+      };
+      jmsTemplate.setReceiveTimeout(JmsTemplate.RECEIVE_TIMEOUT_INDEFINITE_WAIT);
+      return jmsTemplate;
+    }
 
 }

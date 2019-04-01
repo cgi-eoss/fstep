@@ -1,10 +1,14 @@
 package com.cgi.eoss.fstep.rpc;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
+import com.google.protobuf.Timestamp;
 
 import lombok.experimental.UtilityClass;
 
@@ -68,6 +72,16 @@ public class GrpcUtil {
                 .setName(service.getName())
                 .setDockerImageTag(service.getDockerTag())
                 .build();
+    }
+    
+    public static Timestamp timestampFromOffsetDateTime(OffsetDateTime offsetDateTime) {
+    	Instant i = offsetDateTime.atZoneSameInstant(ZoneId.of("Z")).toInstant();
+    	return Timestamp.newBuilder().setSeconds(i.getEpochSecond()).setNanos(i.getNano()).build();
+    }
+    
+    public static OffsetDateTime offsetDateTimeFromTimestamp(Timestamp timestamp) {
+    	Instant instant = Instant.ofEpochSecond(timestamp.getSeconds(), timestamp.getNanos());
+    	return OffsetDateTime.ofInstant(instant, ZoneId.of("Z"));
     }
     
 }
