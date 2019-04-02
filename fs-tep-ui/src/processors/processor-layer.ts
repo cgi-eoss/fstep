@@ -45,7 +45,9 @@ export class ProcessorLayer {
             let ds = this.state.value.dataSource;
             if (ds && ds.hasTimeDimension()) {
                 ds.updateSourceTime(dt);
-                this.centerOnMap();
+                if (!ds.getOptions().disableAutoZoom) {
+                    this.centerOnMap(); 
+                }
             }
         })
     }
@@ -75,7 +77,9 @@ export class ProcessorLayer {
 
         if (source && source.hasTimeDimension()) {
             source.updateSourceTime(this.timeService.getCurrentDate());
-            this.centerOnMap();
+            if (!source.getOptions().disableAutoZoom) {
+                this.centerOnMap();
+            }
         }
 
     }
@@ -147,7 +151,7 @@ export class ProcessorLayer {
                 });
 
                 return records.slice(3, records.length - 1).map((value) => {
-                    return [value[0], dataSource.scaleValue(parseFloat(value[1]))];
+                    return [value[0], dataSource.scaleValue(parseFloat(value[1]), true)];
                 }).filter((value) => {
                     return typeof(value[1]) == "number";
                 });
@@ -253,7 +257,7 @@ export class ProcessorLayer {
             }]
         }).then((domains) => {
             if (domains && domains.bbox) {
-                this.mapService.fitExtent([domains.bbox.minx, domains.bbox.miny, domains.bbox.maxx, domains.bbox.maxy])
+                this.mapService.fitExtent([Math.max(domains.bbox.minx, -180), Math.max(domains.bbox.miny, -90), Math.min(domains.bbox.maxx, 180), Math.min(domains.bbox.maxy, 90)])
             }
         });
     }

@@ -30,7 +30,9 @@ export class Processor {
         this.domainConfig = config.domain;
         this.legendConfig = config.legend;
         this.infoFormat = config.infoFormat;
-        this.mapSource = this.createMapSource(config.layer);
+        this.mapSource = this.createMapSource(config.layer, {
+            disableAutoZoom: config.disableAutoZoom || false
+        });
     }
 
     hasTimeDimension() {
@@ -56,9 +58,9 @@ export class Processor {
     }
 
 
-    private createMapSource(params) {
+    private createMapSource(params, options) {
         if (params.type == 'WMS') {
-            return new ProcessorWMSSource(params.config, this.timeRange, this.domainConfig, this.legendConfig, this.infoFormat);
+            return new ProcessorWMSSource(params.config, this.timeRange, this.domainConfig, this.legendConfig, this.infoFormat, options);
         }
     }
 }

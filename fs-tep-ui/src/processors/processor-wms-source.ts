@@ -17,14 +17,16 @@ export class ProcessorWMSSource {
     private domainConfig;
     private legendConfig;
     private infoFormat;
+    private options;
 
-    constructor(config, timeRange, domainConfig, legendConfig, infoFormat) {
+    constructor(config, timeRange, domainConfig, legendConfig, infoFormat, options) {
 
         this.config = config;
         this.timeRange = timeRange;
         this.domainConfig = domainConfig;
         this.legendConfig = legendConfig || {};
         this.infoFormat = infoFormat || 'application/json';
+        this.options = options || {};
 
         let source =  new TileWMS({
             url: config.url,
@@ -72,6 +74,10 @@ export class ProcessorWMSSource {
 
     getOLSource() {
         return this.rasterSource ? this.rasterSource : this.source;
+    }
+
+    getOptions() {
+        return this.options;
     }
 
     updateSourceTime(dt: Date) {
@@ -131,12 +137,12 @@ export class ProcessorWMSSource {
         return this.config.domain;
     }
 
-    scaleValue(value) {
+    scaleValue(value, forceNumeric?) {
         let domain = this.domainConfig;
         if (domain) {
             if (value === domain.nodata) {
                 return "No data";
-            } else if (domain.special_values) {
+            } else if (domain.special_values && !forceNumeric) {
                 let sv = domain.special_values[value];
                 if (sv) {
                     return sv;
