@@ -9,7 +9,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('WorkspaceCtrl', [ '$scope', 'JobService', 'SystematicService', 'ProductService', 'SearchService', 'MapService', 'CommonService', function ($scope, JobService, SystematicService, ProductService, SearchService, MapService, CommonService) {
+    fstepmodules.controller('WorkspaceCtrl', [ '$scope', 'JobService', 'SystematicService', 'EstimateCostService', 'ProductService', 'SearchService', 'MapService', 'CommonService', function ($scope, JobService, SystematicService, EstimateCostService, ProductService, SearchService, MapService, CommonService) {
 
         $scope.serviceParams = ProductService.params.explorer;
         $scope.runModes = ProductService.serviceRunModes;
@@ -103,6 +103,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             return $scope.serviceParams.inputValues[fieldDesc.id] ? $scope.serviceParams.inputValues[fieldDesc.id] : fieldDesc.defaultAttrs.value;
         };
 
+
         $scope.launchProcessing = function($event) {
             var iparams={};
 
@@ -120,15 +121,14 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 var searchParams = $scope.searchForm.api.getFormData();
                 searchParams.catalogue = 'SATELLITE';
 
-                SystematicService.estimateMonthlyCost($scope.serviceParams.selectedService, $scope.serviceParams.systematicParameter, iparams, searchParams).then(function(estimation) {
-                    console.log(iparams);
-                    console.log($scope.searchForm.api.getFormData());
-                    var currency = ( estimation.estimatedCost === 1 ? 'coin' : 'coins' );
-                    CommonService.confirm($event, 'This job will approximatelly cost ' + estimation.estimatedCost + ' ' + currency + ' per month.' +
-                            '\nAre you sure you want to continue?').then(function (confirmed) {
-                        if (confirmed === false) {
-                            return;
-                        }
+                EstimateCostService.estimateSystematicCost(
+                    $scope.serviceParams.selectedService,
+                    $scope.serviceParams.systematicParameter,
+                    iparams,
+                    searchParams
+                ).then(function(estimation) {
+
+                    EstimateCostService.showCostDialog($event, estimation, function() {
                         $scope.displayTab($scope.bottomNavTabs.JOBS, false);
 
                         SystematicService.launchSystematicProcessing($scope.serviceParams.selectedService, $scope.serviceParams.systematicParameter, iparams, searchParams, $scope.serviceParams.label).then(function () {
@@ -136,19 +136,17 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                         });
 
                     });
+
+                }, function(error) {
+                    EstimateCostService.showCostDialog($event, error);
                 });
 
             }
             else {
                 JobService.createJobConfig($scope.serviceParams.selectedService, iparams, $scope.serviceParams.label,  $scope.serviceParams.parent).then(function(jobConfig){
-                    JobService.estimateJob(jobConfig, $event).then(function(estimation){
+                    EstimateCostService.estimateJob(jobConfig).then(function(estimation){
 
-                        var currency = ( estimation.estimatedCost === 1 ? 'coin' : 'coins' );
-                        CommonService.confirm($event, 'This job will cost ' + estimation.estimatedCost + ' ' + currency + '.' +
-                                '\nAre you sure you want to continue?').then(function (confirmed) {
-                            if (confirmed === false) {
-                                return;
-                            }
+                        EstimateCostService.showCostDialog($event, estimation, function() {
                             $scope.displayTab($scope.bottomNavTabs.JOBS, false);
                             JobService.launchJob(jobConfig, $scope.serviceParams.selectedService, 'explorer').then(function () {
                                 JobService.refreshJobs("explorer", "Create");
@@ -156,8 +154,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                         });
                     },
                     function (error) {
-                        CommonService.infoBulletin($event, 'The cost of this job exceeds your balance. This job cannot be run.' +
-                                                '\nYour balance: ' + error.currentWalletBalance + '\nCost estimation: ' + error.estimatedCost);
+                        EstimateCostService.showCostDialog($event, error);
                     });
                 });
             }

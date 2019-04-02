@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityJobsCtrl', ['JobService', 'CommonService', '$scope', '$rootScope', '$location', '$mdDialog', function (JobService, CommonService, $scope, $rootScope, $location, $mdDialog) {
+    fstepmodules.controller('CommunityJobsCtrl', ['JobService', 'EstimateCostService', 'CommonService', '$scope', '$rootScope', '$location',  function (JobService, EstimateCostService, CommonService, $scope, $rootScope, $location) {
 
         /* Get stored Jobs details */
         $scope.jobParams = JobService.params.community;
@@ -83,28 +83,18 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         $scope.retryJob = function(job, $event) {
 
-            JobService.estimateRerunCost(job).then(function(estimation){
-
-                var currency = ( estimation.estimatedCost === 1 ? 'coin' : 'coins' );
-                CommonService.confirm($event, 'Failed jobs rerun will cost ' + estimation.estimatedCost + ' ' + currency + '.' +
-                        '\nAre you sure you want to continue?').then(function (confirmed) {
-                    if (confirmed === false) {
-                        return;
-                    }
-
-                    JobService.retryJob(job).then(function(result){
-                        JobService.refreshJobs('community');
-                    });
-                });
-            },
-            function (error) {
-                if (error.status === 402) {
-                    CommonService.infoBulletin($event, 'The cost of this job exceeds your balance. This job cannot be run.' +
-                                            '\nYour balance: ' + error.currentWalletBalance + '\nCost estimation: ' + error.estimatedCost);
-                } else {
-                    CommonService.infoBulletin($event, 'Error retrieving rerun cost estimation. Unable to continue.');
+            EstimateCostService.estimateJobRerun(job).then(
+                function(response) {
+                    EstimateCostService.showCostDialog($event, response, function() {
+                        JobService.retryJob(job).then(function(result){
+                            JobService.refreshJobs('community');
+                        });
+                    })
+                },
+                function (error) {
+                    EstimateCostService.showCostDialog($event, error)
                 }
-            });
+            );
 
         }
 

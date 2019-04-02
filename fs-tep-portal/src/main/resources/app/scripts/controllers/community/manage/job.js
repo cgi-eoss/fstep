@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityManageJobCtrl', ['CommunityService', 'JobService', 'CommonService', '$scope', function (CommunityService, JobService, CommonService, $scope) {
+    fstepmodules.controller('CommunityManageJobCtrl', ['CommunityService', 'JobService', 'FileService', '$scope', function (CommunityService, JobService, FileService, $scope) {
 
         /* Get stored Jobs details */
         $scope.jobParams = JobService.params.community;
@@ -39,7 +39,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         };
 
         $scope.estimateDownloadCost = function($event, file){
-            CommonService.estimateDownloadCost($event, file);
+            FileService.downloadFile($event, file);
         };
 
 

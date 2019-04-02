@@ -26,7 +26,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         };
 
         $scope.estimateDownloadCost = function($event, file){
-            CommonService.estimateDownloadCost($event, file);
+            FileService.downloadFile($event, file);
         };
 
         /* Create a databasket with items or without */

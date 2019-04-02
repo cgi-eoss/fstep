@@ -9,7 +9,7 @@
 
 define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJsonHalAdapter) {
 
-    fstepmodules.service('FileService', [ 'fstepProperties', '$q', 'MessageService', 'UserService', 'CommunityService', 'traverson', '$rootScope', '$timeout', 'Upload', function (fstepProperties, $q, MessageService, UserService, CommunityService, traverson, $rootScope, $timeout, Upload) {
+    fstepmodules.service('FileService', [ 'fstepProperties', '$q', 'MessageService', 'UserService', 'CommunityService', 'EstimateCostService', 'traverson', '$rootScope', '$timeout', 'Upload', function (fstepProperties, $q, MessageService, UserService, CommunityService, EstimateCostService, traverson, $rootScope, $timeout, Upload) {
 
         var self = this;
 
@@ -307,24 +307,27 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
 
         };
 
-        this.estimateFileDownload = function(file){
-            return $q(function(resolve, reject) {
-                halAPI.from(rootUri + '/estimateCost/download/' + file.id)
-                .newRequest()
-                .getResource()
-                .result
-                .then(function (document) {
-                     resolve(document);
-                 }, function (error) {
-                    if (error.httpStatus === 402) {
-                        MessageService.addError('Balance exceeded', error);
-                    } else {
-                        MessageService.addError('Could not get download cost estimation', error);
-                    }
-                    reject(JSON.parse(error.body));
-                 });
+        function estimateDownloadCost(file, $event) {
+            EstimateCostService.estimateFileDownload(file).then(function(result) {
+                EstimateCostService.showDownloadDialog($event, file, result);
+            }, function(error) {
+                EstimateCostService.showCostDialog($event, error);
             });
+        }
+
+        this.downloadFile = function($event, file){
+
+            if(typeof file === "string") {
+                var tempfile = {};
+                tempfile.id = file.substr(file.lastIndexOf('/') + 1);
+                this.getFile(tempfile).then(function(result){
+                    estimateDownloadCost(result, $event);
+                });
+            } else {
+                estimateDownloadCost(file, $event);
+            }
         };
+
 
     return this;
   }]);

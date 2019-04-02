@@ -83,7 +83,8 @@ define([
     './services/map/resultlayerservice',
     './services/map/basketlayerservice',
     './services/map/productlayerservice',
-    './services/quotaservice'
+    './services/quotaservice',
+    './services/estimatecostservice'
 
 
 ], function () {});

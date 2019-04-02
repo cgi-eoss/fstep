@@ -8,7 +8,7 @@
 'use strict';
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('ResultsCtrl', [ '$scope', '$rootScope', '$anchorScroll', '$timeout', 'SearchService', 'TabService', 'CommonService', 'ResultLayerService', function($scope, $rootScope, $anchorScroll, $timeout, SearchService, TabService, CommonService, ResultLayerService) {
+    fstepmodules.controller('ResultsCtrl', [ '$scope', '$rootScope', '$anchorScroll', '$timeout', 'SearchService', 'TabService', 'CommonService', 'FileService', function($scope, $rootScope, $anchorScroll, $timeout, SearchService, TabService, CommonService, FileService) {
 
         $scope.searchParams = SearchService.params;
         $scope.spinner = SearchService.spinner;
@@ -96,7 +96,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         /* Estimate Download cost */
         $scope.estimateDownloadCost = function($event, file) {
-            CommonService.estimateDownloadCost($event, file);
+            FileService.downloadFile($event, file);
         };
 
         /* BOTTOMBAR TAB BUTTONS */

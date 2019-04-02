@@ -457,45 +457,6 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             });
         };
 
-        this.estimateJob = function(jobConfig, $event){
-            return $q(function(resolve, reject) {
-                halAPI.from(rootUri + '/estimateCost/jobConfig/' + jobConfig.id)
-                .newRequest()
-                .getResource()
-                .result
-                .then(function (document) {
-                     resolve(document);
-                 }, function (error) {
-                    if (error.httpStatus === 402) {
-                        MessageService.addError('Balance exceeded', error);
-                    } else {
-                        MessageService.addError('Could not get Job cost estimation', error);
-                    }
-                    reject(JSON.parse(error.body));
-                 });
-            });
-        };
-
-        this.estimateRerunCost = function(job){
-            return $q(function(resolve, reject) {
-                halAPI.from(rootUri + '/estimateCost/jobRelaunch/' + job.id)
-                .newRequest()
-                .getResource()
-                .result
-                .then(function (document) {
-                     resolve(document);
-                 }, function (error) {
-                    if (error.httpStatus === 402) {
-                        MessageService.addError('Balance exceeded', error);
-                    } else {
-                        MessageService.addError('Could not get Job cost estimation', error);
-                    }
-                    reject(JSON.parse(error.body));
-                 });
-            });
-        };
-
-
 
         this.retryJob = function(job) {
             var deferred = $q.defer();
