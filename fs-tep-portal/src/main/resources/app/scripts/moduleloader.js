@@ -85,7 +85,8 @@ define([
     './services/map/productlayerservice',
     './services/quotaservice',
     './services/estimatecostservice',
-    './services/reportservice'
+    './services/reportservice',
+    './services/quotausageservice'
 
 
 ], function () {});

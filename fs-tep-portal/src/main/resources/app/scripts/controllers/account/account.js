@@ -8,8 +8,7 @@
 'use strict';
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', '$location', '$http', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'ReportService', 'FileService', 'JobService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, $location, $http, UserService, ApiKeyService, WalletService, QuotaService, ReportService, FileService, JobService, TabService, MessageService, $mdDialog) {
-
+    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', '$location', '$http', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'QuotaUsageService', 'ReportService', 'FileService', 'JobService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, $location, $http, UserService, ApiKeyService, WalletService, QuotaService, QuotaUsageService, ReportService, FileService, JobService, TabService, MessageService, $mdDialog) {
 
         var onUserChange = function() {
             $scope.user = UserService.params.activeUser;
@@ -28,6 +27,28 @@ define(['../../fstepmodules'], function (fstepmodules) {
                             $scope.quotaUsageTypes[type] = value;
                         })
                     })
+                });
+
+                $scope.quotaUsages = [];
+
+                QuotaUsageService.getFileStorageUsage().then(function(usage) {
+                    $scope.quotaUsages.push({
+                        name: 'FILES_STORAGE_MB',
+                        title: 'File storage',
+                        value: usage,
+                        units: 'MB'
+                    });
+                });
+
+                QuotaUsageService.getPersistentStorageUsage().then(function(usage) {
+                    if (usage !== undefined) {
+                        $scope.quotaUsages.push({
+                            name: 'PERSISTENT_STORAGE_MB',
+                            title: 'Persistent folder storage',
+                            value: usage,
+                            units: 'MB'
+                        });
+                    }
                 });
             }
         }

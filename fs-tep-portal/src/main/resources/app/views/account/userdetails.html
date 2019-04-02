@@ -36,8 +36,32 @@
             </md-card-title>
             <md-card-content>
                 <div class="row" ng-repeat="(usageType,value) in quotaUsageTypes">
-                    <b class="col-md-5">{{usageType}}:</b>
-                    <div class="col-md-7">{{value}}</div>
+                    <b class="col-md-8">{{usageType}}:</b>
+                    <div class="col-md-4">{{value}}</div>
+                </div>
+            </md-card-content>
+        </md-card>
+
+        <md-card id="quota-usage-info" md-theme-watch class="fstep-card">
+            <md-card-title>
+                <md-card-title-text>
+                    <h2>Quota usage</h2>
+                </md-card-title-text>
+            </md-card-title>
+            <md-card-content>
+                <div ng-repeat="quotaUsage in quotaUsages">
+                    <div class="row">
+                        <b class="col-md-7">{{quotaUsage.title}}:</b>
+                        <div class="col-md-5" ng-if="!quotaUsageTypes[quotaUsage.name]">{{quotaUsage.value}} {{quotaUsage.units}}</div>
+                    </div>
+                    <div class="row" ng-if="quotaUsageTypes[quotaUsage.name]">
+                        <div class="col-md-12">
+                            <md-progress-linear md-mode="determinate" value="{{quotaUsage.value / quotaUsageTypes[quotaUsage.name] * 100}}"></md-progress-linear>
+                            <div class="col-md-12 text-right ">
+                                {{quotaUsage.value}} of {{quotaUsageTypes[quotaUsage.name]}} {{quotaUsage.units}} used
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </md-card-content>
         </md-card>
