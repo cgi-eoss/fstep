@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.cgi.eoss.fstep.model.QJob.job;
@@ -124,6 +125,11 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
 	@Override
 	public Integer countByOwnerAndStatusIn(User user, List<Status> status) {
 		return dao.countByOwnerAndStatusIn(user, status);
+	}
+
+	@Override
+	public List<Job> findByOwnerAndParentFalseAndStartTimeBetween(User user, LocalDateTime startTime, LocalDateTime endTime) {
+		return dao.findByOwnerAndParentFalseAndStartTimeBetween(user, startTime, endTime);
 	}
 
 }

@@ -54,6 +54,7 @@ allprojects {
                 entry 'jackson-databind'
             }
             dependencySet(group: 'com.fasterxml.jackson.dataformat', version: '2.9.0') {
+                entry 'jackson-dataformat-csv'
                 entry 'jackson-dataformat-xml'
                 entry 'jackson-dataformat-yaml'
             }

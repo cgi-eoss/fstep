@@ -6,6 +6,7 @@ import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.User;
 import com.google.common.collect.Multimap;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface JobDataService extends
@@ -17,6 +18,9 @@ public interface JobDataService extends
 
     List<Job> findByOwnerAndService(User user, FstepService service);
     
+	List<Job> findByOwnerAndParentFalseAndStartTimeBetween(User user, LocalDateTime startDateTime,
+			LocalDateTime endDateTime);
+	
     List<Job> findByStatusAndGuiUrlNotNull(Status status);
 
     Job buildNew(String extId, String userId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs);
@@ -28,5 +32,4 @@ public interface JobDataService extends
 	Job refreshFull(Long id);
 	
 	Integer countByOwnerAndStatusIn(User user, List<Status> status);
-
 }
