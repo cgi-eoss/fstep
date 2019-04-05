@@ -8,7 +8,7 @@
 'use strict';
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, UserService, ApiKeyService, WalletService, QuotaService, TabService, MessageService, $mdDialog) {
+    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'ReportService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, UserService, ApiKeyService, WalletService, QuotaService, ReportService, TabService, MessageService, $mdDialog) {
 
 
         var onUserChange = function() {
@@ -166,6 +166,10 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 $scope.hideContent = false;
             }
         };
+
+        $scope.exportReport = function($event, resource) {
+            ReportService.showExportDialog($event, resource);
+        }
 
     }]);
 });

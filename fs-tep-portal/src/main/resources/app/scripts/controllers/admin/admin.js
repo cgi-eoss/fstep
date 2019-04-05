@@ -8,7 +8,7 @@
 'use strict';
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('AdminCtrl', ['$scope', 'UserService', 'MessageService', 'WalletService', 'QuotaService', 'TabService', function ($scope, UserService, MessageService, WalletService, QuotaService, TabService) {
+    fstepmodules.controller('AdminCtrl', ['$scope', 'UserService', 'MessageService', 'WalletService', 'QuotaService', 'ReportService', 'TabService', function ($scope, UserService, MessageService, WalletService, QuotaService, ReportService, TabService) {
 
         /* Sidenav & Bottombar */
         $scope.navInfo = TabService.navInfo.admin;
@@ -88,6 +88,10 @@ define(['../../fstepmodules'], function (fstepmodules) {
                     $scope.userParams.quotas[usageType] = response;
                 })
             }
+        }
+
+        $scope.exportReport = function($event, resource) {
+            ReportService.showExportDialog($event, resource, $scope.userParams.selectedUser.id)
         }
 
         $scope.hideContent = true;

@@ -42,6 +42,25 @@
             </md-card-content>
         </md-card>
 
+        <md-card id="usage-reports" md-theme-watch class="fstep-card">
+            <md-card-title>
+                <md-card-title-text>
+                    <h2>Usage reports</h2>
+                </md-card-title-text>
+            </md-card-title>
+            <md-card-content>
+                <div class="row">
+                    <div>Export resource usage CSV reports:</div>
+                    <md-button class="md-raised md-accent" ng-click="exportReport($event, 'jobs')">
+                        Processing
+                    </md-button>
+                    <md-button class="md-raised md-accent" ng-click="exportReport($event, 'storage')">
+                        Storage
+                    </md-button>
+                </div>
+            </md-card-content>
+        </md-card>
+
         <md-card id="api-key-panel" md-theme-watch class="fstep-card" ng-if="(user.role !== 'ADMIN' && user.role !== 'CONTENT_AUTHORITY')">
             <md-card-title>
                 <md-card-title-text>

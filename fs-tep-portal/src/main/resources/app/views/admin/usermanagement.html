@@ -102,6 +102,27 @@
                     </md-card-actions>
             </md-card>
         </form>
+
+        <md-card md-theme-watch class="fstep-card"  ng-if="userParams.selectedUser">
+            <md-card-title>
+                <md-card-title-text>
+                    <h2>Resource usage reports</h2>
+                </md-card-title-text>
+            </md-card-title>
+            <md-card-content>
+                <div class="row">
+                    <div>Export resource usage CSV reports for <b>{{userParams.selectedUser.name}}</b>:</div>
+                </div>
+            </md-card-content>
+            <md-card-actions layout="row" layout-align="end center">
+                <md-button ng-click="exportReport($event, 'jobs')">
+                    Processing
+                </md-button>
+                <md-button ng-click="exportReport($event, 'storage')">
+                    Storage
+                </md-button>
+            </md-card-actions>
+        </md-card>
     </section>
 
     <section id="role-container" class="column-container col-md-12 col-lg-4 no-padding">

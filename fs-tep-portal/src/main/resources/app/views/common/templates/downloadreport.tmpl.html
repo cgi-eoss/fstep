@@ -1,0 +1,21 @@
+<md-dialog id="download-report-dialog" aria-label="{{title}}">
+    <h4>{{title}}</h4>
+    <md-dialog-content>
+        <div class="dialog-content-area">
+            <div layout-gt-xs="row">
+                <div flex-gt-xs>
+                    <md-subheader>Start date:</md-subheader>
+                    <md-datepicker ng-model="startDate" md-min-date="minDate" md-max-date="maxDate" ng-change="updateExportLink('startDate')" />
+                </div>
+                <div flex-gt-xs>
+                    <md-subheader>End date:</md-subheader>
+                    <md-datepicker ng-model="endDate" md-min-date="minDate" md-max-date="maxDate" ng-change="updateExportLink('endDate')"/>
+                </div>
+            </div>
+        </div>
+    </md-dialog-content>
+    <md-dialog-actions>
+        <md-button ng-href="{{reportLink}}" ng-click="closeDialog()" target="_blank" class="md-primary">Export</md-button>
+        <md-button ng-click="closeDialog()" class="md-primary">Cancel</md-button>
+    </md-dialog-actions>
+</md-dialog>
