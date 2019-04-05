@@ -8,13 +8,13 @@
 'use strict';
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'ReportService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, UserService, ApiKeyService, WalletService, QuotaService, ReportService, TabService, MessageService, $mdDialog) {
+    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', '$location', '$http', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'ReportService', 'FileService', 'JobService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, $location, $http, UserService, ApiKeyService, WalletService, QuotaService, ReportService, FileService, JobService, TabService, MessageService, $mdDialog) {
 
 
         var onUserChange = function() {
             $scope.user = UserService.params.activeUser;
             if ($scope.user.id) {
-                WalletService.refreshUserTransactions('account', $scope.user);
+                WalletService.getTransactions('account', $scope.user._links.self.href);
                 if ($scope.user.role !== 'ADMIN' && $scope.user.role !== 'CONTENT_AUTHORITY') {
                     $scope.checkForApiKey();
                 }
@@ -31,6 +31,67 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 });
             }
         }
+
+        $scope.transactionTypes = WalletService.transactionTypesMap;
+
+        $scope.refreshTransactionFilters = function() {
+            WalletService.getTransactions('account', $scope.user._links.self.href);
+        }
+
+        $scope.getPage = function(url) {
+            WalletService.getTransactions('account', $scope.user._links.self.href, url);
+        }
+
+        var goToJob = function(job) {
+
+            JobService.params.community.parentId = null;
+            JobService.params.community.selectedOwnershipFilter = JobService.jobOwnershipFilters.ALL_JOBS;
+            JobService.params.community.searchText = job.id;
+            JobService.params.community.selectedJob = job;
+
+            if (!job.parent) {
+                $http.get(job._links.parentJob.href).then(function(response) {
+                    JobService.params.community.parentId = response.data.id;
+                    JobService.getJobsByFilter('community');
+                    TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
+                    $location.path('/community');
+                }, function() {
+                    JobService.getJobsByFilter('community');
+                    TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
+                    $location.path('/community');
+                })
+            } else {
+                JobService.getJobsByFilter('community');
+                TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
+                $location.path('/community');
+            }
+        }
+
+        var goToFile = function(file) {
+
+            FileService.params.community.selectedOwnershipFilter = FileService.fileOwnershipFilters.ALL_FILES;
+            FileService.params.community.searchText = file.filename;
+            FileService.params.community.activeFileType = file.type;
+            FileService.params.community.selectedFile = file;
+
+            FileService.getFstepFilesByFilter('community');
+            TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().FILES;
+            $location.path('/community');
+
+        }
+
+        $scope.gotoTransactionResource = function(transaction) {
+            WalletService.getTransactionResource(transaction).then(function(resource) {
+                if (transaction.type === 'DOWNLOAD') {
+                    goToFile(resource);
+                } else if (transaction.type === 'JOB_PROCESSING') {
+                    goToJob(resource._embedded.job);
+                } else if (transaction.type === 'JOB') {
+                    goToJob(resource);
+                }
+            });
+        }
+
         /* Sidenav & Bottombar */
         $scope.navInfo = TabService.navInfo.account;
         $scope.bottombarNavInfo = TabService.navInfo.bottombar;

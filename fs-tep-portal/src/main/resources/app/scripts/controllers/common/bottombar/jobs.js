@@ -158,7 +158,6 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             };
 
             $scope.routeToManagePage = function(job) {
-                console.log(window.location.hostname);
                 TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
                 JobService.params.community.selectedJob = job;
                 JobService.refreshSelectedJob('community');

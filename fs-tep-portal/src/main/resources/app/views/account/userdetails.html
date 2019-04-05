@@ -91,7 +91,7 @@
                 <div ng-if="apiKeyStatus === 'loading'" id="api-key-loading-container">
                     <div class="spinner-container">
                         <div class="spinner" />
-                    </div>
+                      </div>
                 </div>
             </md-card-content>
         </md-card>
@@ -101,21 +101,68 @@
     <section id="statistics-panel" class="col-md-12 col-lg-4">
 
         <md-card id="statistics" md-theme-watch class="fstep-card">
-            <md-card-title>
+            <md-card-title ng-style="walletParams.ledger.showFilters ? {'margin-bottom': '-20px'} : {}">
                 <md-card-title-text>
                     <h2>Transaction History</h2>
                 </md-card-title-text>
+                <md-button
+                    ng-click="walletParams.ledger.showFilters = !walletParams.ledger.showFilters"
+                    uib-tooltip="Show Filters"
+                    tooltip-placement="top"
+                    tooltip-trigger="mouseenter"
+                    tooltip-append-to-body="true"
+                >
+                    <i class="material-icons">
+                        filter_list
+                    </i>
+                    <i class="material-icons"
+                        ng-show="!walletParams.ledger.showFilters">
+                        chevron_right
+                    </i>
+                    <i class="material-icons"
+                        ng-show="walletParams.ledger.showFilters">
+                        expand_more
+                    </i>
+                </md-button>
             </md-card-title>
-        </md-card>
+            <md-card-content ng-show="walletParams.ledger.showFilters">
+                <section class="filter-list">
+                        <ul class="list">
 
-        <md-card class="transaction fstep-card" md-theme-watch ng-repeat="transaction in walletParams.transactions | orderBy : '-id' ">
-            <md-card-content>
-                <p><b ng-bind="'Balance ' + (transaction.balanceChange > 0 ? 'Credit' : 'Debit') + ':'"></b> {{transaction.balanceChange}}</p>
-                <p ng-if="transaction.type == 'JOB'"><b>Associated Job ID:</b> {{transaction.associatedId}}</p>
-                <p><b>Date:</b> {{transaction.transactionTime | formatDateTime}}</p>
+                            <md-input-container>
+                                <label>Transaction type</label>
+                                <md-select ng-model="walletParams.ledger.filters.type" ng-change="refreshTransactionFilters()" multiple placeholder="Transaction types">
+                                    <md-option ng-repeat="type in walletParams.ledger.transactionTypes"
+                                                ng-value="type.name"
+                                                aria-label="Transaction type filter">
+                                        {{type.title}}
+                                    </md-option>
+                                </md-select>
+                            </md-input-container>
+
+                            <div>
+                                <md-input-container style="margin-top: 5px;">
+                                    <md-checkbox ng-model="walletParams.ledger.filters.dateRange.enabled" ng-change="refreshTransactionFilters()">Date range</md-checkbox>
+                                </md-input-container>
+                                <date-range-field ng-if="walletParams.ledger.filters.dateRange.enabled" value="walletParams.ledger.filters.dateRange" on-change="refreshTransactionFilters()"></date-range-field>
+                            </div>
+                        </ul>
+                    </section>
             </md-card-content>
         </md-card>
 
+        <md-card class="transaction fstep-card" md-theme-watch ng-repeat="transaction in walletParams.ledger.transactions">
+            <md-card-content>
+                <p><b ng-bind="'Balance ' + (transaction.balanceChange > 0 ? 'Credit' : 'Debit') + ':'"></b> {{transaction.balanceChange}}</p>
+                <p><b>Transaction type:</b> {{transactionTypes[transaction.type]}}</p>
+                <p><b>Date:</b> {{transaction.transactionTime | formatDateTime}}</p>
+                <p ng-if="transaction.associatedId"><a href='' ng-click="gotoTransactionResource(transaction)">Go to related resource</a></p>
+            </md-card-content>
+        </md-card>
+        <md-card class="fstep-card" md-theme-watch>
+
+                <div id="paging" fstep-paging="{{walletParams.ledger.pagingData}}"></div>
+        </md-card>
     </section>
 
     <section id="info-panel" class="col-md-12 col-lg-4">
