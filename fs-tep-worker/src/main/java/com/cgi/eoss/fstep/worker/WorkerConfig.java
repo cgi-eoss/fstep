@@ -2,8 +2,12 @@ package com.cgi.eoss.fstep.worker;
 
 import com.cgi.eoss.fstep.clouds.CloudsConfig;
 import com.cgi.eoss.fstep.clouds.service.NodeFactory;
+import com.cgi.eoss.fstep.io.LocalXfsPersistentFolderProvider;
+import com.cgi.eoss.fstep.io.PersistentFolderMounter;
+import com.cgi.eoss.fstep.io.PersistentFolderProvider;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManagerImpl;
+import com.cgi.eoss.fstep.io.WorkerLocalPersistentFolderMounter;
 import com.cgi.eoss.fstep.io.download.CachingSymlinkDownloaderFacade;
 import com.cgi.eoss.fstep.io.download.Downloader;
 import com.cgi.eoss.fstep.io.download.DownloaderFacade;
@@ -70,6 +74,11 @@ public class WorkerConfig {
     @Bean
     public Path cacheRoot(@Value("${fstep.worker.cache.baseDir:/data/cache/dl}") String cacheRoot) {
         return Paths.get(cacheRoot);
+    }
+    
+    @Bean
+    public Path persistentFoldersRoot(@Value("${fstep.worker.data.persistentDir:/data/persistentFolders}") String persistentFoldersRoot) {
+        return Paths.get(persistentFoldersRoot);
     }
 
     @Bean
@@ -177,6 +186,16 @@ public class WorkerConfig {
         final ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(10);
         return scheduler;
+    }
+    
+    @Bean
+    public PersistentFolderProvider persistentFolderProvider(@Qualifier("persistentFoldersRoot") Path persistentFoldersRoot) {
+        return new LocalXfsPersistentFolderProvider(persistentFoldersRoot);
+    }
+    
+    @Bean
+    public PersistentFolderMounter persistentFolderMounter(@Qualifier("workerId") String workerId, @Qualifier("persistentFoldersRoot") Path persistentFoldersRoot) {
+        return new WorkerLocalPersistentFolderMounter(workerId, persistentFoldersRoot);
     }
 
     @Value("${fstep.worker.updatesBrokerUrl:vm://embeddedBroker}")

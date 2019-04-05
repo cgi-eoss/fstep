@@ -31,4 +31,9 @@ class JobEnvironment {
      * collects from this path.</p>
      */
     private Path outputDir;
+    
+    /**
+     * <p>The persistent workspace, used for files that should survive across service executions.</p>
+     */
+    private Path persistentDir;
 }

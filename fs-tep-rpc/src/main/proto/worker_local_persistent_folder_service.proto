@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.cgi.eoss.fstep;
+
+import "common_messages.proto";
+import "google/protobuf/timestamp.proto";
+option java_multiple_files = true;
+option java_package = "com.cgi.eoss.fstep.rpc";
+
+service WorkerLocalPersistentFolderService {
+    rpc CreateUserPersistentFolder(WorkerLocalPersistentFolderParams) returns (PersistentFolderCreationResponse);
+    rpc GetUserPersistentFolderUsage(WorkerLocalPersistentFolderUsageParams) returns (PersistentFolderUsageResponse);
+    rpc SetUserPersistentFolderQuota(WorkerLocalPersistentFolderParams) returns (PersistentFolderSetQuotaResponse);
+    rpc DeleteUserPersistentFolder(WorkerLocalPersistentFolderDeleteParams) returns (PersistentFolderDeletionResponse);
+    
+}
+

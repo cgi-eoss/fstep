@@ -20,6 +20,11 @@ service FstepWorker {
     rpc ListOutputFiles (ListOutputFilesParam) returns (OutputFileList);
     rpc GetOutputFile (GetOutputFileParam) returns (stream FileStream);
     rpc CleanUp (Job) returns (CleanUpResponse);
+    rpc CreateUserPersistentFolder(PersistentFolderParams) returns (PersistentFolderCreationResponse);
+    rpc GetUserPersistentFolderUsage(PersistentFolderUsageParams) returns (PersistentFolderUsageResponse);
+    rpc SetUserPersistentFolderQuota(PersistentFolderParams) returns (PersistentFolderSetQuotaResponse);
+    rpc DeleteUserPersistentFolder(PersistentFolderDeleteParams) returns (PersistentFolderDeletionResponse);
+    
 }
 
 message JobSpec {
@@ -31,6 +36,8 @@ message JobSpec {
 	repeated string userBinds = 6;
 	ResourceRequest resourceRequest = 7;
 	map<string, string> environmentVariables = 8;
+	repeated string persistentFolders = 9;
+	
 }
 
 message ResourceRequest{
@@ -40,6 +47,7 @@ message ResourceRequest{
 message JobInputs {
     Job job = 1;
     repeated JobParam inputs = 2;
+    repeated string persistentFolders = 3;
 }
 
 message JobEvent{
@@ -64,10 +72,21 @@ message ContainerExit {
     
 }
 
+enum DirectoryPermissions{
+	RO = 0;
+	RW = 1;
+}
+
+message Directory {
+	string path = 1;
+	DirectoryPermissions permissions = 2;
+}
 message JobEnvironment {
     string workingDir = 1;
     string inputDir = 2;
     string outputDir = 3;
+    string persistentDir = 4;
+    repeated Directory additionalDirs = 5;
 }
 
 message JobDockerConfig {

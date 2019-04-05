@@ -32,6 +32,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import com.cgi.eoss.fstep.clouds.service.Node;
 import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import com.cgi.eoss.fstep.clouds.service.StorageProvisioningException;
+import com.cgi.eoss.fstep.io.PersistentFolderMounter;
+import com.cgi.eoss.fstep.io.PersistentFolderProvider;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.io.ServiceIoException;
 import com.cgi.eoss.fstep.logging.Logging;
@@ -43,6 +45,8 @@ import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.CleanUpResponse;
 import com.cgi.eoss.fstep.rpc.worker.ContainerExitCode;
+import com.cgi.eoss.fstep.rpc.worker.Directory;
+import com.cgi.eoss.fstep.rpc.worker.DirectoryPermissions;
 import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.ExitParams;
 import com.cgi.eoss.fstep.rpc.worker.ExitWithTimeoutParams;
@@ -55,6 +59,13 @@ import com.cgi.eoss.fstep.rpc.worker.LaunchContainerResponse;
 import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
+import com.cgi.eoss.fstep.rpc.PersistentFolderCreationResponse;
+import com.cgi.eoss.fstep.rpc.PersistentFolderDeleteParams;
+import com.cgi.eoss.fstep.rpc.PersistentFolderDeletionResponse;
+import com.cgi.eoss.fstep.rpc.PersistentFolderParams;
+import com.cgi.eoss.fstep.rpc.PersistentFolderSetQuotaResponse;
+import com.cgi.eoss.fstep.rpc.PersistentFolderUsageParams;
+import com.cgi.eoss.fstep.rpc.PersistentFolderUsageResponse;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.rpc.worker.PortBindings;
 import com.cgi.eoss.fstep.rpc.worker.PrepareDockerImageResponse;
@@ -114,15 +125,23 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
     
     private WorkerJobDataService workerJobDataService;
     
+    private PersistentFolderProvider persistentFolderProvider;
+	
+    private PersistentFolderMounter persistentFolderMounter;
+    
     @Autowired
     public FstepWorker(FstepWorkerNodeManager nodeManager, JobEnvironmentService jobEnvironmentService,
             ServiceInputOutputManager inputOutputManager, @Qualifier("minWorkerNodes") int minWorkerNodes,
-            WorkerJobDataService workerJobDataService) {
+            WorkerJobDataService workerJobDataService,
+            PersistentFolderProvider persistentFolderProvider,
+            PersistentFolderMounter persistentFolderMounter) {
         this.nodeManager = nodeManager;
         this.jobEnvironmentService = jobEnvironmentService;
         this.inputOutputManager = inputOutputManager;
         this.minWorkerNodes = minWorkerNodes;
         this.workerJobDataService = workerJobDataService;
+        this.persistentFolderProvider = persistentFolderProvider;
+        this.persistentFolderMounter = persistentFolderMounter;
     }
     
     @Autowired(required = false)
@@ -184,12 +203,21 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                         inputOutputManager.prepareInput(subdirPath, inputUris);
                     }
                 }
-
-                JobEnvironment ret = JobEnvironment.newBuilder()
+               
+                JobEnvironment.Builder retBuilder = JobEnvironment.newBuilder()
                         .setInputDir(jobEnv.getInputDir().toAbsolutePath().toString())
                         .setOutputDir(jobEnv.getOutputDir().toAbsolutePath().toString())
                         .setWorkingDir(jobEnv.getWorkingDir().toAbsolutePath().toString())
-                        .build();
+                		.setPersistentDir(jobEnv.getPersistentDir().toAbsolutePath().toString());
+                List<String> persistentFolders = request.getPersistentFoldersList();
+                for (String persistentFolder: persistentFolders) {
+                	URI persistentFolderUri = URI.create(persistentFolder);
+            		if (persistentFolderMounter.supportsPersistentFolder(persistentFolderUri)) {
+	                	List<Path> additionalFolders = persistentFolderMounter.bindUserPersistentFolder(persistentFolderUri, jobEnv.getPersistentDir());
+	                	retBuilder.addAllAdditionalDirs(additionalFolders.stream().map(p -> Directory.newBuilder().setPath(p.toAbsolutePath().toString()).setPermissions(DirectoryPermissions.RW).build()).collect(Collectors.toList()));
+	                }
+                }
+                JobEnvironment ret = retBuilder.build();
                 WorkerJob workerJob = workerJobDataService.findByJobId(request.getJob().getId());
                 if (workerJob == null) {
                 	workerJob = new WorkerJob(request.getJob().getId(), request.getJob().getIntJobId());
@@ -739,6 +767,86 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                 .put("jobId", job.getIntJobId())
                 .put("userId", job.getUserId())
                 .put("serviceId", job.getServiceId());
+    }
+    
+    @Override
+    public void createUserPersistentFolder(PersistentFolderParams request,
+    		StreamObserver<PersistentFolderCreationResponse> responseObserver) {
+    	String path = request.getPath();
+    	String quota = request.getQuota();
+    	LOG.info("Received request for persistent folder creation path{} and quota {}", path, quota);
+        
+    	try {
+    		if (persistentFolderProvider.userFolderExists(path)) {
+    			responseObserver.onError(new PersistentFolderException("User persistent folder already exists"));
+    			return;
+    		}
+    		persistentFolderProvider.createUserFolderWithQuota(path, quota);
+    		responseObserver.onNext(PersistentFolderCreationResponse.newBuilder().build());
+    		responseObserver.onCompleted();
+    	}
+    	catch (IOException e) {
+    		LOG.error("Error creating user persistent folder", e);
+    		responseObserver.onError(new PersistentFolderException("Error creating user persistent folder"));
+    	}
+    }
+    
+    @Override
+    public void setUserPersistentFolderQuota(PersistentFolderParams request,
+    		StreamObserver<PersistentFolderSetQuotaResponse> responseObserver) {
+    	String path = request.getPath();
+    	String quota = request.getQuota();
+    	try {
+    		if (persistentFolderProvider.userFolderExists(path) == false) {
+    			responseObserver.onError(new PersistentFolderException("User persistent folder does not exist"));
+    			return;
+    		}
+    		persistentFolderProvider.setQuota(path, quota);
+    		responseObserver.onNext(PersistentFolderSetQuotaResponse.newBuilder().build());
+    		responseObserver.onCompleted();
+    	}
+    	catch (IOException e) {
+    		LOG.error("Error setting user persistent folder quota", e);
+    		responseObserver.onError(new PersistentFolderException("Error setting user persistent folder quota"));
+    	}
+    }
+    
+    @Override
+    public void getUserPersistentFolderUsage(PersistentFolderUsageParams request,
+    		StreamObserver<PersistentFolderUsageResponse> responseObserver) {
+    	String path = request.getPath();
+    	try {
+    		if (persistentFolderProvider.userFolderExists(path) == false) {
+    			responseObserver.onError(new PersistentFolderException("User persistent folder does not exist"));
+    			return;
+    		}
+    		long usage = persistentFolderProvider.getUsageInBytes(path);
+    		responseObserver.onNext(PersistentFolderUsageResponse.newBuilder().setUsage(String.valueOf(usage)).build());
+    		responseObserver.onCompleted();
+    	}
+    	catch (IOException e) {
+    		LOG.error("Error setting user persistent folder quota", e);
+    		responseObserver.onError(new PersistentFolderException("Error setting user persistent folder quota"));
+    	}
+    }
+    
+    @Override
+    public void deleteUserPersistentFolder(PersistentFolderDeleteParams request,
+    		StreamObserver<PersistentFolderDeletionResponse> responseObserver) {
+    	String path = request.getPath();
+    	try {
+    		if (persistentFolderProvider.userFolderExists(path) == false) {
+    			responseObserver.onError(new PersistentFolderException("User persistent folder does not exist"));
+    			return;
+    		}
+    		persistentFolderProvider.deleteUserFolder(path);
+    		responseObserver.onNext(PersistentFolderDeletionResponse.newBuilder().build());
+    		responseObserver.onCompleted();
+    	}
+    	catch (IOException e) {
+    		LOG.error("Error deleting user persistent folder", e);
+    		responseObserver.onError(new PersistentFolderException("Error deleting user persistent folder"));
+    	}
     }
 
 }

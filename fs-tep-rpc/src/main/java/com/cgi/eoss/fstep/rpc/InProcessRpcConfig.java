@@ -37,6 +37,11 @@ public class InProcessRpcConfig {
     }
     
     @Bean
+    public LocalWorkerLocalPersistentFolderService localWorkerLocalPersistentFolderService(ManagedChannelBuilder inProcessChannelBuilder) {
+        return new LocalWorkerLocalPersistentFolderService(inProcessChannelBuilder);
+    }
+    
+    @Bean
     public LocalWorker localWorker(ManagedChannelBuilder inProcessChannelBuilder) {
         return new LocalWorker(inProcessChannelBuilder);
     }

@@ -57,6 +57,8 @@ import com.cgi.eoss.fstep.clouds.local.LocalNodeFactory;
 import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.CostQuotation.Recurrence;
 import com.cgi.eoss.fstep.costing.CostingService;
+import com.cgi.eoss.fstep.io.PersistentFolderMounter;
+import com.cgi.eoss.fstep.io.PersistentFolderProvider;
 import com.cgi.eoss.fstep.io.ServiceInputOutputManager;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
@@ -78,6 +80,7 @@ import com.cgi.eoss.fstep.orchestrator.service.ReverseProxyEntry;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
+import com.cgi.eoss.fstep.persistence.service.PersistentFolderDataService;
 import com.cgi.eoss.fstep.persistence.service.QuotaDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
@@ -148,7 +151,10 @@ public class FstepServicesClientIT {
     
     @Mock
     private WalletTransactionDataService walletTransactionDataService;
-
+    
+    @Mock
+    private PersistentFolderDataService persistentFolderDataService;
+    
     private Path workspace;
     private Path ingestedOutputsDir;
 
@@ -201,6 +207,12 @@ public class FstepServicesClientIT {
        
         JobEnvironmentService jobEnvironmentService = spy(new JobEnvironmentService(workspace));
         ServiceInputOutputManager ioManager = mock(ServiceInputOutputManager.class);
+        PersistentFolderProvider persistentFolderProvider = mock(PersistentFolderProvider.class);
+        Mockito.when(persistentFolderProvider.userFolderExists(any())).thenReturn(false);
+
+        PersistentFolderMounter persistentFolderMounter = mock(PersistentFolderMounter.class);
+        Mockito.when(persistentFolderMounter.supportsPersistentFolder(any())).thenReturn(false);
+
         Mockito.when(ioManager.getServiceContext(SERVICE_NAME)).thenReturn(Paths.get("src/test/resources/service1").toAbsolutePath());
 
         DockerClientConfig dockerClientConfig = DefaultDockerClientConfig.createDefaultConfigBuilder()
@@ -256,11 +268,11 @@ public class FstepServicesClientIT {
         String workerId = "local1";
         JobValidator jobValidator = new JobValidator(costingService, catalogueService);
         FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, jobProcessingDataService, databasketDataService, guiService, 
-        		 costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService, jobValidator, updatesManager);
+        		 costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService, persistentFolderDataService, jobValidator, updatesManager);
         LocalEventCollectorNodePreparer nodePreparer = new LocalEventCollectorNodePreparer(blockingJmsTemplate, DockerEventsListener.DOCKER_EVENTS_QUEUE);
 		FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(new LocalNodeFactory(-1, "unix:///var/run/docker.sock"), workspace.resolve("dl"), 2, workerDataService, nodePreparer);
 
-        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1, workerDataService);
+        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1, workerDataService, persistentFolderProvider, persistentFolderMounter);
         fstepWorker.allocateMinNodes();
         FstepWorkerUpdateManager fstepWorkerUpdateManager = new FstepWorkerUpdateManager(queueService, workerId);
         JobExecutionController jobExecutionController = new JobExecutionController(new LocalWorker(channelBuilder), nodeManager, workerDataService, fstepWorkerUpdateManager);

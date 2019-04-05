@@ -58,3 +58,49 @@ message FileStream {
         Chunk chunk = 2;
     }
 }
+
+message PersistentFolderParams{
+	string path = 1;
+	string quota = 2;
+}
+
+message PersistentFolderUsageParams{
+	string path = 1;
+}
+
+message PersistentFolderDeleteParams{
+	string path = 1;
+}
+
+
+message WorkerLocalPersistentFolderParams{
+	string workerId = 1;
+	PersistentFolderParams persistentFolderParams = 2;
+}
+
+message WorkerLocalPersistentFolderUsageParams{
+	string workerId = 1;
+	PersistentFolderUsageParams persistentFolderUsageParams = 2;
+}
+
+message WorkerLocalPersistentFolderDeleteParams{
+	string workerId = 1;
+	PersistentFolderDeleteParams persistentFolderDeleteParams = 2;
+}
+
+
+message PersistentFolderCreationResponse{
+
+}
+
+message PersistentFolderDeletionResponse{
+
+}
+
+message PersistentFolderSetQuotaResponse{
+
+}
+
+message PersistentFolderUsageResponse{
+	string usage = 1;
+}

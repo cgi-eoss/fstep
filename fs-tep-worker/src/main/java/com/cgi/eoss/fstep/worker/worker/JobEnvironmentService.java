@@ -28,7 +28,7 @@ public class JobEnvironmentService {
     private static final String WORKING_DIR_PREFIX = "Job_";
     private static final String INPUT_DIR = "inDir";
     private static final String OUTPUT_DIR = "outDir";
-
+    private static final String PERSISTENT_DIR = "persistent";
     @Getter
     private final Path baseDir;
 
@@ -79,13 +79,14 @@ public class JobEnvironmentService {
         Path workingDir = baseDir.resolve(WORKING_DIR_PREFIX + jobId);
         Path inputDir = workingDir.resolve(INPUT_DIR);
         Path outputDir = workingDir.resolve(OUTPUT_DIR);
+        Path persistentDir = workingDir.resolve(PERSISTENT_DIR);
         if (Files.exists(workingDir)){
             FileUtils.deleteDirectory(workingDir.toFile());
         }
         Files.createDirectory(workingDir);
         Files.createDirectory(inputDir);
         Files.createDirectory(outputDir);
-
+        Files.createDirectory(persistentDir);
         LOG.info("Created working environment for job {} in location: {}", jobId, workingDir);
 
         return JobEnvironment.builder()
@@ -93,6 +94,7 @@ public class JobEnvironmentService {
                 .workingDir(workingDir)
                 .inputDir(inputDir)
                 .outputDir(outputDir)
+                .persistentDir(persistentDir)
                 .build();
     }
 

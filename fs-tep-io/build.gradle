@@ -12,6 +12,7 @@ dependencies {
 
     compile 'commons-io:commons-io'
     compile 'commons-net:commons-net'
+    compile 'org.apache.commons:commons-exec'
     compile 'com.google.guava:guava'
     compile 'com.jayway.jsonpath:json-path'
     compile 'com.squareup.okhttp3:okhttp'

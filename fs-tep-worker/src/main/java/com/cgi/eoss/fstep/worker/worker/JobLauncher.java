@@ -11,6 +11,7 @@ import java.util.Random;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.LocalWorker;
+import com.cgi.eoss.fstep.rpc.worker.DirectoryPermissions;
 import com.cgi.eoss.fstep.rpc.worker.JobDockerConfig;
 import com.cgi.eoss.fstep.rpc.worker.JobEnvironment;
 import com.cgi.eoss.fstep.rpc.worker.JobError;
@@ -52,7 +53,7 @@ public class JobLauncher implements Runnable {
 		try {
 			jobUpdateListener.jobUpdate(workerJob,
 						JobEvent.newBuilder().setJobEventType(JobEventType.DATA_FETCHING_STARTED).setTimestamp(GrpcUtil.timestampFromOffsetDateTime(OffsetDateTime.now(ZoneId.of("Z")))).build());
-			JobInputs jobInputs = JobInputs.newBuilder().setJob(jobSpec.getJob()).addAllInputs(jobSpec.getInputsList())
+			JobInputs jobInputs = JobInputs.newBuilder().setJob(jobSpec.getJob()).addAllInputs(jobSpec.getInputsList()).addAllPersistentFolders(jobSpec.getPersistentFoldersList())
 						.build();
 			JobEnvironment jobEnvironment = localWorker.prepareInputs(jobInputs);
 			jobUpdateListener
@@ -67,6 +68,21 @@ public class JobLauncher implements Runnable {
 					+ "/home/worker/workDir/FSTEP-WPS-INPUT.properties:ro");
 			binds.add(jobEnvironment.getInputDir() + ":" + "/home/worker/workDir/inDir:ro");
 			binds.add(jobEnvironment.getOutputDir() + ":" + "/home/worker/workDir/outDir:rw");
+			binds.add(jobEnvironment.getPersistentDir() + ":" + "/home/worker/workDir/persistentDir:rw");
+            jobEnvironment.getAdditionalDirsList().stream().forEach(d -> 
+            {
+            	String permissions;
+            	if (d.getPermissions().equals(DirectoryPermissions.RW)) {
+            		permissions = "rw";
+            	}
+            	else if (d.getPermissions().equals(DirectoryPermissions.RO)) {
+            		permissions = "ro";
+            	}
+            	else {
+            		permissions = "ro";
+            	}
+            	binds.add(d.getPath() + ":" + d.getPath() + ":"  + permissions);
+            });
 			binds.addAll(jobSpec.getUserBindsList());
 			Map<String, String> environmentVariables = jobSpec.getEnvironmentVariablesMap();
 	

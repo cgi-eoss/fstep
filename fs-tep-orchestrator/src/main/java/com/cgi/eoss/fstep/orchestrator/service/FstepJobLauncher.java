@@ -34,11 +34,13 @@ import com.cgi.eoss.fstep.model.FstepServiceResources;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.JobProcessing;
+import com.cgi.eoss.fstep.model.PersistentFolder;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.UserMount;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
+import com.cgi.eoss.fstep.persistence.service.PersistentFolderDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
@@ -101,6 +103,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private final UserMountDataService userMountDataService;
     private final ServiceDataService serviceDataService;
     private final DynamicProxyService dynamicProxyService;
+    private final PersistentFolderDataService persistentFolderDataService;
     private final JobValidator jobValidator;
     private final PlatformParameterExtractor platformParameterExtractor;
     FstepJobUpdatesManager fstepJobUpdatesManager;
@@ -114,6 +117,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             UserMountDataService userMountDataService,
             ServiceDataService serviceDataService,
             DynamicProxyService dynamicProxyService,
+            PersistentFolderDataService persistentFolderDataService,
             JobValidator jobValidator,
             FstepJobUpdatesManager fstepJobUpdatesManager) {
         this.workerFactory = workerFactory;
@@ -125,6 +129,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         this.userMountDataService = userMountDataService;
         this.serviceDataService = serviceDataService;
         this.dynamicProxyService = dynamicProxyService;
+        this.persistentFolderDataService = persistentFolderDataService;
         this.jobValidator = jobValidator;
         this.platformParameterExtractor = new PlatformParameterExtractor();
         this.fstepJobUpdatesManager = fstepJobUpdatesManager;
@@ -523,6 +528,12 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         if (service.getRequiredResources() != null) {
             FstepServiceResources requiredResources = service.getRequiredResources();
             jobSpecBuilder.setResourceRequest(ResourceRequest.newBuilder().setStorage(Integer.valueOf(requiredResources.getStorage())));
+        }
+        
+        List<PersistentFolder> persistentFolders = persistentFolderDataService.findByOwnerAndStatus(job.getOwner(), PersistentFolder.Status.ACTIVE);
+        
+        for (PersistentFolder pf: persistentFolders) {
+        	jobSpecBuilder.addPersistentFolders(pf.getURI().toString());
         }
         
         JobSpec jobSpec = jobSpecBuilder.build();
