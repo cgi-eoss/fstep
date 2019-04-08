@@ -34,6 +34,7 @@ import com.cgi.eoss.fstep.persistence.service.CollectionDataService;
 import com.cgi.eoss.fstep.persistence.service.DataSourceDataService;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
+import com.cgi.eoss.fstep.persistence.service.FstepFilesCumulativeUsageRecordDataService;
 import com.cgi.eoss.fstep.persistence.service.UserDataService;
 import com.cgi.eoss.fstep.rpc.FileStream;
 import com.cgi.eoss.fstep.rpc.FileStreamIOException;
@@ -67,9 +68,10 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     private final ExternalProductDataService externalProductDataService;
     private final FstepSecurityService securityService;
     private final UserDataService userDataService;
+    private final FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService;
     
     @Autowired
-    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService) {
+    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService, FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService) {
         this.fstepFileDataService = fstepFileDataService;
         this.collectionDataService = collectionDataService;
         this.dataSourceDataService = dataSourceDataService;
@@ -79,14 +81,17 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
         this.externalProductDataService = externalProductDataService;
         this.securityService = securityService;
         this.userDataService = userDataService;
+        this.fstepFilesCumulativeUsageRecordDataService = fstepFilesCumulativeUsageRecordDataService;
     }
 
     @Override
     public FstepFileIngestion ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException {
     	FstepFileIngestion fstepFileIngestion = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getFiletype(), referenceData.getUserProperties(), file);
-    	FstepFile fstepFile = fstepFileIngestion.getFstepFile();       
+    	FstepFile fstepFile = fstepFileIngestion.getFstepFile();
     	fstepFile.setDataSource(dataSourceDataService.getForRefData(fstepFile));
-        return new FstepFileIngestion(fstepFileIngestion.getStatusMessage(), fstepFileDataService.save(fstepFile));
+    	fstepFile = fstepFileDataService.save(fstepFile);
+    	fstepFilesCumulativeUsageRecordDataService.updateUsageRecords(fstepFile);
+        return new FstepFileIngestion(fstepFileIngestion.getStatusMessage(), fstepFile);
     }
 
     @Override
@@ -119,7 +124,9 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                 path);
         fstepFile.setDataSource(dataSourceDataService.getForService(outputProductMetadata.getService()));
         fstepFile.setCollection(collectionDataService.getByIdentifier(collection));
-        return fstepFileDataService.save(fstepFile);
+        fstepFile = fstepFileDataService.save(fstepFile);
+        fstepFilesCumulativeUsageRecordDataService.updateUsageRecords(fstepFile);
+        return fstepFile;
     }
 
     private void ensureOutputCollectionExists(String collectionIdentifier) {

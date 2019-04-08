@@ -99,5 +99,14 @@ public class ReportsApiIT {
         		.header("REMOTE_USER", fstepUser.getName()))
                 .andExpect(status().isOk());
     }
+    
+    @Test
+    public void testStorageReport() throws Exception {
+    	mockMvc.perform(get("/api/reports/storage/CSV")
+        		.param("startDateTime", "2019-04-01T00:00:00Z")
+        		.param("endDateTime", "2019-04-30T00:00:00Z")
+        		.header("REMOTE_USER", fstepUser.getName()))
+                .andExpect(status().isOk());
+    }
 
 }
