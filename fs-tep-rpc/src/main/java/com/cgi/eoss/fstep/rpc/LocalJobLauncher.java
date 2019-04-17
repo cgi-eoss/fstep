@@ -18,6 +18,11 @@ public class LocalJobLauncher {
         jobLauncher.submitJob(serviceParams, responseObserver);
     }
     
+    public void syncSubmitJob(FstepServiceParams serviceParams) {
+        FstepJobLauncherGrpc.FstepJobLauncherBlockingStub jobLauncher = FstepJobLauncherGrpc.newBlockingStub(inProcessChannelBuilder.build());
+        jobLauncher.submitJob(serviceParams);
+    }
+    
     @Async
     public void asyncCancelJob(CancelJobParams cancelJobParams, StreamObserver<CancelJobResponse> responseObserver) {
         FstepJobLauncherGrpc.FstepJobLauncherStub jobLauncher = FstepJobLauncherGrpc.newStub(inProcessChannelBuilder.build());

@@ -1,13 +1,27 @@
 package com.cgi.eoss.fstep.orchestrator.service;
 
+import java.io.IOException;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.geojson.Feature;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
 import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.SystematicProcessing;
-import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.SystematicProcessing.Status;
+import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.persistence.service.SystematicProcessingDataService;
-import com.cgi.eoss.fstep.rpc.FstepJobResponse;
 import com.cgi.eoss.fstep.rpc.FstepServiceParams;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.LocalJobLauncher;
@@ -17,29 +31,13 @@ import com.cgi.eoss.fstep.search.api.SearchResults;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
-import io.grpc.stub.StreamObserver;
-import lombok.Getter;
+
 import lombok.extern.log4j.Log4j2;
 import okhttp3.HttpUrl;
-import org.geojson.Feature;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import java.io.IOException;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
- * Service for autoscaling the number of worker nodes based on queue length
+ * Service to submit systematic jobs
  * </p>
  */
 @Log4j2
@@ -145,46 +143,12 @@ public class SystematicProcessingScheduler {
                         .setJobParent(parentId)
                         .setServiceId(serviceName).addAllInputs(GrpcUtil.mapToParams(inputs));
 
-        final CountDownLatch latch = new CountDownLatch(1);
-        JobLaunchObserver responseObserver = new JobLaunchObserver(latch);
-        localJobLauncher.asyncSubmitJob(serviceParamsBuilder.build(), responseObserver);
-        // Block until the latch counts down (i.e. one message from the server)
-        latch.await(1, TimeUnit.MINUTES);
-        if (responseObserver.getError() != null) {
-            throw new JobSubmissionException(responseObserver.getError());
+        try {
+        	localJobLauncher.syncSubmitJob(serviceParamsBuilder.build());
+        }
+        catch (Exception e) {
+            throw new JobSubmissionException(e);
         } 
-    }
-
-    private static final class JobLaunchObserver implements StreamObserver<FstepJobResponse> {
-
-        private final CountDownLatch latch;
-        @Getter
-        private long intJobId;
-
-        @Getter
-        private Throwable error;
-
-        JobLaunchObserver(CountDownLatch latch) {
-            this.latch = latch;
-        }
-
-        @Override
-        public void onNext(FstepJobResponse value) {
-            this.intJobId = Long.parseLong(value.getJob().getIntJobId());
-            LOG.info("Received job ID: {}", this.intJobId);
-            latch.countDown();
-        }
-
-        @Override
-        public void onError(Throwable t) {
-            error = t;
-
-        }
-
-        @Override
-        public void onCompleted() {
-            // No-op, the user has long stopped listening here
-        }
     }
 
     public class JobSubmissionException extends Exception {
