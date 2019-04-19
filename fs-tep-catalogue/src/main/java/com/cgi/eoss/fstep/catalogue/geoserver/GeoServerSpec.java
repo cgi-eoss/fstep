@@ -15,6 +15,8 @@ public class GeoServerSpec {
     
     private String coverageName;
     
+    private String layerName;
+    
     private String crs;
     
     private String style;

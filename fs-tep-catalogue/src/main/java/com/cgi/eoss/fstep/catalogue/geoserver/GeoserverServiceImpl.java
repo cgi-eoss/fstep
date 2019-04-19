@@ -3,20 +3,33 @@ package com.cgi.eoss.fstep.catalogue.geoserver;
 import static it.geosolutions.geoserver.rest.encoder.GSResourceEncoder.ProjectionPolicy.REPROJECT_TO_DECLARED;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+
+import javax.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.cgi.eoss.fstep.catalogue.IngestionException;
+import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
+import com.cgi.eoss.fstep.model.GeoserverLayer;
+import com.cgi.eoss.fstep.model.GeoserverLayer.StoreType;
+import com.cgi.eoss.fstep.catalogue.geoserver.model.GeoserverImportTask;
 import com.google.common.io.MoreFiles;
 import it.geosolutions.geoserver.rest.GeoServerRESTManager;
 import it.geosolutions.geoserver.rest.GeoServerRESTPublisher;
 import it.geosolutions.geoserver.rest.GeoServerRESTReader;
 import it.geosolutions.geoserver.rest.decoder.RESTCoverageStore;
 import it.geosolutions.geoserver.rest.encoder.GSLayerEncoder;
+import it.geosolutions.geoserver.rest.encoder.GSPostGISDatastoreEncoder;
 import it.geosolutions.geoserver.rest.encoder.GSResourceEncoder;
 import it.geosolutions.geoserver.rest.encoder.coverage.GSCoverageEncoder;
 import lombok.Getter;
@@ -37,32 +50,106 @@ public class GeoserverServiceImpl implements GeoserverService {
     @Value("${fstep.catalogue.geoserver.enabled:true}")
     private boolean geoserverEnabled;
 
-    @Value("#{'${fstep.catalogue.geoserver.ingest-filetypes:TIF}'.split(',')}")
     private Set<String> ingestableFiletypes;
 
-    private GeoserverMosaicUpdater mosaicUpdater;
+    private GeoserverMosaicManager mosaicManager;
 
-    @Autowired
+	private GeoserverImporter importer;
+	
+	private String postgisStore;
+	
+	private String postgisWorkspace;
+
+	private String postgisHost;
+
+	private int postgisPort;
+
+	private String postgisDb;
+
+	private String postgisUsername;
+
+	private String postgisPassword;
+
+	@Autowired
     public GeoserverServiceImpl(@Value("${fstep.catalogue.geoserver.url:http://fstep-geoserver:9080/geoserver/}") String url,
             @Value("${fstep.catalogue.geoserver.externalUrl:http://fstep-geoserver:9080/geoserver/}") String externalUrl,
+            @Value("#{'${fstep.catalogue.geoserver.ingest-filetypes:TIF}'.split(',')}") Set<String> ingestableFiletypes,
             @Value("${fstep.catalogue.geoserver.username:fstepgeoserver}") String username,
-            @Value("${fstep.catalogue.geoserver.password:fstepgeoserverpass}") String password) throws MalformedURLException {
+            @Value("${fstep.catalogue.geoserver.password:fstepgeoserverpass}") String password,
+            @Value("${fstep.catalogue.geoserver.postgisHost:fstepdb}") String postgisHost,
+            @Value("${fstep.catalogue.geoserver.postgisPort:5432}") int postgisPort,
+            @Value("${fstep.catalogue.geoserver.postgisDb:fstepgeoserver}") String postgisDb,
+            @Value("${fstep.catalogue.geoserver.postgisUsername:fstepgeoserverPostgis}") String postgisUsername,
+            @Value("${fstep.catalogue.geoserver.postgisPassword:fstepgeoserverPostgispass}") String postgisPassword,
+            @Value("${fstep.catalogue.geoserver.postgisStore:fstepgeoserverPostgisStore}") String postgisStore,
+            @Value("${fstep.catalogue.geoserver.postgisWorkspace:fstepgeoserverPostgisWorkspace}") String postgisWorkspace
+            ) throws MalformedURLException {
         this.externalUrl = HttpUrl.parse(externalUrl);
         GeoServerRESTManager geoserver = new GeoServerRESTManager(new URL(url), username, password);
-        this.publisher = geoserver.getPublisher();
-        this.mosaicUpdater = new GeoserverMosaicUpdater(new URL(url), username, password);
+        if (ingestableFiletypes == null){
+        	ingestableFiletypes = new HashSet<>();
+        }
+        this.ingestableFiletypes = ingestableFiletypes;
         this.reader = geoserver.getReader();
+        this.publisher = geoserver.getPublisher();
+        this.importer = new GeoserverImporter(new URL(url), username, password);
+        this.mosaicManager = new GeoserverMosaicManager(reader, new URL(url), username, password, postgisHost, postgisPort, postgisDb, postgisUsername, postgisPassword);
+        this.postgisStore = postgisStore;
+        this.postgisWorkspace = postgisWorkspace;
+        this.postgisHost = postgisHost;
+        this.postgisPort = postgisPort;
+        this.postgisDb = postgisDb;
+        this.postgisUsername = postgisUsername;
+        this.postgisPassword = postgisPassword;
+    }
+	
+	@PostConstruct
+    public void ensurePostgisStoreExists() {
+    	//TODO replace with non deprecated versions of geosolutions library - requires change in lib version
+    	try {
+            ensureWorkspaceExists(postgisWorkspace);
+        	if (!reader.existsDatastore(postgisWorkspace, postgisStore)) {
+                LOG.info("Creating new store {}", postgisStore);
+                GSPostGISDatastoreEncoder postgisDataStoreEncoder = new GSPostGISDatastoreEncoder();
+                postgisDataStoreEncoder.setName(postgisStore);
+                postgisDataStoreEncoder.setHost(postgisHost);
+                postgisDataStoreEncoder.setPort(postgisPort);
+                postgisDataStoreEncoder.setDatabase(postgisDb);
+                postgisDataStoreEncoder.setUser(postgisUsername);
+                postgisDataStoreEncoder.setPassword(postgisPassword);
+                boolean created = publisher.createPostGISDatastore(postgisWorkspace, postgisDataStoreEncoder);
+                if (!created) {
+                	throw new IngestionException("Cannot create postgis store");
+                }
+            }
+    	}catch(Exception e) {
+    	    LOG.error("Cannot ensure availability of postgis store");
+    	}
     }
 
-    @Override
-    public String ingest(String workspace, Path path, String crs) {
-        Path fileName = path.getFileName();
-        String datastoreName = MoreFiles.getNameWithoutExtension(fileName);
-        String layerName = MoreFiles.getNameWithoutExtension(fileName);
+	@Override
+    public GeoserverLayer ingest(Path path, GeoServerSpec geoServerSpec, UUID id) {
+        String workspace = geoServerSpec.getWorkspace();
+        String datastoreName = geoServerSpec.getDatastoreName();
+        String coverageName = geoServerSpec.getCoverageName();
+        String layerName = geoServerSpec.getLayerName();
+        String srs = geoServerSpec.getCrs();
+        String style = geoServerSpec.getStyle();
         
-        return ingestCoverage(workspace, path, crs, datastoreName, layerName, RASTER_STYLE);
+        switch (geoServerSpec.getGeoserverType()) {
+            case SINGLE_COVERAGE: 
+            	ingestCoverage(workspace, path, srs, datastoreName, coverageName, style);
+            	return new GeoserverLayer(null, workspace, datastoreName, coverageName, StoreType.GEOTIFF);
+            case MOSAIC: 
+            	ingestCoverageInMosaic(workspace, path, datastoreName, coverageName);
+            	return new GeoserverLayer(null, workspace, datastoreName, coverageName, StoreType.MOSAIC);
+            case SHAPEFILE_POSTGIS_IMPORT: 
+            	ingestShapefileInPostgis(path, layerName, id);
+            	return new GeoserverLayer(null, postgisWorkspace, postgisStore, layerName, StoreType.POSTGIS);
+            default: throw new IngestionException("GeoServerType not specified");
+        }
     }
-    
+	 
     private String ingestCoverage(String workspace, Path path, String crs, String datastoreName, String layerName, String style) {
         Path fileName = path.getFileName();
         if (!geoserverEnabled) {
@@ -79,6 +166,9 @@ public class GeoserverServiceImpl implements GeoserverService {
         }
 
         try {
+        	if (style == null) {
+        		style = RASTER_STYLE;
+        	}
             RESTCoverageStore restCoverageStore = publishExternalGeoTIFF(workspace, datastoreName, path.toFile(), layerName, crs,
                     REPROJECT_TO_DECLARED, style);
             LOG.info("Ingested GeoTIFF to geoserver with id: {}:{}", workspace, layerName);
@@ -89,10 +179,10 @@ public class GeoserverServiceImpl implements GeoserverService {
         }
     }
     
-    private String ingestCoverageInMosaic(String workspace, Path path, String crs, String datastoreName, String layerName, String style) {
+    private String ingestCoverageInMosaic(String workspace, Path path, String datastoreName, String coverageName) {
         Path fileName = path.getFileName();
         if (!geoserverEnabled) {
-            LOG.warn("Geoserver is disabled; 'ingested' file: {}:{}", workspace, layerName);
+            LOG.warn("Geoserver is disabled; 'ingested' file: {}:{}", workspace, datastoreName);
             return null;
         }
 
@@ -106,28 +196,16 @@ public class GeoserverServiceImpl implements GeoserverService {
 
         try {
             RESTCoverageStore restCoverageStore = publishExternalGeoTIFFToMosaic(workspace, datastoreName, path.toFile());
-            LOG.info("Ingested GeoTIFF to geoserver with id: {}:{}", workspace, layerName);
+            if (coverageName != null) {
+            	mosaicManager.createCoverageIfNotExists(workspace, datastoreName, coverageName);
+            }
+            LOG.info("Ingested GeoTIFF to geoserver with id: {}:{}", workspace, datastoreName);
             LOG.info("Reloading GeoServer configuration");
             publisher.reload();
             return restCoverageStore.getURL();
-        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
             LOG.error("Geoserver was unable to publish file: {}", path, e);
             throw new IngestionException(e);
-        }
-    }
-
-    @Override
-    public String ingest(Path path, GeoServerSpec geoServerSpec) {
-        String workspace = geoServerSpec.getWorkspace();
-        String datastoreName = geoServerSpec.getDatastoreName();
-        String coverageName = geoServerSpec.getCoverageName();
-        String srs = geoServerSpec.getCrs();
-        String style = geoServerSpec.getStyle();
-        
-        switch (geoServerSpec.getGeoserverType()) {
-            case SINGLE_COVERAGE: return ingestCoverage(workspace, path, srs, datastoreName, coverageName, style); 
-            case MOSAIC: return ingestCoverageInMosaic(workspace, path, srs, datastoreName, coverageName, style); 
-            default: throw new IngestionException("GeoServerType not specified");
         }
     }
 
@@ -138,7 +216,7 @@ public class GeoserverServiceImpl implements GeoserverService {
     }
 
     @Override
-    public void delete(String workspace, String layerName) {
+    public void deleteLayer(String workspace, String layerName) {
         if (!geoserverEnabled) {
             LOG.warn("Geoserver is disabled; no deletion occurring for {}:{}", workspace, layerName);
             return;
@@ -146,6 +224,28 @@ public class GeoserverServiceImpl implements GeoserverService {
 
         publisher.removeLayer(workspace, layerName);
         LOG.info("Deleted layer from geoserver: {}{}", workspace, layerName);
+    }
+    
+    @Override
+    public void unpublishCoverage(String workspace, String storeName, String layerName) {
+        if (!geoserverEnabled) {
+            LOG.warn("Geoserver is disabled; no deletion occurring for {}:{}", workspace, layerName);
+            return;
+        }
+
+        publisher.unpublishCoverage(workspace, storeName, layerName);
+        LOG.info("Deleted coverage from geoserver: {}{}{}", workspace, storeName, layerName);
+    }
+   
+    @Override
+    public void deleteCoverageStore(String workspace, String coverageStoreName) {
+        if (!geoserverEnabled) {
+            LOG.warn("Geoserver is disabled; no deletion occurring for {}:{}", workspace, coverageStoreName);
+            return;
+        }
+
+        publisher.removeCoverageStore(workspace, coverageStoreName, false);
+        LOG.info("Deleted coverage store from geoserver: {}{}", workspace, coverageStoreName);
     }
 
     private void ensureWorkspaceExists(String workspace) {
@@ -156,7 +256,7 @@ public class GeoserverServiceImpl implements GeoserverService {
     }
 
     private RESTCoverageStore publishExternalGeoTIFF(String workspace, String storeName, File geotiff, String coverageName, String srs,
-            GSResourceEncoder.ProjectionPolicy policy, String defaultStyle) throws FileNotFoundException, IllegalArgumentException {
+            GSResourceEncoder.ProjectionPolicy policy, String defaultStyle) throws FileNotFoundException {
         if (workspace == null || storeName == null || geotiff == null || coverageName == null || srs == null || policy == null
                 || defaultStyle == null)
             throw new IllegalArgumentException("Unable to run: null parameter");
@@ -175,11 +275,41 @@ public class GeoserverServiceImpl implements GeoserverService {
         return publisher.publishExternalGeoTIFF(workspace, storeName, geotiff, coverageEncoder, layerEncoder);
     }
     
-    private RESTCoverageStore publishExternalGeoTIFFToMosaic(String workspace, String storeName, File geotiff) throws FileNotFoundException, IllegalArgumentException {
+    private RESTCoverageStore publishExternalGeoTIFFToMosaic(String workspace, String storeName, File geotiff) {
         if (workspace == null || storeName == null || geotiff == null)
             throw new IllegalArgumentException("Unable to run: null parameter");
-        RESTCoverageStore response = mosaicUpdater.addGeoTiffToExternalMosaic(workspace, storeName, geotiff);
-        return response;
+        return mosaicManager.addGeoTiffToExternalMosaic(workspace, storeName, geotiff);
+    }
+    
+    @Override
+	public void createEmptyMosaic(String workspace, String storeName, String coverageName, String timeRegexp) {
+		ensureWorkspaceExists(workspace);
+		mosaicManager.createEmptyMosaic(workspace, storeName, coverageName, timeRegexp);
+	}
+	
+	private String ingestShapefileInPostgis(Path path, String layerName, UUID id) {
+		String importUrl;
+		try {
+			importUrl = importer.createImport(postgisWorkspace, postgisStore);
+			//Duplicate the shapefile, as the table name and the layer are taken from the internal shapefile name
+			//Add a column to trace back to file (using the id)
+			Map<String, Object> newAttributes = new HashMap<>();
+			newAttributes.put("fstep_id", id);
+			Path transformedShapeFile = GeoUtil.duplicateShapeFile(path, layerName, newAttributes, true);
+			String taskUrl = importer.addShapeFileToImport(transformedShapeFile, importUrl);
+			if (importer.existsFeatureType(postgisWorkspace, postgisStore, layerName)) {
+				importer.setTaskUpdateMode(taskUrl, GeoserverImportTask.UpdateMode.APPEND);
+			}
+			importer.runImport(importUrl);
+			return importUrl;
+		} catch (IOException e) {
+			throw new IngestionException(e);
+		}
+	}
+
+    @Override
+    public void deleteGranuleFromMosaic(String workspace, String storeName, String coverageName, String location) {
+        mosaicManager.deleteGranuleFromMosaic(workspace, storeName, coverageName, location);
     }
 
 }

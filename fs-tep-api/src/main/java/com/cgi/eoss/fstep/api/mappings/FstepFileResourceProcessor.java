@@ -1,11 +1,9 @@
 package com.cgi.eoss.fstep.api.mappings;
 
-import com.cgi.eoss.fstep.catalogue.CatalogueService;
-import com.cgi.eoss.fstep.model.FstepFile;
-import com.cgi.eoss.fstep.model.projections.DetailedFstepFile;
-import com.cgi.eoss.fstep.model.projections.ShortFstepFile;
-import lombok.RequiredArgsConstructor;
-import okhttp3.HttpUrl;
+import java.net.URI;
+import java.util.Set;
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.support.RepositoryEntityLinks;
 import org.springframework.hateoas.EntityLinks;
@@ -14,7 +12,13 @@ import org.springframework.hateoas.Resource;
 import org.springframework.hateoas.ResourceProcessor;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
+import com.cgi.eoss.fstep.catalogue.CatalogueService;
+import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.projections.DetailedFstepFile;
+import com.cgi.eoss.fstep.model.projections.ShortFstepFile;
+import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
+
+import lombok.RequiredArgsConstructor;
 
 /**
  * <p>HATEOAS resource processor for {@link FstepFile}s. Adds extra _link entries for client use, e.g. file download.</p>
@@ -25,7 +29,8 @@ public class FstepFileResourceProcessor extends BaseResourceProcessor<FstepFile>
 
     private final RepositoryEntityLinks entityLinks;
     private final CatalogueService catalogueService;
-
+    private final FstepFileDataService fstepFileDataService;
+    
     @Override
     protected EntityLinks getEntityLinks() {
         return entityLinks;
@@ -44,15 +49,19 @@ public class FstepFileResourceProcessor extends BaseResourceProcessor<FstepFile>
         }
     }
 
-    void addWmsLink(Resource resource, FstepFile.Type type, URI uri) {
-        HttpUrl wmsLink = catalogueService.getWmsUrl(type, uri);
-        if (wmsLink != null) {
-            resource.add(new Link(wmsLink.toString()).withRel("wms"));
+    void addOGCLinks(Resource resource, FstepFile file) {
+    	Set<Link> ogcLinks = catalogueService.getOGCLinks(file);
+        if (ogcLinks != null) {
+            resource.add(ogcLinks);
         }
     }
-
+   
     void addFstepLink(Resource resource, URI fstepFileUri) {
         resource.add(new Link(fstepFileUri.toASCIIString()).withRel("fstep"));
+    }
+    
+    void addOGCLinks(Resource resource, UUID restoId) {
+        addOGCLinks(resource, fstepFileDataService.getByRestoId(restoId));
     }
 
     @Component
@@ -63,7 +72,7 @@ public class FstepFileResourceProcessor extends BaseResourceProcessor<FstepFile>
 
             addSelfLink(resource, entity);
             addDownloadLink(resource, entity.getType());
-            addWmsLink(resource, entity.getType(), entity.getUri());
+            addOGCLinks(resource, entity);
             addFstepLink(resource, entity.getUri());
 
             return resource;
@@ -78,7 +87,7 @@ public class FstepFileResourceProcessor extends BaseResourceProcessor<FstepFile>
 
             addSelfLink(resource, entity);
             addDownloadLink(resource, entity.getType());
-            addWmsLink(resource, entity.getType(), entity.getUri());
+            addOGCLinks(resource, entity.getRestoId());
             addFstepLink(resource, entity.getUri());
 
             return resource;

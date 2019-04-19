@@ -1,5 +1,38 @@
 package com.cgi.eoss.fstep.api.controllers;
 
+import static org.hamcrest.CoreMatchers.endsWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.fileUpload;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.net.URI;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.UUID;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.hateoas.Link;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cgi.eoss.fstep.api.ApiConfig;
 import com.cgi.eoss.fstep.api.ApiTestConfig;
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
@@ -14,36 +47,6 @@ import com.cgi.eoss.fstep.persistence.service.UserDataService;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.ByteStreams;
 import com.jayway.jsonpath.JsonPath;
-import okhttp3.HttpUrl;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.net.URI;
-import java.util.UUID;
-
-import static org.hamcrest.CoreMatchers.endsWith;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.fileUpload;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -146,7 +149,7 @@ public class FstepFilesApiIT {
 
     @Test
     public void testGetWithProjection() throws Exception {
-        when(catalogueService.getWmsUrl(testFile1.getType(), testFile1.getUri())).thenReturn(HttpUrl.parse("http://example.com/wms"));
+    	when(catalogueService.getOGCLinks(testFile1)).thenReturn(new HashSet<>(Collections.singletonList(new Link("http://example.com/wms", "wms"))));
 
         mockMvc.perform(get("/api/fstepFiles/" + testFile1.getId() + "?projection=detailedFstepFile").header("REMOTE_USER", fstepAdmin.getName()))
                 .andExpect(status().isOk())

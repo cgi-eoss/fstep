@@ -3,6 +3,9 @@ package com.cgi.eoss.fstep.model.internal;
 public class InternalModelUtils {
 
 	public static String platformTimeRegexpToGeoserverTimeRegexp(String platformTimeRegexp) {
+		if (platformTimeRegexp == null) {
+	        return null;
+	    }
 		int startEndIndex = platformTimeRegexp.indexOf("?<startEnd>");
 		if (startEndIndex != -1) {
 			return capturingGroup(platformTimeRegexp, startEndIndex, "?<startEnd>");

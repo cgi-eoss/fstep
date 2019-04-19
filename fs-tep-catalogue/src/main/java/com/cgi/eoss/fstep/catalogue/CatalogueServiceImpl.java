@@ -6,7 +6,9 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,6 +17,7 @@ import org.geojson.GeoJsonObject;
 import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
+import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,6 +32,7 @@ import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepFilesCumulativeUsageRecord;
 import com.cgi.eoss.fstep.model.Quota;
 import com.cgi.eoss.fstep.model.UsageType;
+import com.cgi.eoss.fstep.model.FstepFilesRelation;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
@@ -39,6 +43,7 @@ import com.cgi.eoss.fstep.persistence.service.DataSourceDataService;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFilesCumulativeUsageRecordDataService;
+import com.cgi.eoss.fstep.persistence.service.FstepFilesRelationDataService;
 import com.cgi.eoss.fstep.persistence.service.QuotaDataService;
 import com.cgi.eoss.fstep.persistence.service.UserDataService;
 import com.cgi.eoss.fstep.rpc.FileStream;
@@ -58,7 +63,6 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.log4j.Log4j2;
-import okhttp3.HttpUrl;
 @Component
 @GRpcService
 @Log4j2
@@ -75,9 +79,10 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     private final UserDataService userDataService;
     private final FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService;
     private final QuotaDataService quotaDataService;
+    private final FstepFilesRelationDataService fstepFilesRelationDataService;
     
     @Autowired
-    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService, FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService, QuotaDataService quotaDataService) {
+    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService, FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService, QuotaDataService quotaDataService, FstepFilesRelationDataService fstepFilesRelationDataService) {
         this.fstepFileDataService = fstepFileDataService;
         this.collectionDataService = collectionDataService;
         this.dataSourceDataService = dataSourceDataService;
@@ -89,6 +94,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
         this.userDataService = userDataService;
         this.fstepFilesCumulativeUsageRecordDataService = fstepFilesCumulativeUsageRecordDataService;
         this.quotaDataService = quotaDataService;
+        this.fstepFilesRelationDataService = fstepFilesRelationDataService;
     }
 
     @Override
@@ -148,10 +154,11 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                 path);
         fstepFile.setDataSource(dataSourceDataService.getForService(outputProductMetadata.getService()));
         fstepFile.setCollection(collectionDataService.getByIdentifier(collection));
-        fstepFile = fstepFileDataService.save(fstepFile);
+        fstepFile = fstepFileDataService.syncGeoserverLayersAndSave(fstepFile);
         fstepFilesCumulativeUsageRecordDataService.updateUsageRecordsOnCreate(fstepFile);
         return fstepFile;
     }
+    
 
     private void ensureOutputCollectionExists(String collectionIdentifier) {
         Collection collection = collectionDataService.getByIdentifier(collectionIdentifier);
@@ -212,17 +219,18 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     }
 
     @Override
-    public HttpUrl getWmsUrl(FstepFile.Type type, URI uri) {
-        switch (type) {
+    public Set<Link> getOGCLinks(FstepFile fstepFile) {
+    	Set<Link> links = new HashSet<>();
+        switch (fstepFile.getType()) {
             case OUTPUT_PRODUCT:
-                // TODO Use the CatalogueUri pattern to determine file attributes
-                String[] pathComponents = uri.getPath().split("/");
-                String jobId = pathComponents[1];
-                String filename = pathComponents[pathComponents.length-1];
-                return outputProductService.getWmsUrl(jobId, filename);
-            default:
-                return null;
+            	links.addAll(outputProductService.getOGCLinks(fstepFileDataService.refreshFull(fstepFile)));
+            	for (FstepFilesRelation relation: fstepFilesRelationDataService.findByTargetFileAndType(fstepFile, FstepFilesRelation.Type.VISUALIZATION_OF)) {
+            		links.addAll(getOGCLinks(relation.getSourceFile()));
+            	}
+            	break;
+            default: break;
         }
+        return links;
     }
 
     @Override

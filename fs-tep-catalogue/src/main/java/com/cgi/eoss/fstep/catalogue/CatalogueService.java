@@ -1,20 +1,22 @@
 package com.cgi.eoss.fstep.catalogue;
 
-import com.cgi.eoss.fstep.model.Collection;
-import com.cgi.eoss.fstep.model.FstepFile;
-import com.cgi.eoss.fstep.model.User;
-import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
-import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
-import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
-import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
-import okhttp3.HttpUrl;
-import org.geojson.GeoJsonObject;
-import org.springframework.core.io.Resource;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Set;
+
+import org.geojson.GeoJsonObject;
+import org.springframework.core.io.Resource;
+import org.springframework.hateoas.Link;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.cgi.eoss.fstep.model.Collection;
+import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
+import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
+import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
+import com.cgi.eoss.fstep.model.internal.ReferenceDataMetadata;
 
 /**
  * <p>Centralised access to the FS-TEP catalogues of reference data, output products, and external product
@@ -85,13 +87,12 @@ public interface CatalogueService {
     void delete(FstepFile file) throws IOException;
 
     /**
-     * <p>Generate an appropriate WMS URL for the given file.</p>
+     * <p>Generate appropriate OGC links for the given file.</p>
      *
-     * @param type
-     * @param uri
+     * @param fstepFile
      * @return
      */
-    HttpUrl getWmsUrl(FstepFile.Type type, URI uri);
+    Set<Link> getOGCLinks(FstepFile fstepFile);
 
     /**
      * <p>Determine whether the given user has read access to the object represented by the given URI ({@link

@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.Map;
-import okhttp3.HttpUrl;
+import java.util.Set;
+
+import org.springframework.hateoas.Link;
 
 public interface OutputProductService extends FstepFileService {
     
@@ -23,7 +25,7 @@ public interface OutputProductService extends FstepFileService {
 
     Path provision(String jobId, String filename) throws IOException;
 
-    HttpUrl getWmsUrl(String jobId, String filename);
+    Set<Link> getOGCLinks(FstepFile fstepFile);
 
 
 }

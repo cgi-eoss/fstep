@@ -22,10 +22,12 @@ import com.querydsl.core.types.Predicate;
 public class JpaFstepFileDataService extends AbstractJpaDataService<FstepFile> implements FstepFileDataService {
 
     private final FstepFileDao dao;
+	private GeoserverLayerDataService geoserverLayerDataService;
 
     @Autowired
-    public JpaFstepFileDataService(FstepFileDao fstepFileDao) {
+    public JpaFstepFileDataService(FstepFileDao fstepFileDao, GeoserverLayerDataService geoserverLayerDataService) {
         this.dao = fstepFileDao;
+        this.geoserverLayerDataService = geoserverLayerDataService;
     }
 
     @Override
@@ -72,6 +74,12 @@ public class JpaFstepFileDataService extends AbstractJpaDataService<FstepFile> i
     	return 0L;
     }
 
+    @Override
+    @Transactional
+    public FstepFile syncGeoserverLayersAndSave(FstepFile osirisFile) {
+        geoserverLayerDataService.syncGeoserverLayers(osirisFile);
+        return this.save(osirisFile);
+    }
     
     @Override
     @Transactional

@@ -20,4 +20,6 @@ public interface FstepFileDataService extends
     List<FstepFile> getByType(FstepFile.Type type);
 
 	Long sumFilesizeByOwner(User user);
+	
+	public FstepFile syncGeoserverLayersAndSave(FstepFile fstepFile);
 }

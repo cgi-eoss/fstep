@@ -7,49 +7,62 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.geojson.Feature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import com.cgi.eoss.fstep.catalogue.CatalogueUri;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
+import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerType;
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoserverService;
 import com.cgi.eoss.fstep.catalogue.resto.RestoService;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
 import com.cgi.eoss.fstep.catalogue.util.GeometryException;
 import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.GeoserverLayer;
 import com.cgi.eoss.fstep.model.User;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.Hashing;
 import com.google.common.io.MoreFiles;
 
 import lombok.extern.log4j.Log4j2;
-import okhttp3.HttpUrl;
 
 @Component
 @Log4j2
 public class FilesystemOutputProductService implements OutputProductService {
+	private static final String DEFAULT_OUTPUTS_GEOSERVER_WORKSPACE = "fs-outputs";
+	
     private final Path outputProductBasedir;
     private final RestoService resto;
     private final GeoserverService geoserver;
-    private final ObjectMapper jsonMapper;
-
+	private boolean useGeoServerDefaultIngestions;
+    
     @Autowired
-    public FilesystemOutputProductService(@Qualifier("outputProductBasedir") Path outputProductBasedir, RestoService resto, GeoserverService geoserver, ObjectMapper jsonMapper) {
+    public FilesystemOutputProductService(@Qualifier("outputProductBasedir") Path outputProductBasedir, RestoService resto, GeoserverService geoserver, @Value("${fstep.outputs.useGeoserverDefaultIngestion:true}") boolean useGeoServerDefaultIngestions) {
         this.outputProductBasedir = outputProductBasedir;
         this.resto = resto;
         this.geoserver = geoserver;
-        this.jsonMapper = jsonMapper;
+        this.useGeoServerDefaultIngestions = useGeoServerDefaultIngestions;
     }
 
     @Override
@@ -61,7 +74,7 @@ public class FilesystemOutputProductService implements OutputProductService {
     public FstepFile ingest(String collection, User owner, String jobId, String crs, String geometry, OffsetDateTime startDateTime, OffsetDateTime endDateTime, Map<String, Object> properties, Path src) throws IOException {
         Path dest = outputProductBasedir.resolve(jobId).resolve(src);
         if (!src.equals(dest)) {
-            if (Files.exists(dest)) {
+            if (dest.toFile().exists()) {
                 LOG.warn("Found already-existing output product, overwriting: {}", dest);
             }
 
@@ -69,25 +82,6 @@ public class FilesystemOutputProductService implements OutputProductService {
             Files.move(src, dest, StandardCopyOption.REPLACE_EXISTING);
         }
         LOG.info("Ingesting output at {}", dest);
-
-        if (geoserver.isIngestibleFile(dest.getFileName().toString())) {
-            //TODO link geoserver URL to catalogue
-            if (properties.containsKey("geoServerSpec")) {
-                GeoServerSpec geoServerSpec = (GeoServerSpec) properties.get("geoServerSpec");
-                try {
-                    geoserver.ingest(dest, geoServerSpec);
-                } catch (Exception e) {
-                    LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
-                }
-            }
-            else {
-                try {
-                    geoserver.ingest(jobId, dest, crs);
-                } catch (Exception e) {
-                    LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
-                }
-            }
-        }
  
         Path relativePath= outputProductBasedir.resolve(jobId).relativize(src);
         
@@ -110,10 +104,49 @@ public class FilesystemOutputProductService implements OutputProductService {
         properties.put("resourceSize", Files.size(dest));
         properties.put("filename", relativePath.toFile().getName());
         properties.put("resourceChecksum", "sha256=" + MoreFiles.asByteSource(dest).hash(Hashing.sha256()));
-        // TODO Add extra properties if needed
-        properties.put("extraParams", jsonMapper.writeValueAsString(ImmutableMap.of()));
+        Map<String, Object> extraProperties;
+        if ((properties.get("extraParams") == null)) {
+            // TODO Add local extra properties if needed
+            extraProperties = ImmutableMap.of();
 
-        Feature feature = new Feature();
+        } else {
+            Map<String, Object> existingExtraProperties = (Map<String, Object>) properties.get("extraParams");
+            extraProperties = new HashMap<>();
+            extraProperties.putAll(existingExtraProperties);
+        }
+        properties.put("extraParams", extraProperties);
+
+        Feature feature = buildRestoFeature(jobId, geometry, properties, relativePath);
+
+        UUID restoId = ingestIntoResto(collection, uri, feature);
+        
+        GeoServerSpec geoServerSpec = null;
+        if (properties.containsKey("geoServerSpec")) {
+            geoServerSpec = (GeoServerSpec) properties.get("geoServerSpec");
+        }
+
+        else if (useGeoServerDefaultIngestions){
+        	geoServerSpec = getDefaultGeoServerSpec(dest, crs);
+        }
+       
+    	FstepFile fstepFile = new FstepFile(uri, restoId);
+        fstepFile.setOwner(owner);
+        fstepFile.setFilesize(filesize);
+        fstepFile.setType(FstepFile.Type.OUTPUT_PRODUCT);
+        fstepFile.setFilename(outputProductBasedir.relativize(dest).toString());
+        if (geoServerSpec != null) {
+        	GeoserverLayer geoserverLayer = ingestIntoGeoserver(owner, dest, restoId, geoServerSpec);
+        	if (geoserverLayer != null) {
+            	fstepFile.getGeoserverLayers().add(geoserverLayer);
+            }
+        }
+       
+        return fstepFile;
+    }
+
+	private Feature buildRestoFeature(String jobId, String geometry, Map<String, Object> properties,
+			Path relativePath) {
+		Feature feature = new Feature();
         feature.setId(jobId + "_" + relativePath.toString().replaceAll(File.pathSeparator, "_"));
         if (Strings.isNullOrEmpty(geometry)) {
         	feature.setGeometry(GeoUtil.defaultGeometry());
@@ -127,8 +160,28 @@ public class FilesystemOutputProductService implements OutputProductService {
         	}
         }
         feature.setProperties(properties);
+		return feature;
+	}
 
-        UUID restoId;
+	
+	private GeoServerSpec getDefaultGeoServerSpec(Path dest, String crs) {
+		if (StringUtils.startsWithIgnoreCase(MoreFiles.getFileExtension(dest), "TIF")){
+			Path relativePath = outputProductBasedir.relativize(dest);
+			Path relativePathWithoutExtension = relativePath.getParent().resolve(MoreFiles.getNameWithoutExtension(dest.getFileName()));
+			String coverageName = relativePathWithoutExtension.toString().replace("/", "_");
+			return GeoServerSpec.builder()
+			.geoserverType(GeoServerType.SINGLE_COVERAGE)
+			.workspace(DEFAULT_OUTPUTS_GEOSERVER_WORKSPACE)
+			.datastoreName(coverageName)
+			.coverageName(coverageName)
+			.crs(crs)
+			.build();
+		}
+		return null;
+	}
+
+	private UUID ingestIntoResto(String collection, URI uri, Feature feature) {
+		UUID restoId;
         try {
             restoId = resto.ingestOutputProduct(collection, feature);
             LOG.info("Ingested output product with Resto id {} and URI {}", restoId, uri);
@@ -137,19 +190,25 @@ public class FilesystemOutputProductService implements OutputProductService {
             // TODO Add GeoJSON to FstepFile model
             restoId = UUID.randomUUID();
         }
-
-        FstepFile fstepFile = new FstepFile(uri, restoId);
-        fstepFile.setOwner(owner);
-        fstepFile.setFilesize(filesize);
-        fstepFile.setType(FstepFile.Type.OUTPUT_PRODUCT);
-        fstepFile.setFilename(outputProductBasedir.relativize(dest).toString());
-        return fstepFile;
-    }
+		return restoId;
+	}
+	
+	private GeoserverLayer ingestIntoGeoserver(User owner, Path dest, UUID restoId, GeoServerSpec geoServerSpec) {
+		try {
+			GeoserverLayer geoserverLayer = geoserver.ingest(dest, geoServerSpec, restoId);
+			geoserverLayer.setOwner(owner);
+			return geoserverLayer;
+		}
+		catch (Exception e) {
+            LOG.error("Failed to ingest output product to GeoServer, continuing...", e);
+            return null;
+        }
+	}
 
     @Override
     public Path provision(String jobId, String filename) throws IOException {
         Path outputPath = outputProductBasedir.resolve(jobId).resolve(filename);
-        if (Files.exists(outputPath)) {
+        if (outputPath.toFile().exists()) {
             LOG.warn("Found already-existing output product, may be overwritten: {}", outputPath);
         }
         Files.createDirectories(outputPath.getParent());
@@ -157,16 +216,52 @@ public class FilesystemOutputProductService implements OutputProductService {
     }
 
     @Override
-    public HttpUrl getWmsUrl(String jobId, String filename) {
-        return geoserver.isIngestibleFile(filename)
-                ? geoserver.getExternalUrl().newBuilder()
-                .addPathSegment(jobId)
-                .addPathSegment("wms")
-                .addQueryParameter("service", "WMS")
-                .addQueryParameter("version", "1.3.0")
-                .addQueryParameter("layers", jobId + ":" + MoreFiles.getNameWithoutExtension(Paths.get(filename)))
-                .build()
-                : null;
+    public Set<Link> getOGCLinks(FstepFile fstepFile) {
+        Set<Link> links = new HashSet<>();
+        for (GeoserverLayer geoserverLayer : fstepFile.getGeoserverLayers()) {
+            switch (geoserverLayer.getStoreType()) {
+                case MOSAIC:
+                    links.add(new Link(getWMSLinkToFileInMosaic(fstepFile, geoserverLayer), "wms"));
+                    break;
+                case GEOTIFF:
+                    links.add(new Link(getWMSLinkToLayer(geoserverLayer), "wms"));
+                    break;
+                case POSTGIS:
+                    links.add(new Link(getWMSLinkToLayer(geoserverLayer), "wms"));
+                    links.add(new Link(getWFSLinkToLayer(fstepFile, geoserverLayer), "wfs"));
+                    break;
+            }
+        }
+        return links;
+    }
+
+    private String getWMSLinkToFileInMosaic(FstepFile fstepFile, GeoserverLayer geoserverLayer) {
+        OffsetDateTime start = OffsetDateTime.of(LocalDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT), ZoneOffset.UTC);
+        OffsetDateTime end = start.plusYears(140);
+        
+        return geoserver.getExternalUrl().newBuilder().addPathSegment(geoserverLayer.getWorkspace()).addPathSegment("wms")
+                        .addQueryParameter("service", "WMS").addQueryParameter("version", "1.1.0")
+                        .addQueryParameter("layers", geoserverLayer.getWorkspace() + ":" + geoserverLayer.getLayer())
+                        .addQueryParameter("time", DateTimeFormatter.ISO_INSTANT.format(start) + "/" + DateTimeFormatter.ISO_INSTANT.format(end))
+                        .addQueryParameter("cql_filter", "(location LIKE '%" + fstepFile.getFilename() + "%')")
+                        .build().toString();
+    }
+
+    private String getWMSLinkToLayer(GeoserverLayer geoserverLayer) {
+        return geoserver.getExternalUrl().newBuilder().addPathSegment(geoserverLayer.getWorkspace()).addPathSegment("wms")
+                        .addQueryParameter("service", "WMS").addQueryParameter("version", "1.1.0")
+                        .addQueryParameter("layers", geoserverLayer.getWorkspace() + ":" + geoserverLayer.getLayer())
+                        .build().toString();
+        
+        
+    }
+
+    private String getWFSLinkToLayer(FstepFile fstepFile, GeoserverLayer geoserverLayer) {
+        return geoserver.getExternalUrl().newBuilder().addPathSegment(geoserverLayer.getWorkspace()).addPathSegment("wfs")
+                        .addQueryParameter("service", "WFS").addQueryParameter("version", "1.0.0")
+                        .addQueryParameter("typeName", geoserverLayer.getWorkspace() + ":" + geoserverLayer.getLayer())                        
+                        .addQueryParameter("cql_filter", "(fstep_id  = '" + fstepFile.getRestoId() + "')")
+                        .build().toString();
     }
 
     @Override
@@ -185,13 +280,31 @@ public class FilesystemOutputProductService implements OutputProductService {
         	collection = file.getCollection().getIdentifier();
         }
         resto.deleteOutputProduct(collection, file.getRestoId());
-        //TODO Change what follows based on the new geoserver features
-        // Workspace = jobId = first part of the relative filename
-        String workspace = relativePath.getName(0).toString();
-        // Layer name = filename without extension
-        String layerName = MoreFiles.getNameWithoutExtension(relativePath.getFileName());
-        geoserver.delete(workspace, layerName);
+        for (GeoserverLayer geoserverLayer: file.getGeoserverLayers()) {
+            cleanUpGeoserverLayer(file, geoserverLayer);
+        }
     }
+    
+    private void cleanUpGeoserverLayer(FstepFile file, GeoserverLayer geoserverLayer) {
+        switch (geoserverLayer.getStoreType()) {
+            case GEOTIFF: 
+			deleteGeoTiffFromGeoserver(geoserverLayer);
+                break;
+            case MOSAIC: 
+                geoserver.deleteGranuleFromMosaic(geoserverLayer.getWorkspace(), geoserverLayer.getStore(), geoserverLayer.getLayer(), file.getFilename());
+                break;            
+            case POSTGIS:
+                //Simply delete the layer - update of Postgis table is not supported in geoserver
+                geoserver.deleteLayer(geoserverLayer.getWorkspace(), geoserverLayer.getLayer());
+                break;
+            default: return;
+        }
+    }
+
+	private void deleteGeoTiffFromGeoserver(GeoserverLayer geoserverLayer) {
+		geoserver.unpublishCoverage(geoserverLayer.getWorkspace(), geoserverLayer.getStore(), geoserverLayer.getLayer());
+		geoserver.deleteCoverageStore(geoserverLayer.getWorkspace(), geoserverLayer.getStore());
+	}
 
     @Override
     public void createCollection(Collection collection) throws IOException{

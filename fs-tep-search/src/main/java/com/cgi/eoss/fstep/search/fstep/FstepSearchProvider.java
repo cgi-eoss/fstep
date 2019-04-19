@@ -11,8 +11,14 @@ import com.cgi.eoss.fstep.search.api.SearchResults;
 import com.cgi.eoss.fstep.search.resto.RestoResult;
 import com.cgi.eoss.fstep.search.resto.RestoSearchProvider;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Multimaps;
+
 import lombok.extern.log4j.Log4j2;
 import okhttp3.Credentials;
 import okhttp3.HttpUrl;
@@ -43,6 +49,8 @@ public class FstepSearchProvider extends RestoSearchProvider {
     private final FstepFileDataService fstepFileDataService;
     private final FstepSecurityService securityService;
     private final CollectionDataService collectionDataService;
+    private final ObjectMapper unwrappedArrayObjectMapper;
+    
     public FstepSearchProvider(int priority, FstepSearchProperties searchProperties, OkHttpClient httpClient, ObjectMapper objectMapper, CatalogueService catalogueService, RestoService restoService, FstepFileDataService fstepFileDataService, FstepSecurityService securityService, CollectionDataService collectionDataService) {
         super(searchProperties.getBaseUrl(),
                 httpClient.newBuilder()
@@ -61,6 +69,8 @@ public class FstepSearchProvider extends RestoSearchProvider {
         this.fstepFileDataService = fstepFileDataService;
         this.securityService = securityService;
         this.collectionDataService = collectionDataService;
+        unwrappedArrayObjectMapper = new ObjectMapper();
+        unwrappedArrayObjectMapper.enable(SerializationFeature.WRITE_SINGLE_ELEM_ARRAYS_UNWRAPPED);
     }
 
     @Override
@@ -157,11 +167,11 @@ public class FstepSearchProvider extends RestoSearchProvider {
                         parameters.getRequestUrl().queryParameterNames().forEach(downloadUrlBuilder::removeAllQueryParameters);
                         downloadUrlBuilder.addPathSegment("dl").addPathSegment("fstep").addPathSegment(String.valueOf(fstepFile.getId()));
                         featureLinks.add(new Link(downloadUrlBuilder.build().toString(), "download"));
-
-                        HttpUrl wmsLink = catalogueService.getWmsUrl(fstepFile.getType(), fstepFile.getUri());
-                        if (wmsLink != null) {
-                            featureLinks.add(new Link(wmsLink.toString(), "wms"));
+                        Set<Link> ogcLinks = catalogueService.getOGCLinks(fstepFile);
+                        if (ogcLinks != null) {
+                            featureLinks.addAll(ogcLinks);
                         }
+                        
                     }
                 } else {
                     LOG.debug("No FstepFile found for search result with ID: {}", f.getId());
@@ -183,11 +193,14 @@ public class FstepSearchProvider extends RestoSearchProvider {
             
             f.getProperties().put("extraParams", extraParams);
 
-            // FS-TEP links are "_links", resto links are "links"
-            f.setProperty("_links", featureLinks.stream().collect(Collectors.toMap(
-                    Link::getRel,
-                    l -> ImmutableMap.of("href", l.getHref())
-            )));
+            ImmutableListMultimap<String, Link> relToLinkMultimap = Multimaps.index(featureLinks, Link::getRel);
+            ListMultimap<String, Map<String, String>> relToHrefsMultimap = Multimaps.transformValues(relToLinkMultimap, l -> ImmutableMap.of("href", l.getHref()));
+            try {
+                // FS-TEP links are "_links", resto links are "links"
+                f.setProperty("_links", new RawJsonString(unwrappedArrayObjectMapper.writeValueAsString(relToHrefsMultimap.asMap())));
+            } catch (JsonProcessingException e) {
+                LOG.debug("Could not convert feature links to JSON: {}", f.getId(), e);
+            }
         });
         return results;
     }

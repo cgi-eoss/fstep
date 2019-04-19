@@ -1,0 +1,12 @@
+<coverage>
+  <enabled>true</enabled>
+  <metadata>
+   <entry key="time">
+    <dimensionInfo>
+        <enabled>true</enabled>
+        <presentation>LIST</presentation>
+        <units>ISO8601</units>
+    </dimensionInfo>
+   </entry>
+  </metadata>
+</coverage>
