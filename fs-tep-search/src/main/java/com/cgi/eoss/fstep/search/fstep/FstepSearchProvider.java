@@ -81,6 +81,7 @@ public class FstepSearchProvider extends RestoSearchProvider {
         parameters.getValue("jobDateEnd").ifPresent(s -> queryParameters.put("jobEndDate", s));
         parameters.getValue("publicationDateStart").ifPresent(s -> queryParameters.put("publishedAfter", s));
         parameters.getValue("publicationDateEnd").ifPresent(s -> queryParameters.put("publishedBefore", s));
+        parameters.getValue("fstepparam").ifPresent(s -> queryParameters.put("fstepparam", s));
         return queryParameters;
     }
 

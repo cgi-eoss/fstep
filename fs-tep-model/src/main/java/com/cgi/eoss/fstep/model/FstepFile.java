@@ -3,10 +3,13 @@ package com.cgi.eoss.fstep.model;
 import com.cgi.eoss.fstep.model.converters.UriStringConverter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.ComparisonChain;
+import com.google.common.collect.Sets;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Convert;
 import javax.persistence.Entity;
@@ -18,10 +21,13 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 import java.net.URI;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -29,7 +35,7 @@ import java.util.UUID;
  * external files. These objects may be included in databaskets.</p>
  */
 @Data
-@EqualsAndHashCode(exclude = {"id"})
+@EqualsAndHashCode(exclude = {"id", "geoserverLayers"})
 @Table(name = "fstep_files",
         indexes = {
                 @Index(name = "fstep_files_uri_idx", columnList = "uri"),
@@ -106,6 +112,16 @@ public class FstepFile implements FstepEntityWithOwner<FstepFile> {
     @JsonIgnore
     private Collection collection;
 
+    /**
+     * <p>Geoserver layers this file is associated to</p>
+     */
+    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(name = "fstep_geoserver_layer_files",
+            joinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "geoserver_layer_id", referencedColumnName = "id"),
+            uniqueConstraints = @UniqueConstraint(name = "fstep_geoserver_layer_files_layer_file_idx", columnNames = {"geoserver_layer_id", "file_id"}))
+    private Set<GeoserverLayer> geoserverLayers = Sets.newHashSet();
+    
     /**
      * <p>Construct a new FstepFile instance with the minimum mandatory (and unique) parameters.</p>
      *

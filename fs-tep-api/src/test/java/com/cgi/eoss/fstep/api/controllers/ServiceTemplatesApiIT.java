@@ -184,7 +184,7 @@ public class ServiceTemplatesApiIT {
     public void testCreateServiceFromTemplate() throws Exception {
     	FstepServiceTemplate serviceTemplate = new FstepServiceTemplate("service-template-1", fstepExpertUser);
     	FstepServiceDescriptor serviceDescriptor = new FstepServiceDescriptor();
-    	serviceDescriptor.setDataInputs(Collections.singletonList(new FstepServiceDescriptor.Parameter("templateInput", "The template input", "Dec", 1, 1, DataNodeType.LITERAL, null, null, null)));
+    	serviceDescriptor.setDataInputs(Collections.singletonList(new FstepServiceDescriptor.Parameter("templateInput", "The template input", "Dec", 1, 1, DataNodeType.LITERAL, null, null, null, null, null)));
     	serviceDescriptor.setDataOutputs(Collections.emptyList());
     	serviceTemplate.setServiceDescriptor(serviceDescriptor);
         dataService.save(serviceTemplate);

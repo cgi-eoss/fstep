@@ -78,6 +78,7 @@ import com.cgi.eoss.fstep.orchestrator.service.JobValidator;
 import com.cgi.eoss.fstep.orchestrator.service.QueueScheduler;
 import com.cgi.eoss.fstep.orchestrator.service.ReverseProxyEntry;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
+import com.cgi.eoss.fstep.persistence.service.FstepFilesRelationDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
 import com.cgi.eoss.fstep.persistence.service.PersistentFolderDataService;
@@ -154,6 +155,9 @@ public class FstepServicesClientIT {
     
     @Mock
     private PersistentFolderDataService persistentFolderDataService;
+    
+    @Mock
+    private FstepFilesRelationDataService filesRelationDataService;
     
     private Path workspace;
     private Path ingestedOutputsDir;
@@ -264,7 +268,7 @@ public class FstepServicesClientIT {
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         when(workerFactory.getWorkerById(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         FstepJobUpdatesManager updatesManager = new FstepJobUpdatesManager(jobDataService, dynamicProxyService, guiService, workerFactory, 
-        		catalogueService, securityService, jobProcessingDataService, costingService, walletTransactionDataService);
+        		catalogueService, securityService, jobProcessingDataService, costingService, walletTransactionDataService, filesRelationDataService);
         String workerId = "local1";
         JobValidator jobValidator = new JobValidator(costingService, catalogueService);
         FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, jobProcessingDataService, databasketDataService, guiService, 

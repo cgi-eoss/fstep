@@ -23,6 +23,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,18 +53,23 @@ import com.cgi.eoss.fstep.logging.Logging;
 import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.CostQuotation.Recurrence;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.FstepFilesRelation;
+import com.cgi.eoss.fstep.model.FstepFilesRelation.Type;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Parameter;
+import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Relation;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.JobStep;
-import com.cgi.eoss.fstep.model.WalletTransaction.Type;
+import com.cgi.eoss.fstep.model.WalletTransaction;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata.OutputFileMetadataBuilder;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata.OutputProductMetadataBuilder;
+import com.cgi.eoss.fstep.model.internal.ParameterRelationTypeToFileRelationTypeUtil;
 import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
+import com.cgi.eoss.fstep.persistence.service.FstepFilesRelationDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
 import com.cgi.eoss.fstep.persistence.service.WalletTransactionDataService;
@@ -106,6 +112,7 @@ public class FstepJobUpdatesManager {
     private final JobProcessingDataService jobProcessingDataService;
     private final CostingService costingService;
     private final WalletTransactionDataService walletTransactionDataService;
+    private final FstepFilesRelationDataService fileRelationDataService;
 	private final PlatformParameterExtractor platformParameterExtractor;
 	 @Autowired
 	    public FstepJobUpdatesManager(JobDataService jobDataService, 
@@ -116,7 +123,8 @@ public class FstepJobUpdatesManager {
 	    		FstepSecurityService securityService,
 	    		JobProcessingDataService jobProcessingDataService,
 	    		CostingService costingService, 
-	    		WalletTransactionDataService walletTransactionDataService) {
+	    		WalletTransactionDataService walletTransactionDataService,
+	    		FstepFilesRelationDataService fileRelationDataService) {
 	        this.jobDataService = jobDataService;
 	        this.dynamicProxyService = dynamicProxyService;
 	        this.guiService = guiService;
@@ -126,6 +134,7 @@ public class FstepJobUpdatesManager {
 	        this.jobProcessingDataService = jobProcessingDataService;
 	        this.costingService = costingService;
 	        this.walletTransactionDataService = walletTransactionDataService;
+	        this.fileRelationDataService = fileRelationDataService;
 	        this.platformParameterExtractor = new PlatformParameterExtractor();
 	    }
 
@@ -295,7 +304,7 @@ public class FstepJobUpdatesManager {
 	    		return;
 	    	}
 			//check how many coins have been charged for this job processing
-	    	int amountCharged = walletTransactionDataService.findByTypeAndAssociatedId(Type.JOB_PROCESSING, jobProcessing.getId()).stream().mapToInt(t -> t.getBalanceChange() * -1).sum();
+	    	int amountCharged = walletTransactionDataService.findByTypeAndAssociatedId(WalletTransaction.Type.JOB_PROCESSING, jobProcessing.getId()).stream().mapToInt(t -> t.getBalanceChange() * -1).sum();
 	    	//check how many coins should be charged for this job processing
 	    	Duration totalRuntime = Duration.between(jobProcessing.getStartProcessingTime(), jobProcessing.getEndProcessingTime());
 	    	long runtimeMinutes = totalRuntime.toMinutes();
@@ -459,54 +468,46 @@ public class FstepJobUpdatesManager {
                     @Override
                     public void onCompleted() {
                         super.onCompleted();
-                        Pair<OffsetDateTime, OffsetDateTime> startEndDateTimes = getStartEndDateTimes(outputId);
+                        Pair<OffsetDateTime, OffsetDateTime> startEndDateTimes = getServiceOutputParameter(job.getConfig().getService(), outputId).map(this::extractStartEndDateTimes)
+                                .orElseGet(() -> new Pair<>(null, null));
                         outputFileMetadata.setStartDateTime(startEndDateTimes.getFirst());
                         outputFileMetadata.setEndDateTime(startEndDateTimes.getSecond());
                         retrievedOutputFiles.add(new RetrievedOutputFile(outputFileMetadata, getOutputPath()));
                     }
 
-					private Pair<OffsetDateTime, OffsetDateTime> getStartEndDateTimes(String outputId) {
+					private Pair<OffsetDateTime, OffsetDateTime> extractStartEndDateTimes(Parameter outputParameter) {
 						try {
-	                        //Retrieve the parameter 
-	                        Optional<Parameter> outputParameter = getServiceOutputParameter(outputId);
-	                        if (outputParameter.isPresent()) {
-		                        String regexp = outputParameter.get().getTimeRegexp();
-		                        if (regexp != null) {
-		                        	Pattern p = Pattern.compile(regexp);
-		                        	Matcher m = p.matcher(getOutputPath().getFileName().toString());
-		                        	if (m.find()) {
-		                        		if (regexp.contains("?<startEnd>")) {
-		                        			OffsetDateTime startEndDateTime = parseOffsetDateTime(m.group("startEnd"), LocalTime.MIDNIGHT);
-		                        			return new Pair<OffsetDateTime, OffsetDateTime>(startEndDateTime, startEndDateTime);
-		                        		}
-		                        		else {
-		                        			OffsetDateTime start = null, end = null;
-		                        			if (regexp.contains("?<start>")) {
-		                            			start = parseOffsetDateTime(m.group("start"), LocalTime.MIDNIGHT);
-		                            		}
-		                        			
-		                        			if (regexp.contains("?<end>")) {
-		                            			end = parseOffsetDateTime(m.group("end"), LocalTime.MIDNIGHT);
-		                            		}
-		                        			return new Pair<OffsetDateTime, OffsetDateTime>(start, end);
-		                        		}
-		                            }
-		                        }
+                            String regexp = outputParameter.getTimeRegexp();
+	                        if (regexp != null) {
+	                        	Pattern p = Pattern.compile(regexp);
+	                        	Matcher m = p.matcher(getOutputPath().getFileName().toString());
+	                        	if (m.find()) {
+	                        		if (regexp.contains("?<startEnd>")) {
+	                        			OffsetDateTime startEndDateTime = parseOffsetDateTime(m.group("startEnd"), LocalTime.MIDNIGHT);
+	                        			return new Pair<OffsetDateTime, OffsetDateTime>(startEndDateTime, startEndDateTime);
+	                        		}
+	                        		else {
+	                        			OffsetDateTime start = null, end = null;
+	                        			if (regexp.contains("?<start>")) {
+	                            			start = parseOffsetDateTime(m.group("start"), LocalTime.MIDNIGHT);
+	                            		}
+	                        			
+	                        			if (regexp.contains("?<end>")) {
+	                            			end = parseOffsetDateTime(m.group("end"), LocalTime.MIDNIGHT);
+	                            		}
+	                        			return new Pair<OffsetDateTime, OffsetDateTime>(start, end);
+	                        		}
+	                            }
 	                        }
-                        }
-                        catch(RuntimeException e) {
+	                    } catch(RuntimeException e) {
                         	LOG.error("Unable to parse date from regexp");
                         }
 						return new Pair<OffsetDateTime, OffsetDateTime> (null, null);
 					}
-
-					private Optional<Parameter> getServiceOutputParameter(String outputId) {
-						return job.getConfig().getService().getServiceDescriptor().getDataOutputs().stream().filter(p -> p.getId().equals(outputId)).findFirst();
-					}
 					
 					private OffsetDateTime parseOffsetDateTime(String startDateStr, LocalTime defaultTime) {
-						DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd[[ ]['T']HHmm[ss][.SSS][XXX]]");
-						TemporalAccessor temporalAccessor = formatter.parseBest(startDateStr, OffsetDateTime::from, LocalDate::from);
+						DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd[[ ]['T']HHmm[ss][.SSS][XXX][VV]]");
+						TemporalAccessor temporalAccessor = formatter.parseBest(startDateStr, OffsetDateTime::from, LocalDateTime::from, LocalDate::from);
 						if (temporalAccessor instanceof OffsetDateTime) {
 							return (OffsetDateTime) temporalAccessor;
 						} 
@@ -525,9 +526,36 @@ public class FstepJobUpdatesManager {
             }
         }
         postProcessOutputProducts(retrievedOutputFiles).forEach( Unchecked.consumer(retrievedOutputFile -> outputFiles.put(retrievedOutputFile.getOutputFileMetadata().getOutputProductMetadata().getOutputId(), catalogueService.ingestOutputProduct(retrievedOutputFile.getOutputFileMetadata(), retrievedOutputFile.getPath()))));
+        buildOutputFileRelations(outputFiles, job.getConfig().getService());
+        
         return outputFiles;
     }
     
+    private Optional<Parameter> getServiceOutputParameter(FstepService service, String outputId) {
+		return service.getServiceDescriptor().getDataOutputs().stream().filter(p -> p.getId().equals(outputId)).findFirst();
+	}
+    
+
+    private void buildOutputFileRelations(Multimap<String, FstepFile> outputFiles, FstepService service) {
+		if (service.getServiceDescriptor().getDataOutputs() == null) {
+			return;
+		}
+    	for ( Parameter output: service.getServiceDescriptor().getDataOutputs()) {
+			if (output.getParameterRelations() != null){
+				for (Relation parameterRelation: output.getParameterRelations()) {
+					Collection<FstepFile> filesForSourceOutput = outputFiles.get(output.getId());
+					Collection<FstepFile> filesForTargetOutput = outputFiles.get(parameterRelation.getTargetParameterId());
+					for (FstepFile sourceFile: filesForSourceOutput) {
+						for (FstepFile targetFile: filesForTargetOutput) {
+							Type relationType = ParameterRelationTypeToFileRelationTypeUtil.fromParameterRelationType(parameterRelation.getType());
+							FstepFilesRelation relation = new FstepFilesRelation(sourceFile, targetFile, relationType);
+							fileRelationDataService.save(relation);
+						}
+					}
+				}
+			}
+		}
+	}
     
 
     private OutputProductMetadata getOutputMetadata(Job job, Map<String, GeoServerSpec> geoServerSpecs,
@@ -558,12 +586,18 @@ public class FstepJobUpdatesManager {
             properties.put("collection", collectionSpecForOutput);
         }
         
-
+        getServiceOutputParameter(job.getConfig().getService(), outputId).ifPresent(p -> addPlatformMetadata(properties, p));
+        
         OutputProductMetadata outputProduct = outputProductMetadataBuilder.productProperties(properties).build();
         return outputProduct;
     }
 
-        
+    private void addPlatformMetadata(Map<String, Object> properties, Parameter outputParameter) {
+	    if (outputParameter.getPlatformMetadata() != null && outputParameter.getPlatformMetadata().size() > 0 ) {
+	        properties.put("extraParams", outputParameter.getPlatformMetadata());
+        }
+	}
+    
     private List<RetrievedOutputFile> postProcessOutputProducts(List<RetrievedOutputFile> retrievedOutputFiles) throws IOException {
         // Try to read CRS/AOI from all files - note that CRS/AOI may still be null after this
         retrievedOutputFiles.forEach(retrievedOutputFile -> {

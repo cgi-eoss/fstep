@@ -221,6 +221,20 @@ CREATE UNIQUE INDEX fstep_files_resto_id_idx
 CREATE INDEX fstep_files_owner_idx
   ON fstep_files (owner);
 
+CREATE TABLE fstep_files_relations (
+  id         BIGINT IDENTITY PRIMARY KEY,
+  source_file      BIGINT FOREIGN KEY REFERENCES fstep_files (id) ON DELETE CASCADE,
+  target_file      BIGINT FOREIGN KEY REFERENCES fstep_files (id) ON DELETE CASCADE,
+  type       CHARACTER VARYING(255) CHECK (type IN ('VISUALIZATION_OF'))
+);
+CREATE INDEX fstep_files_relations_source_idx
+  ON fstep_files_relations (source_file);
+CREATE INDEX fstep_files_relations_target_idx
+  ON fstep_files_relations (target_file);
+CREATE UNIQUE INDEX fstep_files_source_target_type_idx
+  ON fstep_files_relations (source_file,target_file,type);
+
+
 CREATE TABLE fstep_databaskets (
   id          BIGINT IDENTITY PRIMARY KEY,
   name        CHARACTER VARYING(255) NOT NULL,
@@ -240,6 +254,30 @@ CREATE TABLE fstep_databasket_files (
 );
 CREATE UNIQUE INDEX fstep_databasket_files_basket_file_idx
   ON fstep_databasket_files (databasket_id, file_id);
+
+CREATE TABLE fstep_geoserver_layers (
+  id          BIGINT IDENTITY PRIMARY KEY,
+  workspace        CHARACTER VARYING(255) NOT NULL,
+  layer CHARACTER VARYING(255) NOT NULL,
+  store CHARACTER VARYING(255),
+  store_type  CHARACTER VARYING(255) NOT NULL CHECK (store_type IN('MOSAIC', 'GEOTIFF', 'POSTGIS')),
+  owner       BIGINT NOT NULL FOREIGN KEY REFERENCES fstep_users (uid)
+);
+
+CREATE INDEX fstep_geoserver_layers_owner_idx
+  ON fstep_geoserver_layers (owner);
+CREATE UNIQUE INDEX fstep_geoserver_layers_workspace_datastore_layer_idx
+  ON fstep_geoserver_layers (workspace, layer);
+
+CREATE TABLE fstep_geoserver_layer_files (
+  geoserver_layer_id BIGINT FOREIGN KEY REFERENCES fstep_geoserver_layers (id),
+  file_id       BIGINT FOREIGN KEY REFERENCES fstep_files (id)
+);
+
+CREATE UNIQUE INDEX fstep_geoserver_layer_files_layer_file_idx
+  ON fstep_geoserver_layer_files (geoserver_layer_id, file_id);
+
+
 
 CREATE TABLE fstep_projects (
   id          BIGINT IDENTITY PRIMARY KEY,

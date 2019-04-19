@@ -79,7 +79,27 @@ public class FstepServiceDescriptor {
 
         @Singular
         private List<Map<String, String>> supportedAttrs;
+        
+        @JsonInclude(Include.NON_NULL)
+        private List<Relation> parameterRelations;
+        
+        @JsonInclude(Include.NON_NULL)
+        private Map<String, String> platformMetadata;
 
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Relation {
+    	
+    	public enum RelationType {
+            VISUALIZATION_OF
+        }
+        private String targetParameterId;
+
+        private RelationType type;
     }
 
 }
