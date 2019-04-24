@@ -291,7 +291,7 @@ public class RestoServiceImpl implements RestoService {
                 .licenseId("unlicensed").rights(ImmutableMap.of("download", 0, "visualize", 1));
         builder.model(outputProductModel)
         .osDescription(ImmutableMap.of("en",
-                RestoCollection.OpensearchDescription.builder().shortName(collection.getName())
+        		RestoCollection.OpensearchDescription.builder().shortName(collection.getName().substring(0, 16))
                         .longName(collection.getOwner().getName()+" - " + collection.getName()).description(collection.getDescription())
                         .tags("fstep fs-tep output outputs generated " + collection.getName()).query(collection.getName()).build()))
         .propertiesMapping(ImmutableMap.of("fstepFileType", FstepFile.Type.OUTPUT_PRODUCT.toString()));
