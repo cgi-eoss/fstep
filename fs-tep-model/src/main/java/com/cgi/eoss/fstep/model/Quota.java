@@ -14,6 +14,7 @@ import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.google.common.collect.ComparisonChain;
 
 import lombok.Data;
@@ -49,6 +50,7 @@ public class Quota implements FstepEntityWithOwner<Quota> {
      */
     @Column(name = "usage_type", nullable = false)
     @Enumerated(EnumType.STRING)
+    @JsonFormat(shape=JsonFormat.Shape.STRING)
     private UsageType usageType;
     
     /**

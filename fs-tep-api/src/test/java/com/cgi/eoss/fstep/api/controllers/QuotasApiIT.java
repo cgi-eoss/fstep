@@ -1,13 +1,10 @@
 package com.cgi.eoss.fstep.api.controllers;
 
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.Arrays;
 
 import org.junit.After;
 import org.junit.Before;
@@ -84,12 +81,7 @@ public class QuotasApiIT {
         dataService.deleteAll();
     }
 
-    @Test
-    public void testGetUsageTypes() throws Exception {
-       mockMvc.perform(get("/api/quotas/usageTypes").header("REMOTE_USER", fstepUser1.getName()))
-        		.andExpect(status().isOk()).andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$").value(contains(Arrays.stream(UsageType.values()).map(e -> e.toString()).toArray())));
-    }
-    
+   
     @Test
     public void testGetUserDefaultValue() throws Exception {
     	mockMvc.perform(get("/api/quotas/value").param("usageType", "MAX_RUNNABLE_JOBS").header("REMOTE_USER", fstepUser1.getName()))

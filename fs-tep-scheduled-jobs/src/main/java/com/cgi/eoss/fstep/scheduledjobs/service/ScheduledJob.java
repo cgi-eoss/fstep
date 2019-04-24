@@ -14,11 +14,10 @@ public abstract class ScheduledJob extends QuartzJobBean{
 
     
     @Override
-    protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
+    protected final void executeInternal(JobExecutionContext context) throws JobExecutionException {
     	LOG.debug("Scheduled job execution");
         JobDataMap jobDataMap = context.getJobDetail().getJobDataMap();
-        jobDataMap.getWrappedMap();
-        executeJob(jobDataMap.getWrappedMap());
+        executeJob(jobDataMap);
     }
     
     public abstract void executeJob(Map<String, Object> jobContext);

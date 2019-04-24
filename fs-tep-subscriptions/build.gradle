@@ -1,0 +1,22 @@
+group 'com.cgi.eoss.fs-tep'
+version '1.2.12-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'jacoco'
+
+dependencies {
+    compileOnly 'org.projectlombok:lombok'
+
+	compile project(':fs-tep-costing')
+    compile project(':fs-tep-model')
+    compile project(':fs-tep-persistence')
+    compile project(':fs-tep-quotas')
+    compile project(':fs-tep-scheduled-jobs')
+    
+
+    testCompile 'junit:junit'
+    testCompile 'org.hamcrest:hamcrest-junit'
+    testCompile 'org.springframework:spring-test'
+
+    testRuntime 'org.hsqldb:hsqldb'
+}

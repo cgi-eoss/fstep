@@ -1,16 +1,8 @@
 package com.cgi.eoss.fstep.scheduledjobs;
 
 
-import java.util.AbstractMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.stream.Stream;
-
-import javax.sql.DataSource;
-
+import com.cgi.eoss.fstep.persistence.PersistenceConfig;
 import org.quartz.Scheduler;
-import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -21,15 +13,20 @@ import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import com.cgi.eoss.fstep.persistence.PersistenceConfig;
+import java.util.AbstractMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.stream.Stream;
+
+import javax.sql.DataSource;
 
 /**
- * <p>Spring configuration for the FS-TEP Scheduled Jobs component.</p>
+ * <p>Spring configuration for the fstep Scheduled Jobs component.</p>
  */
 @Configuration
 @Import({
-        PropertyPlaceholderAutoConfiguration.class,
-        PersistenceConfig.class
+    PersistenceConfig.class
 })
 @ComponentScan(basePackageClasses = ScheduledJobsConfig.class)
 public class ScheduledJobsConfig {
@@ -38,6 +35,7 @@ public class ScheduledJobsConfig {
     @DependsOn("dataSource")
     public Scheduler scheduler(ApplicationContext applicationContext, DataSource datasource, PlatformTransactionManager transactionManager) throws Exception {
         SchedulerFactoryBean factory = new SchedulerFactoryBean();
+        factory.setTransactionManager(transactionManager);
         factory.setDataSource(datasource);
         Properties quartzProperties = quartzProperties().entrySet().stream()
                         .map(e -> new AbstractMap.SimpleEntry<String, Object>("org.quartz" + "." + e.getKey(), e.getValue()))
@@ -45,16 +43,16 @@ public class ScheduledJobsConfig {
                         .collect(Properties::new,
                                 (properties, entry) -> properties.put(entry.getKey(), entry.getValue()),
                                 (properties, properties2) -> properties2.forEach(properties::put));
-        factory.setTransactionManager(transactionManager);
         AutowiringSpringBeanJobFactory jobFactory = new AutowiringSpringBeanJobFactory();
         jobFactory.setApplicationContext(applicationContext);
         factory.setJobFactory(jobFactory);
         factory.setQuartzProperties(quartzProperties);
         factory.afterPropertiesSet();
-        factory.getScheduler().start();
-        return factory.getObject();
+        Scheduler scheduler = factory.getScheduler();
+        scheduler.start();
+        return scheduler;
     }
-
+    
     private Stream<Map.Entry<String, String>> flattenToQuartzProperties(Map.Entry<String, Object> e) {
         if (e.getValue() instanceof Map) {
             return ((Map<?, ?>) e.getValue()).entrySet().stream()

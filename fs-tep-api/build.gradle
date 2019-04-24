@@ -16,7 +16,8 @@ dependencies {
     compile project(':fs-tep-rpc')
     compile project(':fs-tep-search')
     compile project(':fs-tep-security')
-
+    compile project(':fs-tep-subscriptions')
+    
     compile 'com.fasterxml.jackson.datatype:jackson-datatype-hibernate5'
     compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     compile 'com.squareup.okhttp3:okhttp'

@@ -17,6 +17,7 @@ import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.JobProcessing;
+import com.cgi.eoss.fstep.model.Subscription;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.WalletTransaction;
 import com.cgi.eoss.fstep.model.CostQuotation.Recurrence;
@@ -141,6 +142,12 @@ public class CostingServiceImpl implements CostingService {
     }
     
     @Override
+    public CostQuotation getSubscriptionCost(Subscription subscription) {
+    	CostQuotation costQuotation = subscription.getSubscriptionPlan().getCostQuotation();
+		return new CostQuotation(subscription.getQuantity() * costQuotation.getCost(), costQuotation.getRecurrence());
+    }
+    
+    @Override
     @Transactional
     public void chargeForJobProcessing(Wallet wallet, JobProcessing jobProcessing) {
     	CostQuotation costQuotation = jobProcessing.getJob().getCostQuotation();
@@ -241,5 +248,34 @@ public class CostingServiceImpl implements CostingService {
     private CostingExpression getCostingExpression(FstepFile fstepFile) {
         return Optional.ofNullable(costingDataService.getDownloadCostingExpression(fstepFile)).orElse(defaultDownloadCostingExpression);
     }
+
+	@Override
+	@Transactional
+	public void chargeForSubscription(Wallet wallet, Subscription subscription) {
+		int cost = subscription.getQuantity() * subscription.getSubscriptionPlan().getCostQuotation().getCost();
+        WalletTransaction walletTransaction = WalletTransaction.builder()
+                .wallet(walletDataService.refreshFull(wallet))
+                .balanceChange(-cost)
+                .type(WalletTransaction.Type.SUBSCRIPTION)
+                .associatedId(subscription.getId())
+                .transactionTime(LocalDateTime.now())
+                .build();
+        walletDataService.transact(walletTransaction);
+		
+	}
+
+	@Override
+	@Transactional
+	public void transactForSubscription(Wallet wallet, Subscription subscription, int amount) {
+		WalletTransaction walletTransaction = WalletTransaction.builder()
+                .wallet(walletDataService.refreshFull(wallet))
+                .balanceChange(amount)
+                .type(WalletTransaction.Type.SUBSCRIPTION)
+                .associatedId(subscription.getId())
+                .transactionTime(LocalDateTime.now())
+                .build();
+        walletDataService.transact(walletTransaction);
+		
+	}
 
 }

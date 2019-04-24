@@ -48,12 +48,15 @@ import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.Project;
 import com.cgi.eoss.fstep.model.Quota;
+import com.cgi.eoss.fstep.model.Subscription;
+import com.cgi.eoss.fstep.model.SubscriptionPlan;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.orchestrator.OrchestratorConfig;
 import com.cgi.eoss.fstep.persistence.PersistenceConfig;
 import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
 import com.cgi.eoss.fstep.search.SearchConfig;
 import com.cgi.eoss.fstep.security.SecurityConfig;
+import com.cgi.eoss.fstep.subscriptions.SubscriptionsConfig;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -71,7 +74,8 @@ import com.google.common.collect.ImmutableList;
         OrchestratorConfig.class,
         PersistenceConfig.class,
         SearchConfig.class,
-        SecurityConfig.class
+        SecurityConfig.class,
+        SubscriptionsConfig.class
 })
 @EnableJpaRepositories(basePackageClasses = ApiConfig.class)
 @EnableWebMvc
@@ -123,7 +127,7 @@ public class ApiConfig {
                 config.setBasePath(apiBasePath);
                 config.setDefaultMediaType(MediaTypes.HAL_JSON);
                 // Ensure that the id attribute is returned for all API-mapped types
-                ImmutableList.of(Group.class, JobConfig.class, Job.class, FstepService.class, FstepServiceContextFile.class, FstepServiceTemplate.class, FstepServiceTemplateFile.class, User.class, FstepFile.class, Databasket.class, Project.class, Quota.class)
+                ImmutableList.of(Group.class, JobConfig.class, Job.class, FstepService.class, FstepServiceContextFile.class, FstepServiceTemplate.class, FstepServiceTemplateFile.class, User.class, FstepFile.class, Databasket.class, Project.class, Quota.class, Subscription.class, SubscriptionPlan.class)
                         .forEach(config::exposeIdsFor);
             }
         };
