@@ -42,7 +42,7 @@ public interface CatalogueService {
      * @param filename
      * @return
      */
-    Path provisionNewOutputProduct(OutputProductMetadata outputProduct, String filename) throws IOException;
+    Path provisionNewOutputProduct(OutputProductMetadata outputProduct, String filename, long filesize) throws IOException;
 
     /**
      * <p>Process an already-existing file, to be treated as an {@link FstepFile.Type#OUTPUT_PRODUCT}, to be ingested in the specified collection</p>

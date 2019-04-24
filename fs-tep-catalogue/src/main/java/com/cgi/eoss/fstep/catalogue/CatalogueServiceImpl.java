@@ -5,6 +5,7 @@ import java.net.URI;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,6 +26,9 @@ import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.DataSource;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.FstepFilesCumulativeUsageRecord;
+import com.cgi.eoss.fstep.model.Quota;
+import com.cgi.eoss.fstep.model.UsageType;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
@@ -35,6 +39,7 @@ import com.cgi.eoss.fstep.persistence.service.DataSourceDataService;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFilesCumulativeUsageRecordDataService;
+import com.cgi.eoss.fstep.persistence.service.QuotaDataService;
 import com.cgi.eoss.fstep.persistence.service.UserDataService;
 import com.cgi.eoss.fstep.rpc.FileStream;
 import com.cgi.eoss.fstep.rpc.FileStreamIOException;
@@ -69,9 +74,10 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     private final FstepSecurityService securityService;
     private final UserDataService userDataService;
     private final FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService;
+    private final QuotaDataService quotaDataService;
     
     @Autowired
-    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService, FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService) {
+    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService, FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService, QuotaDataService quotaDataService) {
         this.fstepFileDataService = fstepFileDataService;
         this.collectionDataService = collectionDataService;
         this.dataSourceDataService = dataSourceDataService;
@@ -82,21 +88,39 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
         this.securityService = securityService;
         this.userDataService = userDataService;
         this.fstepFilesCumulativeUsageRecordDataService = fstepFilesCumulativeUsageRecordDataService;
+        this.quotaDataService = quotaDataService;
     }
 
     @Override
     public FstepFileIngestion ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException {
-    	FstepFileIngestion fstepFileIngestion = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getFiletype(), referenceData.getUserProperties(), file);
+    	checkQuota(referenceData.getOwner(), file.getSize(), FstepFile.Type.REFERENCE_DATA);
+		FstepFileIngestion fstepFileIngestion = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getFiletype(), referenceData.getUserProperties(), file);
     	FstepFile fstepFile = fstepFileIngestion.getFstepFile();
     	fstepFile.setDataSource(dataSourceDataService.getForRefData(fstepFile));
     	fstepFile = fstepFileDataService.save(fstepFile);
     	fstepFilesCumulativeUsageRecordDataService.updateUsageRecords(fstepFile);
         return new FstepFileIngestion(fstepFileIngestion.getStatusMessage(), fstepFile);
-    }
-
+	}
+    
     @Override
-    public Path provisionNewOutputProduct(OutputProductMetadata outputProduct, String filename) throws IOException {
-        return outputProductService.provision(outputProduct.getJobId(), filename);
+    public Path provisionNewOutputProduct(OutputProductMetadata outputProduct, String filename, long filesize) throws IOException {
+    	checkQuota(outputProduct.getOwner(), filesize, FstepFile.Type.OUTPUT_PRODUCT);
+		return outputProductService.provision(outputProduct.getJobId(), filename);
+    }
+    
+    private void checkQuota(User owner, long filesize, FstepFile.Type fileType) throws IOException {
+    	Quota userFilesQuota = quotaDataService.getByOwnerAndUsageType(owner, UsageType.FILES_STORAGE_MB);
+    	long currentUsage;
+    	FstepFilesCumulativeUsageRecord usageRecord = fstepFilesCumulativeUsageRecordDataService.findTopByOwnerAndFileTypeIsNullAndRecordDateLessThanEqualOrderByRecordDateDesc(owner, LocalDate.now());
+    	if (usageRecord != null) {
+    		currentUsage = usageRecord.getCumulativeSize();
+    	}
+    	else {
+    		currentUsage = fstepFileDataService.sumFilesizeByOwner(owner);
+    	}
+    	if (currentUsage + filesize > userFilesQuota.getValue() * 1_048_576) {
+    		throw new IOException("User quota exceeded");
+    	}
     }
     
     @Override

@@ -62,6 +62,7 @@ import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Relation;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.JobStep;
+import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.WalletTransaction;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata.OutputFileMetadataBuilder;
@@ -72,6 +73,7 @@ import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
 import com.cgi.eoss.fstep.persistence.service.FstepFilesRelationDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
+import com.cgi.eoss.fstep.persistence.service.WalletDataService;
 import com.cgi.eoss.fstep.persistence.service.WalletTransactionDataService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.rpc.FileStream;
@@ -111,9 +113,11 @@ public class FstepJobUpdatesManager {
     private final FstepSecurityService securityService;
     private final JobProcessingDataService jobProcessingDataService;
     private final CostingService costingService;
+    private WalletDataService walletDataService;
     private final WalletTransactionDataService walletTransactionDataService;
     private final FstepFilesRelationDataService fileRelationDataService;
 	private final PlatformParameterExtractor platformParameterExtractor;
+	
 	 @Autowired
 	    public FstepJobUpdatesManager(JobDataService jobDataService, 
 	    		DynamicProxyService dynamicProxyService, 
@@ -123,6 +127,7 @@ public class FstepJobUpdatesManager {
 	    		FstepSecurityService securityService,
 	    		JobProcessingDataService jobProcessingDataService,
 	    		CostingService costingService, 
+	    		WalletDataService walletDataService,
 	    		WalletTransactionDataService walletTransactionDataService,
 	    		FstepFilesRelationDataService fileRelationDataService) {
 	        this.jobDataService = jobDataService;
@@ -133,6 +138,7 @@ public class FstepJobUpdatesManager {
 	        this.securityService = securityService;
 	        this.jobProcessingDataService = jobProcessingDataService;
 	        this.costingService = costingService;
+	        this.walletDataService = walletDataService;
 	        this.walletTransactionDataService = walletTransactionDataService;
 	        this.fileRelationDataService = fileRelationDataService;
 	        this.platformParameterExtractor = new PlatformParameterExtractor();
@@ -199,9 +205,17 @@ public class FstepJobUpdatesManager {
 			long hoursWithLastHeartbeat = lastHeartbeatDifference.toHours();
 			long hoursWithNewHeartbeat = newHeartbeatDifference.toHours();
 			if (hoursWithNewHeartbeat > hoursWithLastHeartbeat) {
-				long hoursToCharge = hoursWithNewHeartbeat - hoursWithLastHeartbeat;
-				for (long i = 0; i < hoursToCharge; i++) {
-					costingService.chargeForJobProcessing(job.getOwner().getWallet(), jobProcessing);
+				int hoursToCharge = (int) (hoursWithNewHeartbeat - hoursWithLastHeartbeat);
+				int amountToCharge = hoursToCharge * costQuotation.getCost();
+				Wallet wallet = walletDataService.findByOwner(job.getOwner());
+				if (wallet.getBalance() > amountToCharge) {
+					costingService.transactForJobProcessing(wallet, jobProcessing, amountToCharge * -1);
+				}
+				else {
+					//Stop processing due to insufficient credits
+					FstepWorkerGrpc.FstepWorkerBlockingStub worker =
+			                workerFactory.getWorkerById(job.getWorkerId());
+					worker.stopContainer(GrpcUtil.toRpcJob(job));
 				}
 			}
 		}
@@ -307,9 +321,9 @@ public class FstepJobUpdatesManager {
 	    	int amountCharged = walletTransactionDataService.findByTypeAndAssociatedId(WalletTransaction.Type.JOB_PROCESSING, jobProcessing.getId()).stream().mapToInt(t -> t.getBalanceChange() * -1).sum();
 	    	//check how many coins should be charged for this job processing
 	    	Duration totalRuntime = Duration.between(jobProcessing.getStartProcessingTime(), jobProcessing.getEndProcessingTime());
-	    	long runtimeMinutes = totalRuntime.toMinutes();
-			int numHours = (int) (runtimeMinutes/60);
-	    	if (runtimeMinutes % 60  != 0) {
+	    	long runtimeSeconds = totalRuntime.getSeconds();
+			int numHours = (int) (runtimeSeconds/3600);
+	    	if (runtimeSeconds % 3600  != 0) {
 	    		numHours++;
 	    	}
 	    	int amountChargeable = costQuotation.getCost() * numHours;
@@ -460,7 +474,7 @@ public class FstepJobUpdatesManager {
                         outputFileMetadata = outputFileMetadataBuilder.outputProductMetadata(outputProduct)
                                 .build();
 
-                        setOutputPath(catalogueService.provisionNewOutputProduct(outputProduct, relativePath.toString()));
+                        setOutputPath(catalogueService.provisionNewOutputProduct(outputProduct, relativePath.toString(), fileMeta.getSize()));
                         LOG.info("Writing output file for job {}: {}", job.getExtId(), getOutputPath());
                         return new BufferedOutputStream(Files.newOutputStream(getOutputPath(), CREATE, TRUNCATE_EXISTING, WRITE));
                     }
@@ -522,7 +536,10 @@ public class FstepJobUpdatesManager {
                 }) {
                     asyncWorker.getOutputFile(getOutputFileParam, fileStreamClient.getFileStreamObserver());
                     fileStreamClient.getLatch().await();
-                }
+                }catch (Exception e) {
+                	//TODO this should reach the user
+                	LOG.error(e.getMessage());
+				}
             }
         }
         postProcessOutputProducts(retrievedOutputFiles).forEach( Unchecked.consumer(retrievedOutputFile -> outputFiles.put(retrievedOutputFile.getOutputFileMetadata().getOutputProductMetadata().getOutputId(), catalogueService.ingestOutputProduct(retrievedOutputFile.getOutputFileMetadata(), retrievedOutputFile.getPath()))));

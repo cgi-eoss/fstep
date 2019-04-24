@@ -85,6 +85,7 @@ import com.cgi.eoss.fstep.persistence.service.PersistentFolderDataService;
 import com.cgi.eoss.fstep.persistence.service.QuotaDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
 import com.cgi.eoss.fstep.persistence.service.UserMountDataService;
+import com.cgi.eoss.fstep.persistence.service.WalletDataService;
 import com.cgi.eoss.fstep.persistence.service.WalletTransactionDataService;
 import com.cgi.eoss.fstep.queues.service.FstepJMSQueueService;
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
@@ -151,6 +152,9 @@ public class FstepServicesClientIT {
     private JobProcessingDataService jobProcessingDataService;
     
     @Mock
+    private WalletDataService walletDataService;
+    
+    @Mock
     private WalletTransactionDataService walletTransactionDataService;
     
     @Mock
@@ -197,7 +201,7 @@ public class FstepServicesClientIT {
         ingestedOutputsDir = workspace.resolve("ingestedOutputsDir");
         Files.createDirectories(ingestedOutputsDir);
 
-        when(catalogueService.provisionNewOutputProduct(any(), any())).thenAnswer(invocation -> {
+        when(catalogueService.provisionNewOutputProduct(any(), any(), any())).thenAnswer(invocation -> {
             Path outputPath = ingestedOutputsDir.resolve(((OutputProductMetadata) invocation.getArgument(0)).getJobId()).resolve((String) invocation.getArgument(1));
             Files.createDirectories(outputPath.getParent());
             return outputPath;
@@ -268,7 +272,7 @@ public class FstepServicesClientIT {
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         when(workerFactory.getWorkerById(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         FstepJobUpdatesManager updatesManager = new FstepJobUpdatesManager(jobDataService, dynamicProxyService, guiService, workerFactory, 
-        		catalogueService, securityService, jobProcessingDataService, costingService, walletTransactionDataService, filesRelationDataService);
+        		catalogueService, securityService, jobProcessingDataService, costingService, walletDataService, walletTransactionDataService, filesRelationDataService);
         String workerId = "local1";
         JobValidator jobValidator = new JobValidator(costingService, catalogueService);
         FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, jobProcessingDataService, databasketDataService, guiService, 
