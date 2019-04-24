@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.api.controllers;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,7 +45,7 @@ public interface WalletTransactionsApi extends PagingAndSortingRepository<Wallet
 
     @Override
     @RestResource(path="parametricFind", rel = "parametricFind")
-    @Query("select t from WalletTransaction t where t.wallet.owner=:owner and t.type=:type and t.associatedId=:associatedId and t.transactionTime < :endDateTime and t.transactionTime > :startDateTime")
-    Page<WalletTransaction> parametricFind(@Param("owner") User user, @Param("type") Type type, @Param("associatedId") Long associatedId, @Param("startDateTime") @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime startDateTime, @Param("endDateTime") @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime endDateTime, Pageable pageable);
+    @Query("select t from WalletTransaction t where t.wallet.owner=:owner and t.type in (:type) and t.associatedId=:associatedId and t.transactionTime < :endDateTime and t.transactionTime > :startDateTime")
+    Page<WalletTransaction> parametricFind(@Param("owner") User user, @Param("type") Collection<Type> types, @Param("associatedId") Long associatedId, @Param("startDateTime") @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime startDateTime, @Param("endDateTime") @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime endDateTime, Pageable pageable);
 
 }

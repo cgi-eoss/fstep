@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.api.controllers;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -57,17 +58,17 @@ public class WalletTransactionsApiImpl extends BaseRepositoryApiImpl<WalletTrans
     }
 
 	@Override
-	public Page<WalletTransaction> parametricFind(User owner, Type type, Long associatedId, OffsetDateTime startDateTime,
+	public Page<WalletTransaction> parametricFind(User owner, Collection<Type> types, Long associatedId, OffsetDateTime startDateTime,
 			OffsetDateTime endDateTime, Pageable pageable) {
-		Predicate p = buildPredicate(owner, type, associatedId, startDateTime, endDateTime);
+		Predicate p = buildPredicate(owner, types, associatedId, startDateTime, endDateTime);
 		return getFilteredResults(p, pageable);
 	}
 
-	private Predicate buildPredicate(User owner, Type type, Long associatedId, OffsetDateTime startDateTime,
+	private Predicate buildPredicate(User owner, Collection<Type> types, Long associatedId, OffsetDateTime startDateTime,
 			OffsetDateTime endDateTime) {
 		BooleanBuilder builder = new BooleanBuilder(Expressions.asBoolean(true).isTrue());
-		if (type != null) {
-			builder.and(QWalletTransaction.walletTransaction.type.eq(type));
+		if (types != null && !types.isEmpty()) {
+			builder.and(QWalletTransaction.walletTransaction.type.in(types));
 		}
 		if (owner != null) {
 			builder.and(getOwnerPath().eq(owner));
