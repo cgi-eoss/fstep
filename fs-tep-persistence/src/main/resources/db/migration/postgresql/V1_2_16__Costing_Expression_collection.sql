@@ -1,0 +1,4 @@
+--Costing expressions for collections
+  
+ALTER TYPE FSTEP_COSTING_EXPRESSIONS_TYPE ADD VALUE 'COLLECTION'
+

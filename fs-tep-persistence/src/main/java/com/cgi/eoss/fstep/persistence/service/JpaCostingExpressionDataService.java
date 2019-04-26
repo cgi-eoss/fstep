@@ -42,6 +42,15 @@ public class JpaCostingExpressionDataService extends AbstractJpaDataService<Cost
 
     @Override
     public CostingExpression getDownloadCostingExpression(FstepFile fstepFile) {
+    	 if (fstepFile.getCollection() != null) {
+    		 CostingExpression collectionCostingExpression = costingExpressionDao.findOne(
+                     costingExpression.type.eq(CostingExpression.Type.COLLECTION)
+                             .and(costingExpression.associatedId.eq(fstepFile.getCollection().getId())));
+    		 if (collectionCostingExpression != null) {
+    			 return collectionCostingExpression;
+    		 }
+                     
+    	}
         if (fstepFile.getDataSource() != null) {
             return costingExpressionDao.findOne(
                     costingExpression.type.eq(CostingExpression.Type.DOWNLOAD)

@@ -349,7 +349,7 @@ CREATE INDEX fstep_service_template_files_service_template_idx
 
 CREATE TABLE fstep_costing_expressions (
   id                        BIGINT IDENTITY PRIMARY KEY,
-  type                      CHARACTER VARYING(255) NOT NULL CHECK (type IN ('SERVICE', 'DOWNLOAD')),
+  type                      CHARACTER VARYING(255) NOT NULL CHECK (type IN ('SERVICE', 'DOWNLOAD', 'COLLECTION')),
   associated_id             BIGINT                 NOT NULL,
   cost_expression           CHARACTER VARYING(255) NOT NULL,
   estimated_cost_expression CHARACTER VARYING(255)

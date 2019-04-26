@@ -77,7 +77,7 @@ public class CostingExpression implements FstepEntity<CostingExpression> {
     }
 
     public enum Type {
-        SERVICE, DOWNLOAD
+        SERVICE, DOWNLOAD, COLLECTION
     }
 
 }
