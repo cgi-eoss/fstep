@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.persistence.service;
 
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.CostingExpression;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.FstepService;
@@ -43,9 +44,7 @@ public class JpaCostingExpressionDataService extends AbstractJpaDataService<Cost
     @Override
     public CostingExpression getDownloadCostingExpression(FstepFile fstepFile) {
     	 if (fstepFile.getCollection() != null) {
-    		 CostingExpression collectionCostingExpression = costingExpressionDao.findOne(
-                     costingExpression.type.eq(CostingExpression.Type.COLLECTION)
-                             .and(costingExpression.associatedId.eq(fstepFile.getCollection().getId())));
+    		 CostingExpression collectionCostingExpression = getCollectionCostingExpression(fstepFile.getCollection());
     		 if (collectionCostingExpression != null) {
     			 return collectionCostingExpression;
     		 }
@@ -58,5 +57,12 @@ public class JpaCostingExpressionDataService extends AbstractJpaDataService<Cost
         }
         return null;
     }
+
+	@Override
+	public CostingExpression getCollectionCostingExpression(Collection collection) {
+		return costingExpressionDao.findOne(
+                costingExpression.type.eq(CostingExpression.Type.COLLECTION)
+                        .and(costingExpression.associatedId.eq(collection.getId())));
+	}
 
 }

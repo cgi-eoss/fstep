@@ -1,7 +1,10 @@
 package com.cgi.eoss.fstep.costing;
 
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.CostQuotation;
+import com.cgi.eoss.fstep.model.CostingExpression;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobConfig;
 import com.cgi.eoss.fstep.model.JobProcessing;
@@ -27,5 +30,9 @@ public interface CostingService {
 	void transactForJobProcessing(Wallet wallet, JobProcessing jobProcessing, int amount);
 	
 	void refundJobProcessing(Wallet wallet, JobProcessing jobProcessing);
-
+	
+	CostingExpression getServiceCostingExpression(FstepService service);
+	
+	CostingExpression getCollectionCostingExpression(Collection collection);
+	
 }

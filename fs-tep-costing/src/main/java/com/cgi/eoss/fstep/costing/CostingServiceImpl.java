@@ -1,7 +1,6 @@
 package com.cgi.eoss.fstep.costing;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -9,6 +8,7 @@ import java.util.regex.Pattern;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.CostingExpression;
 import com.cgi.eoss.fstep.model.Databasket;
@@ -80,7 +80,7 @@ public class CostingServiceImpl implements CostingService {
     
     @Override
     public CostQuotation estimateSingleRunJobCost(JobConfig jobConfig) {
-    	Optional<CostingExpression> serviceCostingExpression = getServiceCostingExpression(jobConfig.getService());
+    	Optional<CostingExpression> serviceCostingExpression = Optional.ofNullable(costingDataService.getServiceCostingExpression(jobConfig.getService()));
     	Recurrence recurrence;
     	CostingExpression jobCostingExpression;
     	if (serviceCostingExpression.isPresent()){
@@ -99,7 +99,7 @@ public class CostingServiceImpl implements CostingService {
         return new CostQuotation(cost, recurrence);
     }
 
-	private int calculateNumberOfInputs(Collection<String> inputUris){
+	private int calculateNumberOfInputs(java.util.Collection<String> inputUris){
 		int inputCount = 1;
 		for (String inputUri: inputUris) {
 			if (inputUri.startsWith("fstep://databasket")) {
@@ -184,8 +184,26 @@ public class CostingServiceImpl implements CostingService {
         walletDataService.transact(walletTransaction);
     }
     
+    @Override
+    public CostingExpression getServiceCostingExpression(FstepService fstepService) {
+    	Optional<CostingExpression> serviceCostingExpression = Optional.ofNullable(costingDataService.getServiceCostingExpression(fstepService));
+    	if (serviceCostingExpression.isPresent()) {
+    		return serviceCostingExpression.get();
+    	}
+    	return defaultJobCostingExpression;
+    }
+    
+    @Override
+    public CostingExpression getCollectionCostingExpression(Collection collection) {
+    	Optional<CostingExpression> collectionCostingExpression = Optional.ofNullable(costingDataService.getCollectionCostingExpression(collection));
+    	if (collectionCostingExpression.isPresent()) {
+    		return collectionCostingExpression.get();
+    	}
+    	return defaultDownloadCostingExpression;
+    }
+    
     private CostQuotation getCostQuotation(Job job) {
-    	Optional<CostingExpression> serviceCostingExpression = getServiceCostingExpression(job.getConfig().getService());
+    	Optional<CostingExpression> serviceCostingExpression = Optional.ofNullable(costingDataService.getServiceCostingExpression(job.getConfig().getService()));
     	Recurrence recurrence;
     	CostingExpression jobCostingExpression;
     	if (serviceCostingExpression.isPresent()){
@@ -200,10 +218,6 @@ public class CostingServiceImpl implements CostingService {
         String expression = jobCostingExpression.getCostExpression();
         int cost = ((Number) expressionParser.parseExpression(expression).getValue(job)).intValue();
         return new CostQuotation(cost, recurrence);
-    }
-    
-    private Optional<CostingExpression> getServiceCostingExpression(FstepService fstepService) {
-        return Optional.ofNullable(costingDataService.getServiceCostingExpression(fstepService));
     }
 
 	@Override

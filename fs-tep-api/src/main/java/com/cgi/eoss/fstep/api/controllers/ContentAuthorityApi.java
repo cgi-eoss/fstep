@@ -2,11 +2,14 @@ package com.cgi.eoss.fstep.api.controllers;
 
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.cgi.eoss.fstep.model.Collection;
+import com.cgi.eoss.fstep.model.CostingExpression;
+import com.cgi.eoss.fstep.model.CostingExpression.Type;
 import com.cgi.eoss.fstep.model.DefaultServiceTemplate;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceTemplate;
 import com.cgi.eoss.fstep.model.PublishingRequest;
 import com.cgi.eoss.fstep.orchestrator.zoo.ZooManagerClient;
+import com.cgi.eoss.fstep.persistence.service.CostingExpressionDataService;
 import com.cgi.eoss.fstep.persistence.service.DefaultServiceTemplateDataService;
 import com.cgi.eoss.fstep.persistence.service.PublishingRequestDataService;
 import com.cgi.eoss.fstep.persistence.service.ServiceDataService;
@@ -17,8 +20,10 @@ import org.springframework.data.rest.webmvc.BasePathAwareController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,15 +44,17 @@ public class ContentAuthorityApi {
     private final FstepSecurityService fstepSecurityService;
     private final ZooManagerClient zooManagerClient;
     private final PublishingRequestDataService publishingRequestsDataService;
+    private final CostingExpressionDataService costingExpressionDataService;
     private final ServiceDataService serviceDataService;
     private final DefaultServiceTemplateDataService defaultServiceTemplateDataService;
 
     @Autowired
-    public ContentAuthorityApi(FstepSecurityService fstepSecurityService, ZooManagerClient zooManagerClient, PublishingRequestDataService publishingRequestsDataService, ServiceDataService serviceDataService, DefaultServiceTemplateDataService defaultServiceTemplateDataService) {
+    public ContentAuthorityApi(FstepSecurityService fstepSecurityService, ZooManagerClient zooManagerClient, PublishingRequestDataService publishingRequestsDataService, ServiceDataService serviceDataService, CostingExpressionDataService costingExpressionDataService, DefaultServiceTemplateDataService defaultServiceTemplateDataService) {
         this.fstepSecurityService = fstepSecurityService;
         this.zooManagerClient = zooManagerClient;
         this.publishingRequestsDataService = publishingRequestsDataService;
         this.serviceDataService = serviceDataService;
+        this.costingExpressionDataService = costingExpressionDataService;
         this.defaultServiceTemplateDataService = defaultServiceTemplateDataService;
     }
 
@@ -103,6 +110,40 @@ public class ContentAuthorityApi {
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
     public void unpublishService(@ModelAttribute("serviceId") FstepService service) {
         fstepSecurityService.unpublish(FstepService.class, service.getId());
+    }
+    
+    @PostMapping("/services/costingExpression/{serviceId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public void setServiceCostingExpression(@ModelAttribute("serviceId") FstepService service, @RequestBody CostingExpression inputCostingExpression) {
+    	CostingExpression costingExpression = new CostingExpression(Type.SERVICE, service.getId(), 
+    			inputCostingExpression.getCostExpression(), inputCostingExpression.getEstimatedCostExpression() != null? inputCostingExpression.getEstimatedCostExpression(): inputCostingExpression.getCostExpression());
+    	costingExpressionDataService.save(costingExpression);
+    }
+    
+    @DeleteMapping("/services/costingExpression/{serviceId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public void deleteServiceCostingExpression(@ModelAttribute("serviceId") FstepService service) {
+    	CostingExpression costingExpression = costingExpressionDataService.getServiceCostingExpression(service);
+    	if (costingExpression != null) {
+    		costingExpressionDataService.delete(costingExpression);
+    	}
+    }
+    
+    
+    @PostMapping("/collections/costingExpression/{collectionId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public void setCollectionCostingExpression(@ModelAttribute("collectionId") Collection collection, @RequestBody CostingExpression inputCostingExpression) {
+    	CostingExpression costingExpression = new CostingExpression(Type.COLLECTION, collection.getId(), inputCostingExpression.getCostExpression(), inputCostingExpression.getEstimatedCostExpression() != null? inputCostingExpression.getEstimatedCostExpression(): inputCostingExpression.getCostExpression());
+    	costingExpressionDataService.save(costingExpression);
+    }
+    
+    @DeleteMapping("/collections/costingExpression/{collectionId}")
+    @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN')")
+    public void deleteCollectionCostingExpression(@ModelAttribute("collectionId") Collection collection) {
+    	CostingExpression costingExpression = costingExpressionDataService.getCollectionCostingExpression(collection);
+    	if (costingExpression != null) {
+    		costingExpressionDataService.delete(costingExpression);
+    	}
     }
     
     @PostMapping("/serviceTemplates/publish/{serviceTemplateId}")
