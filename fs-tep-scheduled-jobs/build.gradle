@@ -1,5 +1,5 @@
 group 'com.cgi.eoss.fs-tep'
-version '1.2.14-SNAPSHOT'
+version '1.2.12-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -7,25 +7,15 @@ apply plugin: 'jacoco'
 dependencies {
     compileOnly 'org.projectlombok:lombok'
 
-    compile project(':fs-tep-catalogue')
-    compile project(':fs-tep-costing')
     compile project(':fs-tep-logging')
     compile project(':fs-tep-model')
     compile project(':fs-tep-persistence')
-    compile project(':fs-tep-queues')
-    compile project(':fs-tep-rpc')
-    compile project(':fs-tep-scheduled-jobs')
-    compile project(':fs-tep-security')
-    compile project(':fs-tep-search')
-    
-
-    compile 'org.awaitility:awaitility'
-    compile 'org.jooq:jool'
-    compile 'org.lognet:grpc-spring-boot-starter'
+ 
+    compile 'org.quartz-scheduler:quartz'
     compile 'org.springframework:spring-context'
+    compile 'org.springframework:spring-context-support'
     compile 'org.springframework.boot:spring-boot-starter-log4j2'
-    compile 'org.springframework.cloud:spring-cloud-starter-eureka'
-    compile 'org.springframework.cloud:spring-cloud-starter-zuul'
+    compile 'org.springframework.boot:spring-boot-starter-undertow'
 
     testCompile 'junit:junit'
     testCompile 'com.squareup.okhttp3:mockwebserver'

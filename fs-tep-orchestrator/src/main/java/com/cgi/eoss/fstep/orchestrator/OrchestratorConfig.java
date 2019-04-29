@@ -18,6 +18,7 @@ import com.cgi.eoss.fstep.persistence.PersistenceConfig;
 import com.cgi.eoss.fstep.persistence.service.WorkerLocatorExpressionDataService;
 import com.cgi.eoss.fstep.queues.QueuesConfig;
 import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
+import com.cgi.eoss.fstep.scheduledjobs.ScheduledJobsConfig;
 import com.cgi.eoss.fstep.security.SecurityConfig;
 
 /**
@@ -33,6 +34,7 @@ import com.cgi.eoss.fstep.security.SecurityConfig;
         QueuesConfig.class,
         InProcessRpcConfig.class,
         PersistenceConfig.class,
+        ScheduledJobsConfig.class,
         SecurityConfig.class
 })
 @EnableEurekaClient
