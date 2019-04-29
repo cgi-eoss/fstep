@@ -66,6 +66,8 @@ public class RestoServiceImpl implements RestoService {
     @Value("${fstep.catalogue.resto.collection.outputProductsModel:RestoModel_Fstep_Output}")
     private String outputProductModel;
 
+    private final int RESTO_COLLECTION_SHORT_NAME_LIMIT= 16;
+
     @Autowired
     public RestoServiceImpl(@Value("${fstep.catalogue.resto.url:http://fstep-resto/resto/}") String restoBaseUrl,
             @Value("${fstep.catalogue.resto.username:fstepresto}") String username,
@@ -291,7 +293,7 @@ public class RestoServiceImpl implements RestoService {
                 .licenseId("unlicensed").rights(ImmutableMap.of("download", 0, "visualize", 1));
         builder.model(outputProductModel)
         .osDescription(ImmutableMap.of("en",
-        		RestoCollection.OpensearchDescription.builder().shortName(collection.getName().substring(0, 16))
+        		RestoCollection.OpensearchDescription.builder().shortName(collection.getName().substring(0, Math.min(RESTO_COLLECTION_SHORT_NAME_LIMIT, collection.getName().length())))
                         .longName(collection.getOwner().getName()+" - " + collection.getName()).description(collection.getDescription())
                         .tags("fstep fs-tep output outputs generated " + collection.getName()).query(collection.getName()).build()))
         .propertiesMapping(ImmutableMap.of("fstepFileType", FstepFile.Type.OUTPUT_PRODUCT.toString()));
