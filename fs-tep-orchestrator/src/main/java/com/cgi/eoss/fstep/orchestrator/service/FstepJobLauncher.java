@@ -377,7 +377,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                     for (Job failedSubJob : failedSubJobs) {
                         List<JobParam> failedSubJobInputs = GrpcUtil.mapToParams(failedSubJob.getConfig().getInputs());
                         JobProcessing jobProcessing = jobProcessingDataService.buildNew(failedSubJob);
-                        if (failedSubJob.getStage().equals("Step 1 of 3: Data-Fetch") == false) {
+                        if (failedSubJob.getStage() != null && failedSubJob.getStage().equals("Step 1 of 3: Data-Fetch") == false) {
                         	chargeUserForProcessing(failedSubJob.getOwner(), jobProcessing);
                         }
                         failedSubJob.setStatus(Status.CREATED);
