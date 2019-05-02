@@ -154,6 +154,16 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                     });
             return deferred.promise;
         }
+        
+        this.getSystematicProcessingsPage = function(page, url) {
+            if (self.params[page]) {
+                self.params[page].pollingUrl = url;
+
+                getSystematicProcessings(page).then(function(data) {
+                    self.params[page].systematicProcessings = data;
+                });
+            }
+        };
 
         this.refreshSelectedSystematicProcessing = function(page) {
             if (self.params[page]) {
