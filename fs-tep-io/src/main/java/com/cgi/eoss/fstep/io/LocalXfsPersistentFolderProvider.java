@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecuteResultHandler;
@@ -70,7 +71,7 @@ public class LocalXfsPersistentFolderProvider implements PersistentFolderProvide
 	@Override
 	public void setQuota(String path, String quota) throws IOException {
 		int projectId = Integer.parseInt(Paths.get(path).getParent().getName(0).toString());
-		ProcessResult setQuotaResult = executeShellCommand("sudo", "xfs_quota", "'limit -p bhard=" + quota + " " + projectId + "'", basePath.toString());
+		ProcessResult setQuotaResult = executeShellCommand("sudo", "xfs_quota", "-x", "-c", "'limit -p bhard=" + quota + " " + projectId + "'", basePath.toString());
 		if (setQuotaResult.returnCode != 0){
 			throw new IOException();
 		}
@@ -91,6 +92,7 @@ public class LocalXfsPersistentFolderProvider implements PersistentFolderProvide
 	}
 	
 	private ProcessResult executeShellCommand(String... args) throws IOException {
+		LOG.debug("Executing shell command  {}", Arrays.stream(args).collect(Collectors.joining(" ")));
 		DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
 		ExecuteWatchdog watchdog  = new ExecuteWatchdog(60000);
 		Executor exec = new DefaultExecutor();

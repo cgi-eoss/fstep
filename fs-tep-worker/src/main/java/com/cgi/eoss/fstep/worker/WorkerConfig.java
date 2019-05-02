@@ -16,6 +16,7 @@ import com.cgi.eoss.fstep.queues.QueuesConfig;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
 import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
+import com.cgi.eoss.fstep.worker.jobs.WorkerNodeDataService;
 import com.cgi.eoss.fstep.worker.worker.DockerEventCollectorNodePreparer;
 import com.cgi.eoss.fstep.worker.worker.DockerEventsListener;
 import com.cgi.eoss.fstep.worker.worker.FstepWorkerNodeManager;
@@ -176,8 +177,8 @@ public class WorkerConfig {
     
     @Bean
     public FstepWorkerNodeManager workerNodeManager(NodeFactory nodeFactory, @Qualifier("cacheRoot") Path dataBaseDir, JobEnvironmentService jobEnvironmentService,
-            @Qualifier("maxJobsPerNode") Integer maxJobsPerNode, WorkerJobDataService workerJobDataService, @Autowired(required = false) NodePreparer nodePreparer) {
-        FstepWorkerNodeManager workerNodeManager = new FstepWorkerNodeManager(nodeFactory, dataBaseDir, maxJobsPerNode, workerJobDataService, nodePreparer);
+            @Qualifier("maxJobsPerNode") Integer maxJobsPerNode, WorkerJobDataService workerJobDataService, WorkerNodeDataService workerNodeDataService, @Autowired(required = false) NodePreparer nodePreparer) {
+        FstepWorkerNodeManager workerNodeManager = new FstepWorkerNodeManager(nodeFactory, dataBaseDir, maxJobsPerNode, workerJobDataService, workerNodeDataService, nodePreparer);
         return workerNodeManager;
     }
     

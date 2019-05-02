@@ -12,6 +12,9 @@ import com.cgi.eoss.fstep.clouds.service.NodeFactory;
 import com.cgi.eoss.fstep.clouds.service.NodeProvisioningException;
 import com.cgi.eoss.fstep.clouds.service.StorageProvisioningException;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
+import com.cgi.eoss.fstep.worker.jobs.WorkerNode;
+import com.cgi.eoss.fstep.worker.jobs.WorkerNodeDataService;
+import com.cgi.eoss.fstep.worker.jobs.WorkerNode.Status;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJob;
 
 import lombok.extern.log4j.Log4j2;
@@ -30,13 +33,17 @@ public class FstepWorkerNodeManager {
     
     private WorkerJobDataService workerJobDataService;
 
+    private WorkerNodeDataService workerNodeDataService;
+
 	private NodePreparer nodePreparer;
+
     
-    public FstepWorkerNodeManager(NodeFactory nodeFactory, Path dataBaseDir, int maxJobsPerNode, WorkerJobDataService workerJobDataService, NodePreparer nodePreparer ) {
+    public FstepWorkerNodeManager(NodeFactory nodeFactory, Path dataBaseDir, int maxJobsPerNode, WorkerJobDataService workerJobDataService, WorkerNodeDataService workerNodeDataService, NodePreparer nodePreparer ) {
         this.nodeFactory = nodeFactory;
         this.dataBaseDir = dataBaseDir;
         this.maxJobsPerNode = maxJobsPerNode;
         this.workerJobDataService = workerJobDataService;
+        this.workerNodeDataService = workerNodeDataService;
         this.nodePreparer = nodePreparer;
     }
 
@@ -56,7 +63,9 @@ public class FstepWorkerNodeManager {
     private Node findAvailableNode() {
         for (Node node : nodeFactory.getCurrentNodes(POOLED_WORKER_TAG)) {
             if (workerJobDataService.countByWorkerNodeIdAndAssignedToWorkerNodeTrue(node.getId()) < maxJobsPerNode) {
-            	return node;
+            	WorkerNode workerNode = workerNodeDataService.findOne(node.getId());
+                if (workerNode != null && workerNode.getStatus().equals(WorkerNode.Status.INITIALIZED))
+            		return node;
             }
         }
         return null;
@@ -69,6 +78,7 @@ public class FstepWorkerNodeManager {
     @Deprecated
     public Node provisionNodeForJob(Path jobDir, WorkerJob workerJob) throws NodeProvisioningException{
         Node node = nodeFactory.provisionNode(DEDICATED_WORKER_TAG, jobDir, dataBaseDir);
+        this.prepareNode(node);
         workerJobDataService.assignJobToNode(1, workerJob, node.getId());
         return node;
     }
@@ -97,7 +107,9 @@ public class FstepWorkerNodeManager {
     public void provisionNodes(int count, String tag, Path environmentBaseDir) throws NodeProvisioningException{
         for (int i = 0; i < count; i++) {
             Node node = nodeFactory.provisionNode(tag, environmentBaseDir, dataBaseDir);
+            workerNodeDataService.save(new WorkerNode(node.getId(), Status.CREATED));
             prepareNode(node);
+            workerNodeDataService.save(new WorkerNode(node.getId(), Status.INITIALIZED));
         }
     }
     
@@ -105,14 +117,15 @@ public class FstepWorkerNodeManager {
     	if (nodePreparer != null) {
     		nodePreparer.prepareNode(node);
     	}
-    	
-	}
+    }
 
 	public int destroyNodes(int count, String tag, Path environmentBaseDir, long minimumHourFractionUptimeSeconds){
         Set<Node> freeWorkerNodes = findNFreeWorkerNodes(count, tag, minimumHourFractionUptimeSeconds);
         int destroyableNodes = freeWorkerNodes.size();
         for (Node scaleDownNode : freeWorkerNodes) {
+        	workerNodeDataService.save(new WorkerNode(scaleDownNode.getId(), Status.DESTROYING));
             nodeFactory.destroyNode(scaleDownNode);
+            workerNodeDataService.delete(new WorkerNode(scaleDownNode.getId()));
         }
         return destroyableNodes;
     }
@@ -158,6 +171,21 @@ public class FstepWorkerNodeManager {
 			return dedicatedNode.get();
 		}
 		return null;
+	}
+
+	public void initCurrentNodes(String tag) {
+		Set<Node> currentNodes = this.getCurrentNodes(tag);
+		for (Node currentNode : currentNodes) {
+			WorkerNode workerNode = workerNodeDataService.findOne(currentNode.getId());
+			if (workerNode == null) {
+				workerNode = workerNodeDataService.save(new WorkerNode(currentNode.getId(), Status.CREATED));
+			}
+			if (workerNode.getStatus().equals(Status.CREATED)) {
+				nodePreparer.prepareNode(currentNode);
+				workerNodeDataService.save(new WorkerNode(currentNode.getId(), Status.INITIALIZED));
+			}
+		}
+		
 	}
 
 }

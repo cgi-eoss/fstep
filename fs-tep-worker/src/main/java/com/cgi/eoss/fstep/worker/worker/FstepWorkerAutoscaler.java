@@ -124,8 +124,10 @@ public class FstepWorkerAutoscaler {
                 lastAutoscalingActionTime = previousAutoScalingActionTime;
             }
         } else if (target < freeNodes) {
-            scaleDown(freeNodes - target);
-            lastAutoscalingActionTime = Instant.now().getEpochSecond();
+            int actualScaleDown = scaleDown(freeNodes - target);
+            if (actualScaleDown > 0) {
+            	lastAutoscalingActionTime = Instant.now().getEpochSecond();
+            }
         }
         else {
         	LOG.info("Free nodes already match target nodes - no action");

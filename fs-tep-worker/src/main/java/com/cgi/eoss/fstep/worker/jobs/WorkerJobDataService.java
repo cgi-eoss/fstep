@@ -9,23 +9,23 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJob.Status;
 
 @Component
-@Transactional(readOnly = true)
+@Transactional(readOnly = true, transactionManager = "workerJobsTransactionManager")
 public class WorkerJobDataService {
     
 	@Autowired
 	private WorkerJobRepository workerJobRepository;
 	
-	@Transactional
+	@Transactional(transactionManager = "workerJobsTransactionManager")
 	public WorkerJob save(WorkerJob job) {
 		return workerJobRepository.save(job);
 	}
 	
-	@Transactional
+	@Transactional(transactionManager = "workerJobsTransactionManager")
 	public void delete(WorkerJob job) {
 		workerJobRepository.delete(job);
 	}
 
-	@Transactional
+	@Transactional(transactionManager = "workerJobsTransactionManager")
 	public boolean assignJobToNode(int maxJobsPerNode, WorkerJob workerJob, String workerNodeId) {
 		if (workerJobRepository.countByWorkerNodeIdAndAssignedToWorkerNodeTrue(workerNodeId) < maxJobsPerNode) {
 			workerJob.setWorkerNodeId(workerNodeId);
@@ -36,13 +36,13 @@ public class WorkerJobDataService {
 		return false;
 	}
 	
-	@Transactional
+	@Transactional(transactionManager = "workerJobsTransactionManager")
 	public void releaseJobFromNode(WorkerJob workerJob) {
 		workerJob.setAssignedToWorkerNode(false);
 		workerJobRepository.save(workerJob);
 	}
 	
-	@Transactional
+	@Transactional(transactionManager = "workerJobsTransactionManager")
 	public void assignDeviceToJob(WorkerJob workerJob, String deviceId) {
 		workerJob.setDeviceId(deviceId);
 		workerJobRepository.save(workerJob);

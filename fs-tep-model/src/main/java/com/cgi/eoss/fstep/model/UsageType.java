@@ -8,8 +8,8 @@ import lombok.Getter;
 public enum UsageType {
 
 	MAX_RUNNABLE_JOBS(5L), 
-	FILES_STORAGE_MB(5L),
-	PERSISTENT_STORAGE_MB(5L);
+	FILES_STORAGE_MB(5000L),
+	PERSISTENT_STORAGE_MB(0L);
 	
 	private final Long defaultValue;
 }

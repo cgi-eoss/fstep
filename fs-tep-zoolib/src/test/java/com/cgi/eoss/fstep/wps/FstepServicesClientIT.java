@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -95,6 +96,8 @@ import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
+import com.cgi.eoss.fstep.worker.jobs.WorkerNode;
+import com.cgi.eoss.fstep.worker.jobs.WorkerNodeDataService;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJob;
 import com.cgi.eoss.fstep.worker.worker.DockerEventsListener;
 import com.cgi.eoss.fstep.worker.worker.FstepWorker;
@@ -178,7 +181,12 @@ public class FstepServicesClientIT {
 	private BrokerService broker;
     
 	@Mock
-    private WorkerJobDataService workerDataService;
+    private WorkerJobDataService workerJobDataService;
+	
+	@Mock
+    private WorkerNodeDataService workerNodeDataService;
+	
+	private Set<WorkerNode> workerNodes;
 	
     @BeforeClass
     public static void precondition() {
@@ -201,7 +209,7 @@ public class FstepServicesClientIT {
         ingestedOutputsDir = workspace.resolve("ingestedOutputsDir");
         Files.createDirectories(ingestedOutputsDir);
 
-        when(catalogueService.provisionNewOutputProduct(any(), any(), any())).thenAnswer(invocation -> {
+        when(catalogueService.provisionNewOutputProduct(any(), any(), anyLong())).thenAnswer(invocation -> {
             Path outputPath = ingestedOutputsDir.resolve(((OutputProductMetadata) invocation.getArgument(0)).getJobId()).resolve((String) invocation.getArgument(1));
             Files.createDirectories(outputPath.getParent());
             return outputPath;
@@ -278,12 +286,23 @@ public class FstepServicesClientIT {
         FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, jobProcessingDataService, databasketDataService, guiService, 
         		 costingService, securityService, queueService, userMountDataService, serviceDataService, dynamicProxyService, persistentFolderDataService, jobValidator, updatesManager);
         LocalEventCollectorNodePreparer nodePreparer = new LocalEventCollectorNodePreparer(blockingJmsTemplate, DockerEventsListener.DOCKER_EVENTS_QUEUE);
-		FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(new LocalNodeFactory(-1, "unix:///var/run/docker.sock"), workspace.resolve("dl"), 2, workerDataService, nodePreparer);
+		FstepWorkerNodeManager nodeManager = new FstepWorkerNodeManager(new LocalNodeFactory(-1, "unix:///var/run/docker.sock"), workspace.resolve("dl"), 2, workerJobDataService, workerNodeDataService, nodePreparer);
 
-        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1, workerDataService, persistentFolderProvider, persistentFolderMounter);
-        fstepWorker.allocateMinNodes();
+        FstepWorker fstepWorker = new FstepWorker(nodeManager, jobEnvironmentService, ioManager, 1, workerJobDataService, persistentFolderProvider, persistentFolderMounter);
+        
+        workerNodes = new HashSet<>();
+        when(workerNodeDataService.save(any())).thenAnswer(invocation -> {
+        	WorkerNode workerNode = invocation.getArgument(0);
+        	if (workerNodes.contains(workerNode)) {
+        		workerNodes.remove(workerNode);
+        	}
+        	workerNodes.add(workerNode);
+            return workerNode;
+        });
+        
+        fstepWorker.prepareExistingWorkerNodes();
         FstepWorkerUpdateManager fstepWorkerUpdateManager = new FstepWorkerUpdateManager(queueService, workerId);
-        JobExecutionController jobExecutionController = new JobExecutionController(new LocalWorker(channelBuilder), nodeManager, workerDataService, fstepWorkerUpdateManager);
+        JobExecutionController jobExecutionController = new JobExecutionController(new LocalWorker(channelBuilder), nodeManager, workerJobDataService, fstepWorkerUpdateManager);
         FstepWorkerDispatcher fstepWorkerDispatcher = new FstepWorkerDispatcher(queueService, jobExecutionController);
         
         QueueScheduler q = new QueueScheduler(jobDataService, queueService, quotaDataService);
@@ -412,7 +431,7 @@ public class FstepServicesClientIT {
         when(dynamicProxyService.getProxyEntry(any(),any(), anyInt())).thenReturn(new ReverseProxyEntry("test", "test"));
         
         Set<WorkerJob> workerJobs = new HashSet<>();
-        when(workerDataService.save(any())).thenAnswer(invocation -> {
+        when(workerJobDataService.save(any())).thenAnswer(invocation -> {
         	WorkerJob workerJob = invocation.getArgument(0);
         	if (workerJobs.contains(workerJob)) {
         		workerJobs.remove(workerJob);
@@ -421,20 +440,35 @@ public class FstepServicesClientIT {
             return workerJob;
         });
         
-        when(workerDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
+        when(workerJobDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
         	WorkerJob workerJob = invocation.getArgument(1);
         	workerJob.setWorkerNodeId(invocation.getArgument(2));
         	workerJobs.add(workerJob);
             return true;
         });
         
-        when(workerDataService.findByJobId(any())).thenAnswer(invocation -> {
+        when(workerJobDataService.findByJobId(any())).thenAnswer(invocation -> {
         	Optional<WorkerJob> workerJob = workerJobs.stream().filter(j -> j.getJobId().equals(invocation.getArgument(0))).findFirst();
         	if (workerJob.isPresent()) {
         		return workerJob.get();
         	}
         	return null;
         });
+        
+        when(workerNodeDataService.findOne(any())).thenAnswer(invocation -> {
+        	Optional<WorkerNode> workerNode = workerNodes.stream().filter(n -> n.getNodeId().equals(invocation.getArgument(0))).findFirst();
+        	if (workerNode.isPresent()) {
+        		return workerNode.get();
+        	}
+        	return null;
+        });
+        
+        doAnswer(invocation -> {
+        	WorkerNode workerNode = invocation.getArgument(0);
+        	if (workerNodes.contains(workerNode)) {
+        		workerNodes.remove(workerNode);
+        	}
+        	return null;}).when(workerNodeDataService).delete(any());
         
         String jobId = UUID.randomUUID().toString();
         String userId = "userId";
@@ -520,7 +554,7 @@ public class FstepServicesClientIT {
         });
         
         Set<WorkerJob> workerJobs = new HashSet<>();
-        when(workerDataService.save(any())).thenAnswer(invocation -> {
+        when(workerJobDataService.save(any())).thenAnswer(invocation -> {
         	WorkerJob workerJob = invocation.getArgument(0);
         	if (workerJobs.contains(workerJob)) {
         		workerJobs.remove(workerJob);
@@ -529,20 +563,36 @@ public class FstepServicesClientIT {
             return workerJob;
         });
         
-        when(workerDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
+        when(workerJobDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
         	WorkerJob workerJob = invocation.getArgument(1);
         	workerJob.setWorkerNodeId(invocation.getArgument(2));
         	workerJobs.add(workerJob);
             return true;
         });
         
-        when(workerDataService.findByJobId(any())).thenAnswer(invocation -> {
+        when(workerJobDataService.findByJobId(any())).thenAnswer(invocation -> {
         	Optional<WorkerJob> workerJob = workerJobs.stream().filter(j -> j.getJobId().equals(invocation.getArgument(0))).findFirst();
         	if (workerJob.isPresent()) {
         		return workerJob.get();
         	}
         	return null;
         });
+        
+         when(workerNodeDataService.findOne(any())).thenAnswer(invocation -> {
+        	Optional<WorkerNode> workerNode = workerNodes.stream().filter(n -> n.getNodeId().equals(invocation.getArgument(0))).findFirst();
+        	if (workerNode.isPresent()) {
+        		return workerNode.get();
+        	}
+        	return null;
+        });
+        
+        doAnswer(invocation -> {
+        	WorkerNode workerNode = invocation.getArgument(0);
+        	if (workerNodes.contains(workerNode)) {
+        		workerNodes.remove(workerNode);
+        	}
+        	return null;}).when(workerNodeDataService).delete(any());
+        
         String jobId = UUID.randomUUID().toString();
         String userId = "userId";
         Multimap<String, String> inputs = ImmutableMultimap.<String, String>builder()
@@ -652,7 +702,7 @@ public class FstepServicesClientIT {
         });
         
         Set<WorkerJob> workerJobs = new HashSet<>();
-        when(workerDataService.save(any())).thenAnswer(invocation -> {
+        when(workerJobDataService.save(any())).thenAnswer(invocation -> {
         	WorkerJob workerJob = invocation.getArgument(0);
         	if (workerJobs.contains(workerJob)) {
         		workerJobs.remove(workerJob);
@@ -661,14 +711,14 @@ public class FstepServicesClientIT {
             return workerJob;
         });
         
-        when(workerDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
+        when(workerJobDataService.assignJobToNode(anyInt(), any(), any())).thenAnswer(invocation -> {
         	WorkerJob workerJob = invocation.getArgument(1);
         	workerJob.setWorkerNodeId(invocation.getArgument(2));
         	workerJobs.add(workerJob);
             return true;
         });
         
-        when(workerDataService.findByJobId(any())).thenAnswer(invocation -> {
+        when(workerJobDataService.findByJobId(any())).thenAnswer(invocation -> {
         	Optional<WorkerJob> workerJob = workerJobs.stream().filter(j -> j.getJobId().equals(invocation.getArgument(0))).findFirst();
         	if (workerJob.isPresent()) {
         		return workerJob.get();
@@ -676,6 +726,21 @@ public class FstepServicesClientIT {
         	return null;
         });
        
+        doAnswer(invocation -> {
+        	WorkerNode workerNode = invocation.getArgument(0);
+        	if (workerNodes.contains(workerNode)) {
+        		workerNodes.remove(workerNode);
+        	}
+        	return null;}).when(workerNodeDataService).delete(any());
+       
+        when(workerNodeDataService.findOne(any())).thenAnswer(invocation -> {
+        	Optional<WorkerNode> workerNode = workerNodes.stream().filter(n -> n.getNodeId().equals(invocation.getArgument(0))).findFirst();
+        	if (workerNode.isPresent()) {
+        		return workerNode.get();
+        	}
+        	return null;
+        });
+        
         String jobId = UUID.randomUUID().toString();
         String userId = "userId";
         Multimap<String, String> inputs = ImmutableMultimap.<String, String>builder()
