@@ -43,7 +43,7 @@ public class Wallet implements FstepEntityWithOwner<Wallet> {
     /**
      * <p>The user who owns this wallet.</p>
      */
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "owner", nullable = false)
     private User owner;
 
