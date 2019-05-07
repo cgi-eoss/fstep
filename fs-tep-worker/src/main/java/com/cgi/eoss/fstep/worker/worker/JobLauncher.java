@@ -56,6 +56,8 @@ public class JobLauncher implements Runnable {
 			JobInputs jobInputs = JobInputs.newBuilder().setJob(jobSpec.getJob()).addAllInputs(jobSpec.getInputsList()).addAllPersistentFolders(jobSpec.getPersistentFoldersList())
 						.build();
 			JobEnvironment jobEnvironment = localWorker.prepareInputs(jobInputs);
+			//Reload the job
+			workerJob = workerJobDataService.findByJobId(workerJob.getJobId());
 			jobUpdateListener
 					.jobUpdate(workerJob, JobEvent.newBuilder().setJobEventType(JobEventType.DATA_FETCHING_COMPLETED).setTimestamp(GrpcUtil.timestampFromOffsetDateTime(OffsetDateTime.now(ZoneId.of("Z")))).build());
 	

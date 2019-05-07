@@ -227,9 +227,7 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
                 	workerJob = new WorkerJob(request.getJob().getId(), request.getJob().getIntJobId());
             	}
                 workerJob.setOutputRootPath(ret.getOutputDir());
-                workerJob.setStart(OffsetDateTime.now(ZoneId.of("Z")));
-    			workerJob.setStatus(com.cgi.eoss.fstep.worker.jobs.WorkerJob.Status.RUNNING);
-    			workerJobDataService.save(workerJob);
+                workerJobDataService.save(workerJob);
                 responseObserver.onNext(ret);
                 responseObserver.onCompleted();
             } catch (Exception e) {
