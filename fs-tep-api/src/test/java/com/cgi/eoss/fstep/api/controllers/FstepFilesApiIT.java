@@ -3,10 +3,12 @@ package com.cgi.eoss.fstep.api.controllers;
 import com.cgi.eoss.fstep.api.ApiConfig;
 import com.cgi.eoss.fstep.api.ApiTestConfig;
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.Role;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
+import com.cgi.eoss.fstep.persistence.service.CollectionDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.persistence.service.UserDataService;
 import com.google.common.collect.ImmutableSet;
@@ -56,6 +58,9 @@ public class FstepFilesApiIT {
 
     @Autowired
     private FstepFileDataService fileDataService;
+    
+    @Autowired
+    private CollectionDataService collectionDataService;
 
     @Autowired
     private MockMvc mockMvc;
@@ -65,9 +70,12 @@ public class FstepFilesApiIT {
 
     private FstepFile testFile1;
     private FstepFile testFile2;
-
+    private FstepFile testFile3;
+    
     private User fstepUser;
     private User fstepAdmin;
+
+	private Collection collection;
 
     @Before
     public void setUp() throws Exception {
@@ -88,13 +96,26 @@ public class FstepFilesApiIT {
         testFile2.setOwner(fstepAdmin);
         testFile2.setFilename("testFile2");
         testFile2.setType(FstepFile.Type.OUTPUT_PRODUCT);
+        
+        collection = new Collection("test", fstepUser);
+        collection.setIdentifier(UUID.randomUUID().toString());
+        collectionDataService.save(ImmutableSet.of(collection));
+        
+        UUID file3Uuid = UUID.randomUUID();
+        testFile3 = new FstepFile(URI.create("fstep://outputProduct/job1/testFile3"), file3Uuid);
+        testFile3.setOwner(fstepUser);
+        testFile3.setFilename("testFile3");
+        testFile3.setCollection(collection);
+        testFile3.setType(FstepFile.Type.OUTPUT_PRODUCT);
+        
 
-        fileDataService.save(ImmutableSet.of(testFile1, testFile2));
+        fileDataService.save(ImmutableSet.of(testFile1, testFile2, testFile3));
     }
 
     @After
     public void tearDown() throws Exception {
         fileDataService.deleteAll();
+        collectionDataService.deleteAll();
     }
 
     @Test
@@ -119,7 +140,7 @@ public class FstepFilesApiIT {
         mockMvc.perform(get("/api/fstepFiles/search/findByType?type=OUTPUT_PRODUCT").header("REMOTE_USER", fstepAdmin.getName()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$._embedded.fstepFiles").isArray())
-                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(1))
+                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(2))
                 .andExpect(jsonPath("$._embedded.fstepFiles[0].filename").value("testFile2"));
     }
 
@@ -154,7 +175,7 @@ public class FstepFilesApiIT {
         mockMvc.perform(get("/api/fstepFiles/search/findByOwner?owner="+fstepUserUrl).header("REMOTE_USER", fstepAdmin.getName()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$._embedded.fstepFiles").isArray())
-                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(0));
+                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(1));
 
         mockMvc.perform(get("/api/fstepFiles/search/findByOwner?owner="+fstepAdminUrl).header("REMOTE_USER", fstepAdmin.getName()))
                 .andExpect(status().isOk())
@@ -179,7 +200,41 @@ public class FstepFilesApiIT {
         mockMvc.perform(get("/api/fstepFiles/search/findByNotOwner?owner="+fstepAdminUrl).header("REMOTE_USER", fstepAdmin.getName()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$._embedded.fstepFiles").isArray())
-                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(0));
+                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(1));
+    }
+    
+    @Test
+    public void testParametricFind() throws Exception {
+        String fstepAdminUrl = JsonPath.compile("$._links.self.href").read(
+                mockMvc.perform(get("/api/users/" + fstepAdmin.getId()).header("REMOTE_USER", fstepAdmin.getName())).andReturn().getResponse().getContentAsString()
+        );
+
+        String fstepCollectionUrl = JsonPath.compile("$._links.self.href").read(
+                mockMvc.perform(get("/api/collections/" + collection.getId()).header("REMOTE_USER", fstepUser.getName())).andReturn().getResponse().getContentAsString()
+        );
+        mockMvc.perform(get("/api/fstepFiles/search/parametricFind")
+        		.header("REMOTE_USER", fstepAdmin.getName())
+        		.param("filter", "test"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._embedded.fstepFiles").isArray())
+                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(3));
+
+        mockMvc.perform(get("/api/fstepFiles/search/parametricFind")
+        		.header("REMOTE_USER", fstepAdmin.getName())
+        		.param("filename", "test")
+        		.param("notOwner", fstepAdminUrl))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._embedded.fstepFiles").isArray())
+                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(1));
+        
+        mockMvc.perform(get("/api/fstepFiles/search/parametricFind")
+        		.header("REMOTE_USER", fstepUser.getName())
+        		.param("filter", "test")
+        		.param("collection", fstepCollectionUrl)
+        		)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._embedded.fstepFiles").isArray())
+                .andExpect(jsonPath("$._embedded.fstepFiles.length()").value(1));
     }
 
     @Test

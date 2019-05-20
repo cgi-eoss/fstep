@@ -29,7 +29,7 @@ public interface RestoService {
     /**
      * <p>Remove the given FS-TEP Output product from the Resto catalogue.</p>
      */
-    void deleteOutputProduct(UUID restoId);
+    void deleteOutputProduct(String collection, UUID restoId);
     
     /**
      * <p>Remove the given FS-TEP Reference Data product from the Resto catalogue.</p>
@@ -66,4 +66,5 @@ public interface RestoService {
      * @return 
      */
     boolean deleteCollection(Collection collection);
+
 }

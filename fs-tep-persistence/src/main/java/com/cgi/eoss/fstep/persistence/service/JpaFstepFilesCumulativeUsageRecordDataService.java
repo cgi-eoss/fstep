@@ -21,6 +21,10 @@ import com.querydsl.core.types.Predicate;
 public class JpaFstepFilesCumulativeUsageRecordDataService extends AbstractJpaDataService<FstepFilesCumulativeUsageRecord> implements FstepFilesCumulativeUsageRecordDataService{
 
 	
+	private enum OperationType {
+		CREATE, DELETE
+	}
+
 	private FstepFilesCumulativeUsageRecordDao dao;
 
 	@Autowired
@@ -65,7 +69,17 @@ public class JpaFstepFilesCumulativeUsageRecordDataService extends AbstractJpaDa
 
 	@Override
 	@Transactional
-	public void updateUsageRecords(FstepFile fstepFile) {
+	public void updateUsageRecordsOnCreate(FstepFile fstepFile) {
+		updateUsageRecords(fstepFile, OperationType.CREATE);
+	}
+	
+	@Override
+	@Transactional
+	public void updateUsageRecordsOnDelete(FstepFile fstepFile) {
+		updateUsageRecords(fstepFile, OperationType.DELETE);
+	}
+	
+	private void updateUsageRecords(FstepFile fstepFile, OperationType operationType) {
 		if (fstepFile.getFilesize() == null || fstepFile.getFilesize() == 0)
 			return;
 		LocalDate localDate = LocalDate.now();
@@ -76,7 +90,11 @@ public class JpaFstepFilesCumulativeUsageRecordDataService extends AbstractJpaDa
 			overallCumulativeSize = latestOverallRecord.getCumulativeSize();
 			
 		}
-		overallCumulativeSize+=fstepFile.getFilesize();
+		long difference = fstepFile.getFilesize();
+		if (operationType.equals(OperationType.DELETE)) {
+			difference *= -1;
+		}
+		overallCumulativeSize+=difference;
 		FstepFilesCumulativeUsageRecord overallRecord = new FstepFilesCumulativeUsageRecord(fstepFile.getOwner(), localDate, null, overallCumulativeSize);
 		save(overallRecord);
 		
@@ -88,12 +106,10 @@ public class JpaFstepFilesCumulativeUsageRecordDataService extends AbstractJpaDa
 				perTypeCumulativeSize = latestPerTypeRecord.getCumulativeSize();
 				
 			}
-			perTypeCumulativeSize+=fstepFile.getFilesize();
+			perTypeCumulativeSize+=difference;
 			FstepFilesCumulativeUsageRecord perTypeRecord = new FstepFilesCumulativeUsageRecord(fstepFile.getOwner(), localDate, fstepFile.getType(), perTypeCumulativeSize);
 			save(perTypeRecord);
 		}
 		
 	}
-
-	
 }

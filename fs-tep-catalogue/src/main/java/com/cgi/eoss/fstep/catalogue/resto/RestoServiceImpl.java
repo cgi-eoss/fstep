@@ -12,6 +12,7 @@ import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.log4j.Log4j2;
@@ -101,8 +102,11 @@ public class RestoServiceImpl implements RestoService {
     }
 
     @Override
-    public void deleteOutputProduct(UUID restoId) {
-        delete(outputProductCollection, restoId);
+    public void deleteOutputProduct(String collection, UUID restoId) {
+    	if(collection == null) {
+    		collection = outputProductCollection;
+    	}
+        delete(collection, restoId);
     }
 
     @Override
@@ -195,13 +199,17 @@ public class RestoServiceImpl implements RestoService {
 
         try (Response response = client.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                ;
                 LOG.info("Deleted Resto object with ID {}", uuid);
-            } else {
-                LOG.error("Failed to delete Resto object from collection '{}': {} {}: {}", collection, response.code(),
-                        response.message(), response.body());
-                throw new CatalogueException("Failed to delete Resto object");
+                return;
             }
+            
+            if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
+            	LOG.info("Resto object was not existing {}", uuid);
+            	return;
+            }
+            LOG.error("Failed to delete Resto object from collection '{}': {} {}: {}", collection, response.code(),
+                        response.message(), response.body());
+            throw new CatalogueException("Failed to delete Resto object");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -309,11 +317,16 @@ public class RestoServiceImpl implements RestoService {
             if (response.isSuccessful()) {
                 LOG.info("Deleted Resto collection '{}'", collection.getName());
                 return true;
-            } else {
-                LOG.warn("Failed to delete Resto collection '{}': {} {}: {}", collection.getName(), response.code(),
-                        response.message(), response.body());
-                return false;
             }
+            
+            if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
+            	LOG.info("Resto collection was not existing {}", collection.getIdentifier());
+            	return true;
+            }
+            LOG.warn("Failed to delete Resto collection '{}': {} {}: {}", collection.getName(), response.code(),
+            response.message(), response.body());
+            return false;
+            
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

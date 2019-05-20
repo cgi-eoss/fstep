@@ -11,6 +11,8 @@ import com.google.common.base.Strings;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.NumberPath;
+
+import java.io.IOException;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -51,8 +53,11 @@ public class CollectionsApiImpl extends BaseRepositoryApiImpl<Collection> implem
         if (collection.getIdentifier() == null) {
             collection.setIdentifier("fstep" + UUID.randomUUID().toString().replaceAll("-", ""));
             //TODO can be extended to ref data collections
-            if (!catalogueService.createOutputCollection(collection)) {
-                throw new RuntimeException("Failed to create underlyig output collection ");
+            try {
+            	catalogueService.createOutputCollection(collection);
+            }
+            catch (IOException e) {
+            	throw new RuntimeException("Failed to create underlying output collection ");
             }
         }
         return dao.save(collection);
@@ -60,13 +65,12 @@ public class CollectionsApiImpl extends BaseRepositoryApiImpl<Collection> implem
     
     @Override
     public void delete(Collection collection) {
-        //TODO can be extended to ref data collections
-        if (catalogueService.deleteOutputCollection(collection)) {
-            dao.delete(collection);
-        }
-        else {
-            throw new RuntimeException("Failed to delete underlying output collection");
-        }
+        try {
+			catalogueService.deleteOutputCollection(collection);
+		    dao.delete(collection);
+		} catch (IOException e) {
+			throw new RuntimeException("Failed to delete underlying output collection");
+		}
     }
 
     @Override

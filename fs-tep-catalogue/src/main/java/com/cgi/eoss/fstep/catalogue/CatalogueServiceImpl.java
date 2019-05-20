@@ -98,7 +98,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     	FstepFile fstepFile = fstepFileIngestion.getFstepFile();
     	fstepFile.setDataSource(dataSourceDataService.getForRefData(fstepFile));
     	fstepFile = fstepFileDataService.save(fstepFile);
-    	fstepFilesCumulativeUsageRecordDataService.updateUsageRecords(fstepFile);
+    	fstepFilesCumulativeUsageRecordDataService.updateUsageRecordsOnCreate(fstepFile);
         return new FstepFileIngestion(fstepFileIngestion.getStatusMessage(), fstepFile);
 	}
     
@@ -149,7 +149,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
         fstepFile.setDataSource(dataSourceDataService.getForService(outputProductMetadata.getService()));
         fstepFile.setCollection(collectionDataService.getByIdentifier(collection));
         fstepFile = fstepFileDataService.save(fstepFile);
-        fstepFilesCumulativeUsageRecordDataService.updateUsageRecords(fstepFile);
+        fstepFilesCumulativeUsageRecordDataService.updateUsageRecordsOnCreate(fstepFile);
         return fstepFile;
     }
 
@@ -202,6 +202,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                 break;
             case OUTPUT_PRODUCT:
                 outputProductService.delete(file);
+                fstepFilesCumulativeUsageRecordDataService.updateUsageRecordsOnDelete(file);
                 break;
             case EXTERNAL_PRODUCT:
                 externalProductDataService.delete(file);
@@ -373,13 +374,16 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     }
 
     @Override
-    public boolean createOutputCollection(Collection collection) {
-        return outputProductService.createCollection(collection); 
+    public void createOutputCollection(Collection collection) throws IOException {
+        outputProductService.createCollection(collection); 
     }
 
     @Override
-    public boolean deleteOutputCollection(Collection collection) {
-        return outputProductService.deleteCollection(collection);
+    public void deleteOutputCollection(Collection collection) throws IOException {
+    	for (FstepFile fstepFile: collection.getFstepFiles()) {
+    		this.delete(fstepFile);
+    	}
+        outputProductService.deleteCollection(collection);
     }
 
 }

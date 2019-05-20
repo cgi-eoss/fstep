@@ -1,7 +1,10 @@
 package com.cgi.eoss.fstep.api.controllers;
 
+import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.projections.ShortFstepFile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,11 +13,14 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.data.rest.core.annotation.RestResource;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.security.access.method.P;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @RepositoryRestResource(path = "fstepFiles", itemResourceRel = "fstepFile", collectionResourceRel = "fstepFiles", excerptProjection = ShortFstepFile.class)
@@ -72,4 +78,11 @@ public interface FstepFilesApi extends BaseRepositoryApi<FstepFile>, FstepFilesA
     @RestResource(path = "findByFilterAndNotOwner", rel = "findByFilterAndNotOwner")
     @Query("select t from FstepFile t where not t.owner=:owner and t.filename like %:filter% and t.type=:type")
     Page<FstepFile> findByFilterAndNotOwner(@Param("filter") String filter, @Param("type") FstepFile.Type type, @Param("owner") User user, Pageable pageable);
+
+
+    @Override
+    @RestResource(path="parametricFind", rel = "parametricFind")
+    @Query("select t from FstepFile t where t.filename like %:filter% and t.collection= :collection and not t.owner= :notOwner and t.owner=:owner and t.type = :type and t in (select f from Job j inner join j.outputFiles f where j = :job)")
+    Page<FstepFile> parametricFind(@Param("filter") String filter, @Param("collection") Collection collection, @Param("type") FstepFile.Type type, @Param("owner") User user,@Param("notOwner") User notOwner, @Param("job") Job job, Pageable pageable);
+
 }

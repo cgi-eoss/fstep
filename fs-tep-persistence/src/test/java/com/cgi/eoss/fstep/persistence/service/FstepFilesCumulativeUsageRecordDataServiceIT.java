@@ -93,21 +93,21 @@ public class FstepFilesCumulativeUsageRecordDataServiceIT {
         file.setFilesize(5000L);
         file.setType(FstepFile.Type.OUTPUT_PRODUCT);
         fstepFileDataService.save(file);
-        dataService.updateUsageRecords(file);
+        dataService.updateUsageRecordsOnCreate(file);
         
         FstepFile file2 = new FstepFile(URI.create("file2"), UUID.randomUUID());
         file2.setFilesize(10000L);
         file2.setType(FstepFile.Type.OUTPUT_PRODUCT);
         file2.setOwner(owner);
         fstepFileDataService.save(file2);
-        dataService.updateUsageRecords(file2);
+        dataService.updateUsageRecordsOnCreate(file2);
         
         FstepFile file3 = new FstepFile(URI.create("file3"), UUID.randomUUID());
         file3.setFilesize(20000L);
         file3.setType(FstepFile.Type.REFERENCE_DATA);
         file3.setOwner(owner);
         fstepFileDataService.save(file3);
-        dataService.updateUsageRecords(file3);
+        dataService.updateUsageRecordsOnCreate(file3);
         
         assertThat(dataService.getAll().size(), is(3));
         
@@ -115,12 +115,12 @@ public class FstepFilesCumulativeUsageRecordDataServiceIT {
         file4.setFilesize(7000L);
         file4.setOwner(owner);
         fstepFileDataService.save(file4);
-        dataService.updateUsageRecords(file4);
+        dataService.updateUsageRecordsOnCreate(file4);
         
         FstepFile file5 = new FstepFile(URI.create("file5"), UUID.randomUUID());
         file5.setOwner(owner);
         fstepFileDataService.save(file5);
-        dataService.updateUsageRecords(file5);
+        dataService.updateUsageRecordsOnCreate(file5);
         
         assertThat(dataService.getAll().size(), is(3));
         

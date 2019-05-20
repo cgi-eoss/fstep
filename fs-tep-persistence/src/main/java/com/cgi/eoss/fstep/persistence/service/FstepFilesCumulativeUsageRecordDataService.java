@@ -17,6 +17,8 @@ public interface FstepFilesCumulativeUsageRecordDataService extends FstepEntityD
 	
 	public List<FstepFilesCumulativeUsageRecord> findByOwnerAndFileTypeAndRecordDateBetween(User owner, FstepFile.Type fileType, LocalDate start, LocalDate end);
 
-	public void updateUsageRecords(FstepFile fstepFile);
+	public void updateUsageRecordsOnCreate(FstepFile fstepFile);
+	
+	public void updateUsageRecordsOnDelete(FstepFile fstepFile);
 	
 }

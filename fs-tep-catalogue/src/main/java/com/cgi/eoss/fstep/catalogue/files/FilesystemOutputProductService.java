@@ -180,9 +180,12 @@ public class FilesystemOutputProductService implements OutputProductService {
         Path relativePath = Paths.get(file.getFilename());
 
         Files.deleteIfExists(outputProductBasedir.resolve(relativePath));
-
-        resto.deleteOutputProduct(file.getRestoId());
-
+        String collection = null;
+        if (file.getCollection() != null) {
+        	collection = file.getCollection().getIdentifier();
+        }
+        resto.deleteOutputProduct(collection, file.getRestoId());
+        //TODO Change what follows based on the new geoserver features
         // Workspace = jobId = first part of the relative filename
         String workspace = relativePath.getName(0).toString();
         // Layer name = filename without extension
@@ -191,15 +194,18 @@ public class FilesystemOutputProductService implements OutputProductService {
     }
 
     @Override
-    public boolean createCollection(Collection collection) {
-        return resto.createOutputCollection(collection);
+    public void createCollection(Collection collection) throws IOException{
+        if(!resto.createOutputCollection(collection)) {
+        	throw new IOException("Failed to create the underlying collection");
+        }
         
     }
 
     @Override
-    public boolean deleteCollection(Collection collection) {
-        return resto.deleteCollection(collection);
-        
+    public void deleteCollection(Collection collection) throws IOException{
+    	if(!resto.deleteCollection(collection)) {
+        	throw new IOException("Failed to delete the underlying collection");
+        }
     }
 
 }

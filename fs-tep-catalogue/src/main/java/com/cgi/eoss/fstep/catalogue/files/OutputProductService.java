@@ -15,11 +15,11 @@ public interface OutputProductService extends FstepFileService {
     FstepFile ingest(String collection, User owner, String jobId, String crs, String geometry, OffsetDateTime startDateTime, OffsetDateTime endDateTime, Map<String, Object> properties,
             Path path) throws IOException;
     
-    public String getDefaultCollection();
+    String getDefaultCollection();
     
-    public boolean createCollection(Collection collection);
+    void createCollection(Collection collection) throws IOException;
 
-    boolean deleteCollection(Collection collection);
+    void deleteCollection(Collection collection) throws IOException;
 
     Path provision(String jobId, String filename) throws IOException;
 
