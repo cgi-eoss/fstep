@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityCollectionsCtrl', ['CollectionService', 'CommonService', 'PublishingService', '$scope', function (CollectionService, CommonService, PublishingService, $scope) {
+    fstepmodules.controller('CommunityCollectionsCtrl', ['CollectionService', 'CommonService', 'PublishingService', 'CostingExpressionService', '$scope', function (CollectionService, CommonService, PublishingService, CostingExpressionService, $scope) {
 
         $scope.collectionParams = CollectionService.params.community;
         $scope.dbOwnershipFilters = CollectionService.dbOwnershipFilters;
@@ -67,6 +67,10 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 CollectionService.refreshCollections("community");
             });
         };
+
+        $scope.setDownloadCost = function ($event, collection) {
+            CostingExpressionService.showItemCostDialog($event, 'collection', collection.id )
+        }
 
     }]);
 });

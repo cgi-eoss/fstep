@@ -86,7 +86,8 @@ define([
     './services/quotaservice',
     './services/estimatecostservice',
     './services/reportservice',
-    './services/quotausageservice'
+    './services/quotausageservice',
+    './services/costingexpressionservice'
 
 
 ], function () {});

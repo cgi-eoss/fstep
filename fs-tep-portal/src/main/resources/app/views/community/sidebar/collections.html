@@ -44,6 +44,7 @@
                 <h3 class="selectable" ng-bind="collection.name" />
                 <span><b>Owner:</b> <span ng-bind="collection.owner.name" /></span>
                 <span><b>Data type:</b> <span ng-bind="collection.productsType" /></span>
+                <span><b>Item download cost:</b> <span ng-if="collection.costingExpression">{{collection.costingExpression.costExpression}} {{collection.costingExpression.costExpression !== '1' ? 'coins' : 'coin'}}</span>
             </div>
 
             <md-button class="toolbar-button md-secondary"
@@ -105,6 +106,26 @@
                 <i class="material-icons">publish</i>
             </md-button>
 
+            <md-button class="toolbar-button md-secondary"
+                        has-permission="SUPERUSER" permission-source="{{collection}}"
+                        ng-click="setDownloadCost($event, collection)"
+                        aria-label="Set download cost"
+                        uib-tooltip="Set download cost"
+                        tooltip-placement="top"
+                        tooltip-trigger="'mouseenter'"
+                        tooltip-append-to-body="true">
+                    <md-icon md-svg-src="images/coins.svg" class="s24" style="color:inherit"></md-icon>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
+                        ng-click="gotoCollectionFiles(collection)"
+                        aria-label="Go to collection files"
+                        uib-tooltip="Go to collection files"
+                        tooltip-placement="top"
+                        tooltip-trigger="'mouseenter'"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">attach_file</i>
+            </md-button>
 
         </md-list-item>
 

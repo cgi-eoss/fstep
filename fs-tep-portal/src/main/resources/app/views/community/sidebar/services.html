@@ -96,6 +96,7 @@
                 <h3 class="selectable" ng-bind="service.name" />
                 <span><b>Owner:</b> <span ng-bind="service.owner.name" /></span>
                 <span><b>Status:</b> <span ng-bind="service.status.toLowerCase()" /></span>
+                <span><b>Run cost:</b> <span ng-if="service.costingExpression">{{service.costingExpression.costExpression}} {{service.costingExpression.costExpression !== '1' ? 'coins' : 'coin'}}</span>
             </div>
 
             <md-button class="toolbar-button md-secondary"
@@ -154,6 +155,17 @@
                        tooltip-trigger="'mouseenter'"
                        tooltip-append-to-body="true">
                 <i class="material-icons">publish</i>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
+                        has-permission="SUPERUSER" permission-source="{{service}}"
+                        ng-click="setRunCost($event, service)"
+                        aria-label="Set run cost"
+                        uib-tooltip="Set run cost"
+                        tooltip-placement="top"
+                        tooltip-trigger="'mouseenter'"
+                        tooltip-append-to-body="true">
+                    <md-icon md-svg-src="images/coins.svg" class="s24" style="color:inherit"></md-icon>
             </md-button>
 
         </md-list-item>

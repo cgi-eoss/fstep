@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityServicesCtrl', ['ProductService', 'PublishingService', 'CommonService', '$scope', '$mdDialog', function (ProductService, PublishingService, CommonService, $scope, $mdDialog) {
+    fstepmodules.controller('CommunityServicesCtrl', ['ProductService', 'PublishingService', 'CostingExpressionService', 'CommonService', '$scope', '$mdDialog', function (ProductService, PublishingService, CostingExpressionService, CommonService, $scope, $mdDialog) {
 
         /* Get stored Service details */
         $scope.serviceParams = ProductService.params.community;
@@ -82,6 +82,10 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                 ProductService.refreshServices("community");
             });
         };
+
+        $scope.setRunCost = function ($event, service) {
+            CostingExpressionService.showItemCostDialog($event, 'service', service.id )
+        }
 
         $scope.manageServicesDialog = function ($event) {
             function ManageServicesController($scope, $mdDialog, ProductService) {
