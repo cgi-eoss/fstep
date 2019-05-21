@@ -74,7 +74,6 @@ public class FstepGuiTraefikProxyTestIT {
         worker = FstepWorkerGrpc.newBlockingStub(channelBuilder.build());
         webServer = new MockWebServer();
         webServer.start();
-        System.out.println(webServer.url(""));
     }
 
     @After
