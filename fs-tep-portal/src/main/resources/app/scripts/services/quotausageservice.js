@@ -35,6 +35,19 @@ define(['../fstepmodules' ], function(fstepmodules) {
                 });
         };
 
+        this.getUsageForType = function(usageType) {
+            return $http.get(rootUri + '/usage/value?usageType=' + usageType)
+                .then(
+                function (response) {
+                    return response.data;
+                }, function (error) {
+                    if (error.status !== 404) {
+                        MessageService.addError('Unable to get file storage usage ', error);
+                    }
+                    return null;
+                });
+        }
+
         return this;
     }]);
 });

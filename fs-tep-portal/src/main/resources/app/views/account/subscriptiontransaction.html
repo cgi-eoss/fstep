@@ -1,0 +1,28 @@
+<md-dialog id="subscription-dialog">
+    <h4>Subscription transaction information</h4>
+    <md-dialog-content>
+        <md-card md-theme-watch class="fstep-card subscription-card">
+            <md-card-content>
+            <md-list>
+                <md-list-item class="secondary-button-padding">
+                    <p>Plan type:</p><div class="md-secondary">
+                        <p>{{subscription._embedded.subscriptionPlan.name}}</p>
+                    </div>
+                </md-list-item>
+                <md-list-item class="secondary-button-padding">
+                    <p>Start date:</p><p class="md-secondary">{{subscription.created | formatDateTime}}</p>
+                </md-list-item>
+                <md-list-item ng-if="subscription.ended" class="secondary-button-padding">
+                    <p>End date:</p><p class="md-secondary">{{subscription.ended | formatDateTime}}</p>
+                </md-list-item>
+            </md-list>
+            <md-card-actions layout="row" layout-align="end center">
+                <md-button ng-click="manageSubscription()" ng-if="subscription._embedded.quota" class="md-secondary md-raised md-accent">Manage subscription</md-button>
+            </md-card-actions>
+            </md-card-content>
+        </md-card>
+    </md-dialog-content>
+    <md-dialog-actions>
+        <md-button ng-click="closeSubscriptionDialog()">Close</md-button>
+    </md-dialog-actions>
+</md-dialog>

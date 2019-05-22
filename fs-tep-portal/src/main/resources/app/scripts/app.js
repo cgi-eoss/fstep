@@ -165,27 +165,16 @@ define([
         };
     });
 
-    app.filter('formatDateTime', function(){
+    app.filter('formatDateTime', ['moment', function(moment){
         return function (dateTime) {
             if(dateTime){
-                if(typeof dateTime === 'string'){
-                    return dateTime;
-                }
-                else {
-                    return new Date(dateTime.year + "-" +
-                        getTwoDigitNumber(dateTime.monthValue) + "-" +
-                        getTwoDigitNumber(dateTime.dayOfMonth) + "T" +
-                        getTwoDigitNumber(dateTime.hour) + ":" +
-                        getTwoDigitNumber(dateTime.minute) + ":" +
-                        getTwoDigitNumber(dateTime.second) + "." +
-                        getThreeDigitNumber(dateTime.nano/1000000) + "Z").toISOString();
-                }
+                return moment.utc(dateTime).format('YYYY-MM-DD HH:mm:ss [UTC]')
             }
             else{
                 return '';
             }
         };
-    });
+    }]);
 
     function getTwoDigitNumber(num){
         return (num > 9 ? num : '0'+num);
@@ -213,6 +202,20 @@ define([
             return data.replace(/\r/g, '<br />');
         };
     });
+
+    app.directive('isMultipleOf', function() {
+        return {
+            restrict: 'A',
+            require: 'ngModel',
+            link: function(scope, element, attr, ctrl) {
+                var multipleOf = parseFloat(attr.isMultipleOf);
+
+                ctrl.$validators.isMultipleOf = function(modelValue, viewValue) {
+                    return (parseFloat(viewValue) % multipleOf) === 0;
+                }
+            }
+        }
+    })
 
     app.directive('hasPermission', function() {
         return {

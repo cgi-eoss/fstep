@@ -17,6 +17,20 @@
             padding: 0.25rem;
         }
     }
+
+    #subscription-info {
+        table {
+            width: 100%;
+            tr {
+                &:nth-child(odd) {
+                    border-top: solid 1px #cccccc;
+                }
+                td {
+                    padding: 0px 10px;
+                }
+            }
+        }
+    }
 }
 #login-container {
     .note {
@@ -27,4 +41,95 @@
 #api-key-loading-container {
     position: relative;
     height: 100px;
+}
+
+#subscription-dialog {
+
+    .subscription-card {
+
+        md-list {
+            padding: 0;
+
+            md-list-item {
+                min-height: 0px;
+                height: 30px;
+
+                p {
+                    margin: 0
+                }
+
+                .md-secondary-container {
+                    text-align: right;
+
+                    .expiration-warning {
+                        font-size: 80%;
+                        padding-left: 20px;
+                        color: @warning-text;
+                    }
+
+                    .toolbar-button {
+                        margin-left: 5px;
+                    }
+                }
+            }
+        }
+    }
+
+    table {
+        th {
+            width: 100px;
+            height: 40px;
+
+            div {
+                height: 100%;
+                border: solid 3px @brand;
+                border-radius: 5px;
+                margin: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
+        tbody {
+
+            tr {
+                border-bottom: solid 1px #cccccc;
+                td {
+
+                    &:first-child {
+                        font-weight: bold;
+                    }
+
+                    padding: 10px;
+                    text-align: center;
+
+                    md-input-container {
+                        margin: 10px 0;
+
+                        input {
+                            text-align: center;
+                        }
+
+                        .hint {
+                            font-size: 0.6rem;
+                            color: rgba(0, 0, 0, 0.4);
+                        }
+                    }
+
+                    md-radio-button {
+                        display: initial;
+                    }
+                }
+            }
+        }
+    }
+
+    .error-message {
+        order: 1;
+        padding-left: 25px;
+        margin-top: 10px;
+    }
+
+
 }

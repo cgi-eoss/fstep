@@ -8,47 +8,90 @@
 'use strict';
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'QuotaUsageService', 'ReportService', 'NavigationHelperService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, UserService, ApiKeyService, WalletService, QuotaService, QuotaUsageService, ReportService, NavigationHelperService, TabService, MessageService, $mdDialog) {
+    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'QuotaUsageService', 'SubscriptionService', 'ReportService', 'NavigationHelperService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, UserService, ApiKeyService, WalletService, QuotaService, QuotaUsageService, SubscriptionService, ReportService, NavigationHelperService, TabService, MessageService, $mdDialog) {
+
+        $scope.quotas = {};
+        var subscriptionPlansMap = {};
+
+        var setQuotaProps = function(quotaName, props) {
+            if (!$scope.quotas[quotaName]) {
+                $scope.quotas[quotaName] = {
+                    name: quotaName,
+                    subscriptionPlans: []
+                };
+            }
+            Object.assign($scope.quotas[quotaName], props)
+        }
+
+        var refreshWallet = function() {
+            WalletService.refreshWallet('account', $scope.user);
+            WalletService.getTransactions('account', $scope.user._links.self.href);
+        }
 
         var onUserChange = function() {
             $scope.user = UserService.params.activeUser;
             if ($scope.user.id) {
-                WalletService.getTransactions('account', $scope.user._links.self.href);
+
+                refreshWallet();
+
                 if ($scope.user.role !== 'ADMIN' && $scope.user.role !== 'CONTENT_AUTHORITY') {
                     $scope.checkForApiKey();
                 }
 
-                $scope.quotaUsageTypes = {};
+                $scope.quotas = {};
+
                 QuotaService.getUsageTypes().then(function(types) {
 
-                     types.forEach(function(type) {
-                        $scope.quotaUsageTypes[type] = '';
-                        QuotaService.getQuotaValue(type).then(function(value) {
-                            $scope.quotaUsageTypes[type] = value;
+                    types.forEach(function(type) {
+
+                        setQuotaProps(type.name, type);
+
+                        QuotaService.getQuotaValue(type.name).then(function(value) {
+                            setQuotaProps(type.name, {
+                                value: value
+                            });
+                        })
+
+                        QuotaUsageService.getUsageForType(type.name).then(function(usage) {
+                            if (usage !== null) {
+                                setQuotaProps(type.name, {
+                                    usage: usage
+                                });
+                            }
                         })
                     })
                 });
 
-                $scope.quotaUsages = [];
 
-                QuotaUsageService.getFileStorageUsage().then(function(usage) {
-                    $scope.quotaUsages.push({
-                        name: 'FILES_STORAGE_MB',
-                        title: 'File storage',
-                        value: usage,
-                        units: 'MB'
-                    });
-                });
+                SubscriptionService.getSubscriptionPlans().then(function(plans) {
 
-                QuotaUsageService.getPersistentStorageUsage().then(function(usage) {
-                    if (usage !== undefined) {
-                        $scope.quotaUsages.push({
-                            name: 'PERSISTENT_STORAGE_MB',
-                            title: 'Persistent folder storage',
-                            value: usage,
-                            units: 'MB'
+                    var subscriptionPlans = {};
+
+                    plans.forEach(function(plan) {
+                        if (!subscriptionPlans[plan.usageType]) {
+                            subscriptionPlans[plan.usageType] = [];
+                        }
+                        subscriptionPlans[plan.usageType].push(plan);
+
+                        subscriptionPlansMap[plan.id] = plan;
+                    })
+
+                    for (var usageType in subscriptionPlans) {
+                        setQuotaProps(usageType, {
+                            subscriptionPlans: subscriptionPlans[usageType]
                         });
                     }
+
+
+                    SubscriptionService.getUserSubscriptions($scope.user._links.self.href).then(function(subscriptions) {
+                        subscriptions.forEach(function(subscription) {
+                            if (subscription.status === 'ACTIVE') {
+                                setQuotaProps(subscriptionPlansMap[subscription.subscriptionPlan.id].usageType, {
+                                    subscription: subscription
+                                });
+                            }
+                        })
+                    });
                 });
             }
         }
@@ -71,6 +114,8 @@ define(['../../fstepmodules'], function (fstepmodules) {
                     NavigationHelperService.goToJob(resource._embedded.job);
                 } else if (transaction.type === 'JOB') {
                     NavigationHelperService.goToJob(resource);
+                } else if (transaction.type === 'SUBSCRIPTION') {
+                    showSubscriptionInfoDialog(resource);
                 }
             });
         }
@@ -185,6 +230,258 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 });
             }
 
+        }
+
+        $scope.showSubscriptionDialog = function(usageType) {
+
+            var quota = $scope.quotas[usageType];
+
+            $mdDialog.show({
+                controller: function($scope, $mdDialog) {
+
+                    $scope.quota = quota;
+
+                    $scope.formState = {
+                        selectedPlan: 'default',
+                        plans: {}
+                    };
+
+                    quota.subscriptionPlans.forEach(function(plan) {
+                        $scope.formState.plans[plan.id] = {
+                            quantity: plan.minQuantity * plan.unit
+                        }
+                    });
+
+                    if (quota.subscription) {
+                        var selectedPlan;
+
+                        if (!quota.subscription.downgradeQuantity) {
+                            selectedPlan = subscriptionPlansMap[quota.subscription.subscriptionPlan.id];
+                            $scope.formState.plans[selectedPlan.id].quantity =  quota.subscription.quantity * selectedPlan.unit;
+                        } else {
+                            selectedPlan = subscriptionPlansMap[quota.subscription.downgradePlan.id];
+                            $scope.formState.plans[selectedPlan.id].quantity =  quota.subscription.downgradeQuantity * selectedPlan.unit;
+                        }
+
+                        if (quota.subscription.renew !== false ) {
+                            $scope.formState.selectedPlan = selectedPlan.id;
+                        }
+
+                    }
+
+                    var formatCoinsLabel = function(quantity) {
+                        if (quantity === 1) {
+                            return 'coin'
+                        } else {
+                            return 'coins';
+                        }
+                    }
+
+                    $scope.formatSubscriptionQuantity = function() {
+                        let plan = subscriptionPlansMap[quota.subscription.subscriptionPlan.id];
+                        return quota.subscription.quantity * plan.unit + ' ' + quota.unit;
+                    }
+
+                    $scope.formatSubscriptionCost = function() {
+                        let plan = subscriptionPlansMap[quota.subscription.subscriptionPlan.id];
+                        let coins = quota.subscription.quantity * plan.costQuotation.cost;
+                        return coins + ' ' + formatCoinsLabel(coins) + ' ' + $scope.formatRecurrence(plan.costQuotation.recurrence);
+                    }
+
+                    $scope.formatDowngradeQuantity = function() {
+                        let plan = subscriptionPlansMap[quota.subscription.downgradePlan.id];
+                        return quota.subscription.downgradeQuantity * plan.unit + ' ' + quota.unit;
+                    }
+
+                    $scope.formatDowngradeCost = function() {
+                        let plan = subscriptionPlansMap[quota.subscription.downgradePlan.id];
+                        let coins = quota.subscription.downgradeQuantity * plan.costQuotation.cost;
+                        return coins + ' ' + formatCoinsLabel(coins) + ' ' + $scope.formatRecurrence(plan.costQuotation.recurrence);
+                    }
+
+                    $scope.formatCost = function(plan) {
+
+                        if (plan.billingScheme === 'UNIT') {
+                            return plan.costQuotation.cost + ' ' + formatCoinsLabel(plan.costQuotation.cost)
+                                + ' / ' + plan.unit + ' ' + quota.unit;
+                        } else {
+                            return plan.costQuotation.cost  + ' ' + formatCoinsLabel(plan.costQuotation.cost)
+                        }
+                    }
+
+                    $scope.computeFinalCost = function(plan) {
+                        let quantity = $scope.formState.plans[plan.id].quantity;
+                        if (!quantity) {
+                            return 'Select the desired quantity';
+                        } else {
+                            let coins = quantity * plan.costQuotation.cost / plan.unit;
+                            return coins + ' ' + formatCoinsLabel(coins) + ' ' + $scope.formatRecurrence(plan.costQuotation.recurrence);
+                        }
+                    }
+
+                    $scope.getCurrentPlan = function() {
+                        if (!quota.subscription) {
+                            return 'default';
+                        } else {
+                            return subscriptionPlansMap[quota.subscription.subscriptionPlan.id].name
+                        }
+                    }
+
+                    $scope.formatRecurrence = function(recurrence) {
+                        var fRecurrence;
+                        switch(recurrence) {
+                            case 'HOURLY':
+                                fRecurrence = 'per hour';
+                                break;
+                            case 'DAILY':
+                                fRecurrence = 'per day';
+                                break;
+                            case 'MONTHLY':
+                                fRecurrence = 'per month';
+                                break;
+                            case 'YEARLY':
+                                fRecurrence = 'per year';
+                                break;
+                            default:
+                                fRecurrence = recurrence;
+                                break;
+                        }
+
+                        return fRecurrence;
+                    }
+
+                    $scope.enableSwitch = function() {
+                        if (quota.subscription && quota.subscription.renew !== false) {
+                            var currentPlan, currentQuantity;
+                            if (!quota.subscription.downgradeQuantity) {
+                                currentPlan = subscriptionPlansMap[quota.subscription.subscriptionPlan.id];
+                                currentQuantity = quota.subscription.quantity;
+                            } else {
+                                currentPlan = subscriptionPlansMap[quota.subscription.downgradePlan.id];
+                                currentQuantity = quota.subscription.downgradeQuantity;
+                            }
+                            if ($scope.formState.selectedPlan !== currentPlan.id) {
+                                return true;
+                            }
+                            if ($scope.formState.plans[currentPlan.id].quantity / currentPlan.unit !== currentQuantity) {
+                                return true;
+                            }
+                            return false;
+                        } else {
+                            return $scope.formState.selectedPlan !== 'default';
+                        }
+                    }
+
+                    var onSubscriptionUpdated = function(subscriptionData, selectedPlan) {
+                        if (subscriptionData.downgradeQuantity) {
+                            Object.assign($scope.quota.subscription, subscriptionData, {
+                                downgradePlan: selectedPlan
+                            });
+                        } else {
+                            Object.assign($scope.quota.subscription, subscriptionData, {
+                                subscriptionPlan: selectedPlan
+                            });
+
+                            QuotaService.getQuotaValue($scope.quota.name).then(function(value) {
+                                setQuotaProps($scope.quota.name, {
+                                    value: value
+                                });
+                            })
+
+                            refreshWallet();
+                        }
+
+                    }
+
+                    $scope.restoreSubscritpion = function() {
+
+                        delete $scope.formState.errorMessage;
+
+                        SubscriptionService.updateSubscriptionPlan($scope.quota.subscription, {
+                            renew: true
+                        }).then(function(data) {
+                            onSubscriptionUpdated(data, subscriptionPlansMap[$scope.quota.subscription.subscriptionPlan.id]);
+                        }, function(error) {
+                            $scope.formState.errorMessage = 'Error updating subscription';
+                        })
+                    }
+
+                    $scope.cancelSubscription = function() {
+
+                        delete $scope.formState.errorMessage;
+
+                        return SubscriptionService.cancelSubscriptionPlan($scope.quota.subscription).then(function() {
+                            $scope.quota.subscription.renew = false;
+                        }, function(error) {
+                            $scope.formState.errorMessage = 'Error updating subscription';
+                        });
+                    }
+
+                    $scope.cancelDowngrade = function() {
+                        delete $scope.formState.errorMessage;
+                        return SubscriptionService.cancelSubscriptionDowngrade($scope.quota.subscription).then(function() {
+                            $scope.quota.subscription.downgradeQuantity = null;
+                            $scope.quota.subscription.downgradePlan = null;
+                        }, function(error) {
+                            $scope.formState.errorMessage = 'Error updating subscription';
+                        });
+                    }
+
+                    $scope.updateSubscription = function() {
+
+                        delete $scope.formState.errorMessage;
+
+                        if ($scope.formState.selectedPlan !== 'default') {
+
+                            let selectedPlan = subscriptionPlansMap[$scope.formState.selectedPlan];
+
+                            if ($scope.quota.subscription) {
+                                SubscriptionService.updateSubscriptionPlan($scope.quota.subscription, {
+                                    subscriptionPlan: selectedPlan._links.self.href,
+                                    quantity: $scope.formState.plans[selectedPlan.id].quantity / selectedPlan.unit
+                                }).then(function(data) {
+
+                                    onSubscriptionUpdated(data, selectedPlan);
+
+                                    $mdDialog.hide();
+                                }, function(error) {
+                                    $scope.formState.errorMessage = 'Error updating subscription';
+                                });
+                            } else {
+                                SubscriptionService.createSubscriptionPlan({
+                                    subscriptionPlan: selectedPlan._links.self.href,
+                                    quantity: $scope.formState.plans[selectedPlan.id].quantity / selectedPlan.unit
+                                }).then(function(data) {
+
+                                    $scope.quota.subscription = {};
+                                    onSubscriptionUpdated(data, selectedPlan);
+
+                                    $mdDialog.hide();
+                                }, function(error) {
+                                    $scope.formState.errorMessage = 'Error creating subscription';
+                                });
+                            }
+
+                        } else {
+                            $scope.cancelSubscription().then(function() {
+                                $mdDialog.hide();
+                            }, function(error) {
+                                $scope.formState.errorMessage = 'Error creating subscription';
+                            });
+                        }
+
+                    }
+
+                    $scope.closeSubscriptionDialog = function() {
+                        $mdDialog.hide();
+                    }
+
+
+                },
+                templateUrl: 'views/account/subscriptiondialog.html',
+                parent: angular.element(document.body),
+                clickOutsideToClose: false
+            });
         }
 
         $scope.$on('active.user', onUserChange);

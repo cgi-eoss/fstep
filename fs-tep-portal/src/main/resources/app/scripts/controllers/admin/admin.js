@@ -37,7 +37,9 @@ define(['../../fstepmodules'], function (fstepmodules) {
         UserService.getUsersByFilter('admin');
 
         QuotaService.getUsageTypes().then(function(types) {
-            $scope.quotaUsageTypes = types;
+            $scope.quotaUsageTypes = types.map(function(type) {
+                return type.name;
+            });
         })
 
         $scope.filter = function(){

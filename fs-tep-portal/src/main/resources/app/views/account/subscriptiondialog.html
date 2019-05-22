@@ -1,0 +1,179 @@
+<md-dialog id="subscription-dialog">
+        <h4>{{quota.title}} subscription plan</h4>
+        <md-dialog-content>
+            <md-card md-theme-watch class="fstep-card subscription-card">
+                <md-card-title>
+                    <md-card-title-text>
+                        <span class="md-headline">Current plan</span>
+                    </md-card-title-text>
+                </md-card-title>
+                <md-card-content>
+                    <md-list ng-if="!quota.subscription">
+                        <md-list-item class="secondary-button-padding">
+                            <p>Plan type:</p><p class="md-secondary">Default plan</p>
+                        </md-list-item>
+                        <md-list-item class="secondary-button-padding">
+                            <p>{{quota.title}}:</p><p class="md-secondary">{{quota.defaultValue}} {{quota.unit}}</p>
+                        </md-list-item>
+                        <md-list-item>
+                            <p>Cost:</p><p class="md-secondary">Free</p>
+                        </md-list-item>
+                    </md-list>
+                    <md-list ng-if="quota.subscription">
+                        <md-list-item class="secondary-button-padding">
+                            <p>Plan type:</p><div class="md-secondary">
+                                <p>{{getCurrentPlan()}}</p>
+                                <md-button class="toolbar-button md-secondary"
+                                        ng-if="quota.subscription.renew !== false"
+                                        ng-click="cancelSubscription()"
+                                        aria-label="Cancel subscription"
+                                        uib-tooltip="Cancel subscription"
+                                        tooltip-placement="top"
+                                        tooltip-trigger="mouseenter"
+                                        tooltip-append-to-body="true">
+                                <i class="material-icons">remove_circle</i>
+                                </md-button>
+                            </div>
+                        </md-list-item>
+                        <md-list-item class="secondary-button-padding">
+                            <p>Subscription date:</p><p class="md-secondary">{{quota.subscription.created | formatDateTime}}</p>
+                        </md-list-item>
+                        <md-list-item>
+                            <p>Last billing date:</p><p class="md-secondary">{{quota.subscription.currentStart | formatDateTime}}</p>
+                        </md-list-item>
+                        <md-list-item ng-if="quota.subscription.renew !== false && !quota.subscription.downgradeQuantity">
+                            <p>Next billing date:</p><p class="md-secondary">{{quota.subscription.currentEnd | formatDateTime}}</p>
+                        </md-list-item>
+                        <md-list-item ng-if="quota.subscription.renew !== false && quota.subscription.downgradeQuantity" style="height: 70px;">
+                            <p>Next billing date:</p>
+                            <div class="md-secondary">
+                                <p>{{quota.subscription.currentEnd | formatDateTime}}</p>
+                                <div class="expiration-warning">The subscription has been downgraded.<br>
+                                    Starting from this date the new plan will be
+                                    "{{quota.subscription.downgradePlan.name}}"" with {{formatDowngradeQuantity()}} of {{quota.title}}<br>
+                                    The cost will be {{formatDowngradeCost()}}
+                                    <md-button class="toolbar-button md-secondary"
+                                                ng-click="cancelDowngrade()"
+                                                aria-label="Cancel downgrade"
+                                                uib-tooltip="Cancel downgrade"
+                                                tooltip-placement="top"
+                                                tooltip-trigger="mouseenter"
+                                                tooltip-append-to-body="true">
+                                        <i class="material-icons">undo</i>
+                                    </md-button>
+                                </div>
+                            </div>
+                        </md-list-item>
+                        <md-list-item ng-if="quota.subscription.renew === false" style="height: 40px;">
+                            <p>Expiration date:</p>
+                            <div class="md-secondary">
+                                <p>{{quota.subscription.currentEnd | formatDateTime}}</p>
+                                <div class="expiration-warning">The subscription has been canceled and will not be automatically renewed on expiration
+                                <md-button class="toolbar-button md-secondary"
+                                            ng-click="restoreSubscritpion()"
+                                            aria-label="Reactivate subscription"
+                                            uib-tooltip="Reactivate subscription"
+                                            tooltip-placement="top"
+                                            tooltip-trigger="mouseenter"
+                                            tooltip-append-to-body="true">
+                                    <i class="material-icons">restore</i>
+                                </md-button>
+                                </div>
+                            </div>
+                        </md-list-item>
+                        <md-list-item>
+                            <p>{{quota.title}}:</p><p class="md-secondary">{{formatSubscriptionQuantity()}}</p>
+                        </md-list-item>
+                        <md-list-item>
+                            <p>Cost:</p><p class="md-secondary">{{formatSubscriptionCost()}}</p>
+                        </md-list-item>
+                    </md-list>
+                </md-card-content>
+            </md-card>
+            <md-card md-theme-watch class="fstep-card">
+                <md-card-title>
+                    <md-card-title-text>
+                        <span class="md-headline">Update your plan</span>
+                    </md-card-title-text>
+                </md-card-title>
+                <md-card-content>
+                    <form name="subscriptionForm">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th><div>Default</div></th>
+                                    <th ng-repeat="plan in quota.subscriptionPlans"><div>{{plan.name}}</div></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Description</td>
+                                    <td>The default plan</td>
+                                    <td ng-repeat="plan in quota.subscriptionPlans">
+                                        <div>{{plan.description}}</div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Cost</td>
+                                    <td>Free</td>
+                                    <td ng-repeat="plan in quota.subscriptionPlans">
+                                        <div>{{formatCost(plan)}}</div>
+                                        <div>{{formatRecurrence(plan.costQuotation.recurrence)}}</div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>{{quota.title}}</td>
+                                    <td>{{quota.defaultValue}} {{quota.unit}}</td>
+                                    <td ng-repeat="plan in quota.subscriptionPlans">
+                                        <md-input-container ng-if="plan.billingScheme === 'UNIT'">
+                                            <input name="quantity" required type="number" ng-model="formState.plans[plan.id].quantity" step="{{plan.unit}}" min="{{plan.minQuantity * plan.unit}}" max="{{plan.maxQuantity * plan.unit}}" is-multiple-of="{{plan.unit}}"/>
+                                            <div class="hint" ng-show="true">Choose from {{plan.minQuantity * plan.unit}} to {{plan.maxQuantity * plan.unit}} {{quota.unit}}</div>
+                                            <div ng-messages="subscriptionForm.quantity.$error">
+                                                <div ng-message="isMultipleOf">Unit size is {{plan.unit}} {{quota.unit}}</div>
+                                            </div>
+                                        </md-input-container>
+                                        {{quota.unit}}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>You pay</td>
+                                    <td>Nothing</td>
+                                    <td ng-repeat="plan in quota.subscriptionPlans"><div>{{computeFinalCost(plan)}}</div></td>
+                                </tr>
+                                <tr>
+
+                                    <td></td>
+                                    <td>
+                                        <md-radio-group ng-model="formState.selectedPlan" >
+                                        <md-radio-button
+                                            ng-value="'default'"
+                                            class="md-primary" >
+                                            Choose this plan
+                                        </md-radio-button>
+                                        </md-radio-group>
+                                    </td>
+                                    <td ng-repeat="plan in quota.subscriptionPlans">
+                                        <md-radio-group ng-model="formState.selectedPlan" >
+                                        <md-radio-button
+                                            ng-value="plan.id"
+                                            class="md-primary" >
+                                            Choose this plan
+                                        </md-radio-button>
+                                    </md-radio-group>
+                                    </td>
+
+                                </tr>
+                            </tbody>
+                        </table>
+                    </form>
+                </md-card-content>
+            </md-card>
+        </md-dialog-content>
+        <div class="error-message note" ng-if="formState.errorMessage">{{formState.errorMessage}}</div>
+        <md-dialog-actions>
+            <md-button ng-disabled="subscriptionForm.$invalid || !enableSwitch()" ng-click="updateSubscription()" class="md-primary">Change plan</md-button>
+            <md-button ng-click="closeSubscriptionDialog()">Close</md-button>
+        </md-dialog-actions>
+    </div>
+</md-dialog>

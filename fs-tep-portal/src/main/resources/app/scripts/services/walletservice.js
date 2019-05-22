@@ -27,7 +27,10 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             title: 'Processing job'
         }, {
             name: 'DOWNLOAD',
-            title: 'Download'
+            title: 'Download',
+        }, {
+            name: 'SUBSCRIPTION',
+            title: 'Subscription'
         }];
 
         this.transactionTypesMap = this.transactionTypes.reduce(function(typesMap, type) {
@@ -56,6 +59,9 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             userWallet = halAPI.from(rootUri + '/users/' + user.id)
                 .newRequest()
                 .follow('wallet')
+                .withTemplateParameters({
+                    projection: 'shortWallet'
+                })
                 .getResource();
 
             userWallet.result
@@ -68,6 +74,12 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             );
             return deferred.promise;
         };
+
+        this.refreshWallet = function(page, user) {
+            this.getUserWallet(user).then(function(wallet) {
+                self.params[page].wallet = wallet;
+            })
+        }
 
         this.getTransactions = function(page, user, url) {
 

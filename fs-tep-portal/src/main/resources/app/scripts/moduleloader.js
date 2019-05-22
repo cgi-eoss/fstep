@@ -88,7 +88,8 @@ define([
     './services/reportservice',
     './services/quotausageservice',
     './services/costingexpressionservice',
-    './services/navigationhelper'
+    './services/navigationhelper',
+    './services/subscriptionservice'
 
 
 ], function () {});
