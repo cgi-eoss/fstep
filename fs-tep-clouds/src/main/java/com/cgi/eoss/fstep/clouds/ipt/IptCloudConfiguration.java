@@ -67,8 +67,8 @@ public class IptCloudConfiguration {
     @Value("${fstep.clouds.ipt.node.sshUsername}")
     private String sshUsername;
 
-    @Value("${fstep.clouds.ipt.node.networkId}")
-    private String networkId;
+    @Value("${fstep.clouds.ipt.node.networks}")
+    private String networks;
 
     @Value("${fstep.clouds.ipt.node.nfsHost}")
     private String nfsHost;
@@ -125,7 +125,7 @@ public class IptCloudConfiguration {
     public IptNodeFactory iptNodeFactory(OpenstackAPIs openstackAPIs) {
         IptNodeFactory iptNodeFactory = new IptNodeFactory(maxPoolSize, openstackAPIs,
                 ProvisioningConfig.builder().defaultNodeFlavor(nodeFlavorName).floatingIpPool(floatingIpPool).nodeImageId(nodeImageId)
-                        .sshUser(sshUsername).securityGroupName(securityGroupName).networkId(networkId).nfsHost(nfsHost)
+                        .sshUser(sshUsername).securityGroupName(securityGroupName).networks(networks).nfsHost(nfsHost)
                         .additionalNfsMounts(additionalNfsMounts).provisionFloatingIp(provisionFloatingIp)
                         .insecureRegistries(insecureRegistries).build(),
                 keypairRepository);

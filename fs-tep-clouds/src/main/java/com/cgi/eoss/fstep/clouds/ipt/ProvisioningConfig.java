@@ -11,7 +11,7 @@ final class ProvisioningConfig {
     private final String sshUser;
     private final String securityGroupName;
     private final String floatingIpPool;
-    private final String networkId;
+    private final String networks;
     private final String nfsHost;
     private final  String additionalNfsMounts;
     private boolean provisionFloatingIp;

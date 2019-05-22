@@ -160,7 +160,7 @@ public class IptNodeFactory implements NodeFactory {
             CreateServerOptions options = new CreateServerOptions()
             		.metadata(metadata)
             		.keyPairName(keypairName)
-            		.networks(provisioningConfig.getNetworkId())
+            		.networks(provisioningConfig.getNetworks().split(","))
             		.securityGroupNames(provisioningConfig.getSecurityGroupName());
             
 
@@ -237,7 +237,7 @@ public class IptNodeFactory implements NodeFactory {
     
     private String getServerAddress(Server server) {
     	Multimap<String, Address> allAddresses = server.getAddresses();
-        Network network = networkApi.get(provisioningConfig.getNetworkId());
+        Network network = networkApi.get(provisioningConfig.getNetworks().split(",")[0]);
         Collection<Address> networkAddresses = allAddresses.get(network.getName());
         Optional<Address> networkAddress = networkAddresses.stream().filter(a -> "floating".equals(a.getType().get())).findFirst();
         if (networkAddress.isPresent())
@@ -249,7 +249,7 @@ public class IptNodeFactory implements NodeFactory {
     }
     private Optional<Address> getServerFloatingIpAddress(Server server) {
     	Multimap<String, Address> allAddresses = server.getAddresses();
-        Network network = networkApi.get(provisioningConfig.getNetworkId());
+        Network network = networkApi.get(provisioningConfig.getNetworks().split(",")[0]);
         Collection<Address> networkAddresses = allAddresses.get(network.getName());
         return networkAddresses.stream().filter(a -> "floating".equals(a.getType().get())).findFirst();
         
