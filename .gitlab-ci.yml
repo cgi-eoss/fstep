@@ -46,6 +46,7 @@ sonarqube_master_job:
   stage: test
   only:
     - master
+    - integration
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
     paths:
