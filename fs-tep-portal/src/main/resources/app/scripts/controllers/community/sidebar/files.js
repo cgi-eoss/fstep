@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityFilesCtrl', ['FileService', 'CommonService', '$scope', '$mdDialog', 'moment', function (FileService, CommonService, $scope, $mdDialog, moment) {
+    fstepmodules.controller('CommunityFilesCtrl', ['FileService', 'CollectionService', 'CommonService', '$scope', '$mdDialog', 'moment', function (FileService, CollectionService, CommonService, $scope, $mdDialog, moment) {
 
         /* Get stored Files details */
         $scope.fileParams = FileService.params.community;
@@ -44,6 +44,17 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         $scope.getPage = function(url){
             FileService.getFstepFilesPage('community', url);
         };
+
+        $scope.searchCollection = function() {
+            return CollectionService.findCollections($scope.fileParams.collectionSearchString).then(function(collections) {
+                return collections.map(function(collection) {
+                    return {
+                        id: collection.id,
+                        name: collection.name
+                    };
+                })
+            });
+        }
 
         $scope.filter = function(){
             FileService.getFstepFilesByFilter('community');

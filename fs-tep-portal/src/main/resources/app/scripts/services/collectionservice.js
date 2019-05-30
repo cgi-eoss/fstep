@@ -247,6 +247,18 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
             }
         };
 
+        this.findCollections = function(searchString) {
+            var url = rootUri + '/collections/search/findByFilterOnly?sort=name&filter=' + searchString
+
+            return halAPI.from(url)
+                .newRequest()
+                .getResource()
+                .result
+                .then(function(document) {
+                    return document._embedded.collections;
+                });
+        }
+
         return this;
     }]);
 });

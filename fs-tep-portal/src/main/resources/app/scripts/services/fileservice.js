@@ -19,9 +19,9 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         var deleteAPI = traverson.from(rootUri).useAngularHttp();
 
         this.fileOwnershipFilters = {
-                ALL_FILES: { id: 0, name: 'All', searchUrl: 'search/findByFilterOnly'},
-                MY_FILES: { id: 1, name: 'Mine', searchUrl: 'search/findByFilterAndOwner' },
-                SHARED_FILES: { id: 2, name: 'Shared', searchUrl: 'search/findByFilterAndNotOwner' }
+                ALL_FILES: { id: 0, name: 'All'},
+                MY_FILES: { id: 1, name: 'Mine'},
+                SHARED_FILES: { id: 2, name: 'Shared' }
         };
 
         /** PRESERVE USER SELECTIONS **/
@@ -33,6 +33,8 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 fileDetails: undefined,
                 selectedFile: undefined,
                 activeFileType: "REFERENCE_DATA",
+                collection: undefined,
+                job: undefined,
                 searchText: '',
                 displayFilters: false,
                 sharedGroups: undefined,
@@ -82,12 +84,9 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         };
 
         /* File types: REFERENCE_DATA, OUTPUT_PRODUCT, EXTERNAL_PRODUCT */
-        this.getFstepFiles = function (page, fileType, url) {
+        this.getFstepFiles = function (page, url) {
             if(url){
                 self.params[page].pollingUrl = url;
-            }
-            else {
-                self.params[page].pollingUrl = rootUri + '/fstepFiles/search/findByType' + '?type=' + fileType;
             }
 
             var deferred = $q.defer();
@@ -248,7 +247,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 self.params[page].pollingUrl = url;
 
                 /* Get files list */
-                self.getFstepFiles(page, self.params[page].activeFileType, url).then(function (data) {
+                self.getFstepFiles(page, url).then(function (data) {
                     self.params[page].files = data;
                 });
 
@@ -259,19 +258,41 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
         };
 
         this.getFstepFilesByFilter = function (page) {
-            if (self.params[page]) {
-                var url = rootUri + '/fstepFiles/' + self.params[page].selectedOwnershipFilter.searchUrl +
-                    '?sort=filename&filter=' + (self.params[page].searchText ? self.params[page].searchText : '') +
-                    '&type=' + self.params[page].activeFileType;
 
-                if(self.params[page].selectedOwnershipFilter !== self.fileOwnershipFilters.ALL_FILES){
+            var params = self.params[page];
+
+            if (params) {
+
+                var url = rootUri + '/fstepFiles/search/parametricFind?sort=filename';
+
+                if (params.selectedOwnershipFilter === self.fileOwnershipFilters.MY_FILES) {
                     url += '&owner=' + UserService.params.activeUser._links.self.href;
+                } else if (params.selectedOwnershipFilter === self.fileOwnershipFilters.SHARED_FILES) {
+                    url += '&notOwner=' + UserService.params.activeUser._links.self.href;
                 }
 
-                /* Get databasket list */
-                self.getFstepFiles(page, self.params[page].activeFileType, url).then(function (data) {
-                    self.params[page].files = data;
-                });
+                url += '&type='  + params.activeFileType;
+
+                if (params.activeFileType === 'OUTPUT_PRODUCT') {
+                    if (params.collection) {
+                        url += '&collection=' + rootUri + '/collections/' + params.collection.id;
+                    }
+                    if (params.job) {
+                        url += '&job=' + rootUri + '/jobs/' + params.job;
+                    }
+                }
+
+                if (params.searchText) {
+                    url += '&filter=' + params.searchText;
+                }
+
+                params.pollingUrl = url;
+
+                params.files = [];
+                self.getFstepFiles(page).then(function(data) {
+                    params.files = data;
+                })
+
             }
         };
 
