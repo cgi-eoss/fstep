@@ -128,28 +128,27 @@ public class ZipHandler {
         boolean stripTopDirectory = true;
         Path testRoot = Paths.get("/");
         Path topDirectory = null;
-        ZipFile zipFile = new ZipFile(file.toFile());
-        Enumeration<? extends ZipEntry> entries = zipFile.entries();
-        while (entries.hasMoreElements()) {
-        	 ZipEntry ze = entries.nextElement();
-        	 Path zipEntryPath = testRoot.resolve(ze.getName());
-
-             // If it's a file in the top level directory, do not strip
-             if (!ze.isDirectory() && zipEntryPath.getParent().equals(testRoot)) {
-                 stripTopDirectory = false;
-                 break;
-             }
-
-             // If multiple top level directories are detected, do not strip
-             Path topLevelDir = zipEntryPath.subpath(0, 1);
-             if (topDirectory != null && !topLevelDir.equals(topDirectory)) {
-                 stripTopDirectory = false;
-                 break;
-             }
-             topDirectory = topLevelDir;
+        try (ZipFile zipFile = new ZipFile(file.toFile())){
+	        Enumeration<? extends ZipEntry> entries = zipFile.entries();
+	        while (entries.hasMoreElements()) {
+	        	 ZipEntry ze = entries.nextElement();
+	        	 Path zipEntryPath = testRoot.resolve(ze.getName());
+	
+	             // If it's a file in the top level directory, do not strip
+	             if (!ze.isDirectory() && zipEntryPath.getParent().equals(testRoot)) {
+	                 stripTopDirectory = false;
+	                 break;
+	             }
+	
+	             // If multiple top level directories are detected, do not strip
+	             Path topLevelDir = zipEntryPath.subpath(0, 1);
+	             if (topDirectory != null && !topLevelDir.equals(topDirectory)) {
+	                 stripTopDirectory = false;
+	                 break;
+	             }
+	             topDirectory = topLevelDir;
+	        }
         }
-        
-        zipFile.close();
         
         // ... then walk the file again to actually do the unzip operation
         
@@ -157,26 +156,25 @@ public class ZipHandler {
         	targetDir = Files.createDirectory(targetDir.resolve(FilenameUtils.getBaseName(file.getFileName().toString())));
         }
         
-        zipFile = new ZipFile(file.toFile());
-        entries = zipFile.entries();
-        while (entries.hasMoreElements()) {
-        	ZipEntry ze = entries.nextElement();
-        	// Mangle the zip entry path to get the path with/without the top level directory
-            Path dest = stripTopDirectory
-                    ? targetDir.resolve(topDirectory.relativize(Paths.get(ze.getName())).toString())
-                    : targetDir.resolve(ze.getName());
-
-            LOG.trace("Extracting from zip: {} -> {}", ze.getName(), dest);
-
-            if (ze.isDirectory()) {
-                Files.createDirectories(dest);
-            } else {
-                Files.createDirectories(dest.getParent());
-                Files.copy(zipFile.getInputStream(ze), dest, REPLACE_EXISTING);
-            }
+        try (ZipFile zipFile = new ZipFile(file.toFile())){
+	        Enumeration<? extends ZipEntry> entries = zipFile.entries();
+	        while (entries.hasMoreElements()) {
+	        	ZipEntry ze = entries.nextElement();
+	        	// Mangle the zip entry path to get the path with/without the top level directory
+	            Path dest = stripTopDirectory
+	                    ? targetDir.resolve(topDirectory.relativize(Paths.get(ze.getName())).toString())
+	                    : targetDir.resolve(ze.getName());
+	
+	            LOG.trace("Extracting from zip: {} -> {}", ze.getName(), dest);
+	
+	            if (ze.isDirectory()) {
+	                Files.createDirectories(dest);
+	            } else {
+	                Files.createDirectories(dest.getParent());
+	                Files.copy(zipFile.getInputStream(ze), dest, REPLACE_EXISTING);
+	            }
+	        }
         }
-        
-        zipFile.close();
     }
 
     

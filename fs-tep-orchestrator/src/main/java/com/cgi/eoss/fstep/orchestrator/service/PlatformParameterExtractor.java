@@ -6,8 +6,6 @@ import java.util.Map;
 
 import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
 import com.cgi.eoss.fstep.model.Job;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -19,9 +17,9 @@ public class PlatformParameterExtractor {
 	private static final String GEO_SERVER_SPEC_PARAM = "geoServerSpec";
 	private static final String TIMEOUT_PARAM = "timeout";
 
-	public Map<String, GeoServerSpec> getGeoServerSpecs(Job job) throws JsonParseException, JsonMappingException, IOException {
+	public Map<String, GeoServerSpec> getGeoServerSpecs(Job job) throws IOException {
         String geoServerSpecsStr = Iterables.getOnlyElement(job.getConfig().getInputs().get(GEO_SERVER_SPEC_PARAM), null);
-        Map<String, GeoServerSpec> geoServerSpecs = new HashMap<String, GeoServerSpec>();
+        Map<String, GeoServerSpec> geoServerSpecs = new HashMap<>();
         if (geoServerSpecsStr != null && geoServerSpecsStr.length() > 0) {
             ObjectMapper mapper = new ObjectMapper();
                 TypeFactory typeFactory = mapper.getTypeFactory();
@@ -31,9 +29,9 @@ public class PlatformParameterExtractor {
         return geoServerSpecs;
     }
     
-    public Map<String, String> getCollectionSpecs(Job job) throws JsonParseException, JsonMappingException, IOException {
+    public Map<String, String> getCollectionSpecs(Job job) throws IOException {
         String collectionsStr = Iterables.getOnlyElement(job.getConfig().getInputs().get(COLLECTION_PARAM), null);
-        Map<String, String> collectionSpecs = new HashMap<String, String>();
+        Map<String, String> collectionSpecs = new HashMap<>();
         if (collectionsStr != null && collectionsStr.length() > 0) {
             ObjectMapper mapper = new ObjectMapper();
                 TypeFactory typeFactory = mapper.getTypeFactory();

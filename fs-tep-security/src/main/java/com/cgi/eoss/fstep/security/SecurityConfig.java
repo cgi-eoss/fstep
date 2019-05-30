@@ -29,6 +29,7 @@ import org.springframework.security.acls.model.MutableAclService;
 import javax.cache.configuration.MutableConfiguration;
 import javax.sql.DataSource;
 import java.io.Serializable;
+import java.sql.Connection;
 import java.sql.SQLException;
 
 @Configuration
@@ -78,16 +79,17 @@ public class SecurityConfig {
         JdbcMutableAclService aclService = new JdbcMutableAclService(dataSource, lookupStrategy, aclCache);
 
         // Set the ACL ID query methods appropriately for specific database types
-        switch (dataSource.getConnection().getMetaData().getDatabaseProductName()) {
-            case "PostgreSQL":
-                LOG.info("Setting ACL ID query methods for PostgreSQL");
-                aclService.setSidIdentityQuery("SELECT currval('acl_sid_id_seq');");
-                aclService.setClassIdentityQuery("SELECT currval('acl_class_id_seq');");
-                break;
-            default:
-                LOG.info("Leaving ACL ID query methods as default");
+        try(Connection connection = dataSource.getConnection()){
+	        switch (connection.getMetaData().getDatabaseProductName()) {
+	            case "PostgreSQL":
+	                LOG.info("Setting ACL ID query methods for PostgreSQL");
+	                aclService.setSidIdentityQuery("SELECT currval('acl_sid_id_seq');");
+	                aclService.setClassIdentityQuery("SELECT currval('acl_class_id_seq');");
+	                break;
+	            default:
+	                LOG.info("Leaving ACL ID query methods as default");
+	        }
         }
-
         return aclService;
     }
 

@@ -20,6 +20,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * <p>Standard implementation of the {@link ZcfgWriter} interface. This uses FreeMarker templates to do the heavy
@@ -62,10 +63,10 @@ public class ZcfgWriterImpl implements ZcfgWriter {
             }
 
             LOG.debug("Deleting existing ZCFG files from {}", zcfgBasePath);
-            Files.list(zcfgBasePath)
-                    .filter(p -> MoreFiles.getFileExtension(p).equals("zcfg"))
+            try(Stream<Path> zcfgFiles = Files.list(zcfgBasePath)){
+            	zcfgFiles.filter(p -> MoreFiles.getFileExtension(p).equals("zcfg"))
                     .forEach(Unchecked.consumer(Files::delete));
-
+            }
             LOG.debug("Copying {} new ZCFG files to {}", services.size(), zcfgBasePath);
             zcfgs.stream()
                     .peek(p -> LOG.info("Generated ZCFG file, copying to: {}", zcfgBasePath.resolve(p.getFileName().toString())))

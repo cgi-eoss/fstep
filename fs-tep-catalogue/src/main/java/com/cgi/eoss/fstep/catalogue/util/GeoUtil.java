@@ -213,20 +213,20 @@ public class GeoUtil {
     
     private Path unzipInTempFolder(Path zipFilePath, Path folder) throws IOException {
     	byte[] buffer = new byte[1024];
-        ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFilePath.toFile()));
-        ZipEntry zipEntry = zis.getNextEntry();
-        while (zipEntry != null) {
-            File newFile = newFile(folder.toFile(), zipEntry);
-            FileOutputStream fos = new FileOutputStream(newFile);
-            int len;
-            while ((len = zis.read(buffer)) > 0) {
-                fos.write(buffer, 0, len);
-            }
-            fos.close();
-            zipEntry = zis.getNextEntry();
-        }
-        zis.closeEntry();
-        zis.close();
+    	try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFilePath.toFile()))) {
+	        ZipEntry zipEntry = zis.getNextEntry();
+	        while (zipEntry != null) {
+	            File newFile = newFile(folder.toFile(), zipEntry);
+	            try(FileOutputStream fos = new FileOutputStream(newFile)){
+		            int len;
+		            while ((len = zis.read(buffer)) > 0) {
+		                fos.write(buffer, 0, len);
+		            }
+	            }
+	            zis.closeEntry();
+	            zipEntry = zis.getNextEntry();
+	        }
+	    	}
         return folder;
 	}
     
@@ -283,12 +283,14 @@ public class GeoUtil {
 			try {
 				tmpFolder = Files.createTempDirectory("shape");
 	    		temp = unzipInTempFolder(shapeFile, tmpFolder); 
-				Optional<Path> shapeFileInFolder = Files.find(temp, 5, (path, attr) -> FilenameUtils.getExtension(path.getFileName().toString()).equalsIgnoreCase("shp")).findFirst();
-	    		if (shapeFileInFolder.isPresent()) {
-				return internal_shapeFileToGeojson(shapeFileInFolder.get(), threshold);
-	    		}
-	    		else {
-	    			throw new IOException();
+	    		try (Stream<Path> shapeFileInFolders = Files.find(temp, 5, (path, attr) -> FilenameUtils.getExtension(path.getFileName().toString()).equalsIgnoreCase("shp"))){
+	    			Optional<Path> shapeFileInFolder = shapeFileInFolders.findFirst();
+	    			if (shapeFileInFolder.isPresent()) {
+					return internal_shapeFileToGeojson(shapeFileInFolder.get(), threshold);
+		    		}
+		    		else {
+		    			throw new IOException();
+		    		}
 	    		}
 	    	} catch (IOException e) {
 	    		 String errorMessage = "Could not extract geojson from file: " + shapeFile;

@@ -233,34 +233,35 @@ public class CachingSymlinkDownloaderFacade implements DownloaderFacade {
                 Path downloaded = doDownload(inProgressDir, uri);
                 //TODO distinguish between files (old behaviour and folder). If folder, do
                 //the following for each file in folder
-                Files.find(downloaded, 1, (filePath, fileAttr) -> fileAttr.isRegularFile() && filePath.getFileName().toString().toLowerCase().endsWith(".zip")).forEach( downloadedFile -> {
-                try {
-                	switch (getUnzipStrategy(uri)) {
-                		case UNZIP_IN_SAME_FOLDER : {
-	                		ZipHandler.unzip(downloadedFile, inProgressDir);
-	                        Files.delete(downloadedFile);
-	                        break;
-	                	}
-	                	
-	                	case UNZIP_IN_NEW_FOLDER: {
-	                		ZipHandler.unzip(downloadedFile, inProgressDir, true);
-	                        Files.delete(downloadedFile);
-	                        break;
-	                	}
-	                	
-	                	case DO_NOT_UNZIP: {
-	                		
-	                	}
-                	}                
-                }
-                catch (Exception e) {
-                	throw new RuntimeException (e);
-                }	
-                }
+                try (Stream<Path> zipFiles = Files.find(downloaded, 1, (filePath, fileAttr) -> fileAttr.isRegularFile() && filePath.getFileName().toString().toLowerCase().endsWith(".zip"))){
+                	zipFiles.forEach( downloadedFile -> {
+	                try {
+	                	switch (getUnzipStrategy(uri)) {
+	                		case UNZIP_IN_SAME_FOLDER : {
+		                		ZipHandler.unzip(downloadedFile, inProgressDir);
+		                        Files.delete(downloadedFile);
+		                        break;
+		                	}
+		                	
+		                	case UNZIP_IN_NEW_FOLDER: {
+		                		ZipHandler.unzip(downloadedFile, inProgressDir, true);
+		                        Files.delete(downloadedFile);
+		                        break;
+		                	}
+		                	
+		                	case DO_NOT_UNZIP: {
+		                		
+		                	}
+	                	}                
+	                }
+	                catch (Exception e) {
+	                	throw new RuntimeException (e);
+	                }	
+	            }
                 );
-
-                // Move the temp directory to the final location
-                Files.move(inProgressDir, cacheDir, ATOMIC_MOVE);
+               }
+               // Move the temp directory to the final location
+               Files.move(inProgressDir, cacheDir, ATOMIC_MOVE);
             } catch (Exception e) {
                 try {
                     // Try to clean up if any error occurred

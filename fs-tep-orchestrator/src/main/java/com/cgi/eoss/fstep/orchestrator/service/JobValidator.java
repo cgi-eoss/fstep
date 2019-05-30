@@ -80,8 +80,7 @@ public class JobValidator {
 		if (jobCost == null) {
 			jobCost = costingService.estimateJobCost(job.getConfig());
 		}
-        Integer cost = jobCost.getCost();
-		return cost;
+        return jobCost.getCost();
 	}
 	
     
@@ -96,7 +95,7 @@ public class JobValidator {
     }
 
     public boolean checkInputList(User user, List<String> inputsList) {
-        return inputsList.stream().filter(e -> this.isValidUri(e)).map(URI::create).collect(toSet())
+        return inputsList.stream().filter(this::isValidUri).map(URI::create).collect(toSet())
                 .stream().allMatch(uri -> catalogueService.canUserRead(user, uri));
     }
         

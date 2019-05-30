@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecuteResultHandler;
@@ -85,10 +86,12 @@ public class LocalXfsPersistentFolderProvider implements PersistentFolderProvide
 	
 	public long getUsageInBytes(String path) throws IOException{
 		Path userFolder = constructFullPath(path);
-		return Files.walk(userFolder)
-	      .filter(p -> p.toFile().isFile())
-	      .mapToLong(p -> p.toFile().length())
-	      .sum();
+		try (Stream<Path> userFiles = Files.walk(userFolder)){
+			return userFiles
+		      .filter(p -> p.toFile().isFile())
+		      .mapToLong(p -> p.toFile().length())
+		      .sum();
+		}
 	}
 	
 	private ProcessResult executeShellCommand(String... args) throws IOException {

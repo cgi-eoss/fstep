@@ -682,11 +682,21 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             // Retrieve service context files
             Path serviceContext = inputOutputManager.getServiceContext(serviceName);
 
-            if (serviceContext == null || Files.list(serviceContext).count() == 0) {
-                // If no service context files are available, shortcut and fall back on the hopefully-existent image tag
-                LOG.warn("No service context files found for service '{}'; falling back on image tag", serviceName);
+            if (serviceContext == null) {
+        		// If no service context files are available, shortcut and fall back on the hopefully-existent image tag
+            	LOG.warn("No service context files found for service '{}'; falling back on image tag", serviceName);
                 return;
-            } else if (!Files.exists(serviceContext.resolve("Dockerfile"))) {
+            } 
+            
+            try (Stream<Path> serviceContextFiles = Files.list(serviceContext)) {
+	        	if (serviceContextFiles.count() == 0) {
+	        		// If no service context files are available, shortcut and fall back on the hopefully-existent image tag
+	        		LOG.warn("No service context files found for service '{}'; falling back on image tag", serviceName);
+	                return;
+	        	}
+            }  
+            
+            if (!Files.exists(serviceContext.resolve("Dockerfile"))) {
                 LOG.warn("Service context files exist, but no Dockerfile found for service '{}'; falling back on image tag", serviceName);
                 return;
             }
