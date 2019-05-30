@@ -158,6 +158,9 @@ public class ReportsApi {
         if (usageRecord == null) {
         	orderedUsage.put(startDateTime.minusDays(1).toLocalDate(), 0L);
         }
+        else {
+        	orderedUsage.put(usageRecord.getRecordDate(), usageRecord.getCumulativeSize());
+        }
 		List<FstepFilesCumulativeUsageRecord> records = fstepFilesCumulativeUsageRecordDataService.findByOwnerAndFileTypeIsNullAndRecordDateBetween(user, startDateTime.toLocalDate(), endDateTime.toLocalDate());
 		records.stream().forEach(r -> orderedUsage.put(r.getRecordDate(), r.getCumulativeSize()));
 		LocalDate next = startDateTime.toLocalDate();
