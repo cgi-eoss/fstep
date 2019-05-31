@@ -8,7 +8,7 @@
 'use strict';
 define(['../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', '$location', '$http', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'QuotaUsageService', 'ReportService', 'FileService', 'JobService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, $location, $http, UserService, ApiKeyService, WalletService, QuotaService, QuotaUsageService, ReportService, FileService, JobService, TabService, MessageService, $mdDialog) {
+    fstepmodules.controller('AccountCtrl', ['fstepProperties', '$scope', 'UserService', 'ApiKeyService', 'WalletService', 'QuotaService', 'QuotaUsageService', 'ReportService', 'NavigationHelperService', 'TabService', 'MessageService', '$mdDialog', function (fstepProperties, $scope, UserService, ApiKeyService, WalletService, QuotaService, QuotaUsageService, ReportService, NavigationHelperService, TabService, MessageService, $mdDialog) {
 
         var onUserChange = function() {
             $scope.user = UserService.params.activeUser;
@@ -63,52 +63,14 @@ define(['../../fstepmodules'], function (fstepmodules) {
             WalletService.getTransactions('account', $scope.user._links.self.href, url);
         }
 
-        var goToJob = function(job) {
-
-            JobService.params.community.parentId = null;
-            JobService.params.community.selectedOwnershipFilter = JobService.jobOwnershipFilters.ALL_JOBS;
-            JobService.params.community.searchText = job.id;
-            JobService.params.community.selectedJob = job;
-
-            if (!job.parent) {
-                $http.get(job._links.parentJob.href).then(function(response) {
-                    JobService.params.community.parentId = response.data.id;
-                    JobService.getJobsByFilter('community');
-                    TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
-                    $location.path('/community');
-                }, function() {
-                    JobService.getJobsByFilter('community');
-                    TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
-                    $location.path('/community');
-                })
-            } else {
-                JobService.getJobsByFilter('community');
-                TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
-                $location.path('/community');
-            }
-        }
-
-        var goToFile = function(file) {
-
-            FileService.params.community.selectedOwnershipFilter = FileService.fileOwnershipFilters.ALL_FILES;
-            FileService.params.community.searchText = file.filename;
-            FileService.params.community.activeFileType = file.type;
-            FileService.params.community.selectedFile = file;
-
-            FileService.getFstepFilesByFilter('community');
-            TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().FILES;
-            $location.path('/community');
-
-        }
-
         $scope.gotoTransactionResource = function(transaction) {
             WalletService.getTransactionResource(transaction).then(function(resource) {
                 if (transaction.type === 'DOWNLOAD') {
-                    goToFile(resource);
+                    NavigationHelperService.goToFile(resource);
                 } else if (transaction.type === 'JOB_PROCESSING') {
-                    goToJob(resource._embedded.job);
+                    NavigationHelperService.goToJob(resource._embedded.job);
                 } else if (transaction.type === 'JOB') {
-                    goToJob(resource);
+                    NavigationHelperService.goToJob(resource);
                 }
             });
         }

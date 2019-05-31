@@ -8,7 +8,7 @@
 define(['../../../fstepmodules'], function (fstepmodules) {
     'use strict';
 
-    fstepmodules.controller('JobsCtrl', ['$scope', '$rootScope', '$location', 'CommonService', 'JobService', '$sce', 'TabService', function ($scope, $rootScope, $location, CommonService, JobService, $sce, TabService) {
+    fstepmodules.controller('JobsCtrl', ['$scope', '$rootScope', 'JobService', 'NavigationHelperService', function ($scope, $rootScope, JobService, NavigationHelperService) {
 
             $scope.jobParams = JobService.params.explorer;
             $scope.jobOwnershipFilters = JobService.jobOwnershipFilters;
@@ -158,10 +158,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             };
 
             $scope.routeToManagePage = function(job) {
-                TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
-                JobService.params.community.selectedJob = job;
-                JobService.refreshSelectedJob('community');
-                $location.path('/community');
+                NavigationHelperService.goToJob(job);
             };
 
     }]);

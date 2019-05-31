@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunitySystematicProcessingsCtrl', ['SystematicService', 'CommonService', 'TabService', 'JobService', '$scope', '$http', '$mdDialog', function (SystematicService, CommonService, TabService, JobService, $scope, $http, $mdDialog) {
+    fstepmodules.controller('CommunitySystematicProcessingsCtrl', ['SystematicService', 'CommonService', 'TabService', 'NavigationHelperService', '$scope', '$http', '$mdDialog', function (SystematicService, CommonService, TabService, NavigationHelperService, $scope, $http, $mdDialog) {
 
         $scope.systematicParams = SystematicService.params.community;
         $scope.ownershipFilters = SystematicService.ownershipFilters;
@@ -41,11 +41,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         $scope.goToParentJobPage = function(systematicProcessing) {
             $http.get(systematicProcessing._links.parentJob.href).then(function(response) {
-                JobService.params.community.selectedOwnershipFilter = JobService.jobOwnershipFilters.ALL_JOBS;
-                JobService.params.community.searchText = response.data.id;
-                TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().JOBS;
-                JobService.params.community.selectedJob = response.data;
-                JobService.refreshSelectedJob('community');
+                NavigationHelperService.goToJob(response.data);
             }, function() {
 
             });

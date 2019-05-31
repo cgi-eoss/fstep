@@ -8,7 +8,7 @@
 'use strict';
 define(['../../../fstepmodules'], function(fstepmodules) {
 
-    fstepmodules.controller('DatabasketCtrl', ['$scope', '$rootScope', '$mdDialog', 'CommonService', 'BasketService', 'TabService', '$location', function($scope, $rootScope, $mdDialog, CommonService, BasketService, TabService, $location) {
+    fstepmodules.controller('DatabasketCtrl', ['$scope', '$rootScope', '$mdDialog', 'CommonService', 'BasketService', 'NavigationHelperService', function($scope, $rootScope, $mdDialog, CommonService, BasketService, NavigationHelperService) {
 
         $scope.dbPaging = BasketService.pagingData;
         $scope.dbParams = BasketService.params.explorer;
@@ -202,10 +202,7 @@ define(['../../../fstepmodules'], function(fstepmodules) {
         });
 
         $scope.routeToManagePage = function(basket) {
-            TabService.navInfo.community.activeSideNav = TabService.getCommunityNavTabs().DATABASKETS;
-            BasketService.params.community.selectedDatabasket = basket;
-            BasketService.refreshSelectedBasket('community');
-            $location.path('/community');
+            NavigationHelperService.goToBasket(basket);
         };
 
     }]);
