@@ -169,6 +169,16 @@
                 <i class="material-icons">close</i>
             </md-button>
 
+            <md-button class="toolbar-button md-secondary"
+                        ng-click="gotoJobFiles(job)"
+                        aria-label="Go to job files"
+                        uib-tooltip="Go to job output files"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">attach_files</i>
+            </md-button>
+
         </md-list-item>
 
         <div id="paging" fstep-paging="{{jobParams.pagingData}}"></div>

@@ -10,7 +10,7 @@
 
 define(['../../../fstepmodules'], function (fstepmodules) {
 
-    fstepmodules.controller('CommunityJobsCtrl', ['JobService', 'EstimateCostService', 'CommonService', '$scope', '$rootScope', '$location',  function (JobService, EstimateCostService, CommonService, $scope, $rootScope, $location) {
+    fstepmodules.controller('CommunityJobsCtrl', ['JobService', 'EstimateCostService', 'NavigationHelperService', 'CommonService', '$scope', '$rootScope', '$location',  function (JobService, EstimateCostService, NavigationHelperService, CommonService, $scope, $rootScope, $location) {
 
         /* Get stored Jobs details */
         $scope.jobParams = JobService.params.community;
@@ -149,6 +149,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             }
         }
 
+        $scope.gotoJobFiles = function(job) {
+            NavigationHelperService.goToJobFiles(job);
+        }
 
     }]);
 });
