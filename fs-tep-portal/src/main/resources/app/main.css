@@ -871,6 +871,12 @@
 #community-container section.filter-list md-input-container md-checkbox .md-icon:after {
   border-color: rgba(0, 0, 0, 0.54);
 }
+#community-container section.filter-list md-input-container md-autocomplete {
+  background: transparent;
+}
+#community-container section.filter-list md-input-container md-autocomplete md-autocomplete-wrap {
+  box-shadow: none;
+}
 #community-container section.filter-list md-input-container .hint {
   font-size: 0.6rem;
   color: rgba(0, 0, 0, 0.4);

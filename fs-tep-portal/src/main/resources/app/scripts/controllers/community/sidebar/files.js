@@ -179,5 +179,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
             });
         };
 
+        $scope.downloadItem = function($event, file){
+            FileService.downloadFile($event, file);
+        };
+
     }]);
 });

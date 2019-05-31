@@ -95,6 +95,16 @@
             </md-button>
 
             <md-button class="toolbar-button md-secondary"
+                        ng-click="downloadItem(event, file)"
+                        aria-label="Download"
+                        uib-tooltip="Download"
+                        tooltip-placement="top"
+                        tooltip-trigger="mouseenter"
+                        tooltip-append-to-body="true">
+                <i class="material-icons">file_download</i>
+            </md-button>
+
+            <md-button class="toolbar-button md-secondary"
                        ng-click="removeItem(event, key, file)"
                        aria-label="Delete"
                        uib-tooltip="Delete"

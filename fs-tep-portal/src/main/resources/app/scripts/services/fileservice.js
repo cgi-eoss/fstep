@@ -289,8 +289,9 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                 params.pollingUrl = url;
 
                 params.files = [];
-                self.getFstepFiles(page).then(function(data) {
+                return self.getFstepFiles(page).then(function(data) {
                     params.files = data;
+                    return data;
                 })
 
             }

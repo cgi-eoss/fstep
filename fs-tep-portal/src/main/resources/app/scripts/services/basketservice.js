@@ -177,7 +177,7 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
 
         var getDatabasket = function(databasket) {
             var deferred = $q.defer();
-            halAPI.from(rootUri + '/databaskets/' + databasket.id + '?projection=detailedDatabasket')
+            halAPI.from(rootUri + '/databaskets/' + databasket.id + '?projection=shortDatabasket')
                 .newRequest()
                 .getResource()
                 .result
@@ -193,12 +193,8 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
 
         this.getDatabasketContents = function(databasket) {
             var deferred = $q.defer();
-            halAPI.from(rootUri + '/databaskets/' + databasket.id)
+            halAPI.from(rootUri + '/databaskets/' + databasket.id + '/files?projection=detailedFstepFile')
                 .newRequest()
-                .follow('files')
-                .withRequestOptions({
-                    qs: {projection: 'detailedFstepFile'}
-                })
                 .getResource()
                 .result
                 .then(

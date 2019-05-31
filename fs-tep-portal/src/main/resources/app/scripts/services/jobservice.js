@@ -205,7 +205,7 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
 
         var getJob = function (job) {
             var deferred = $q.defer();
-                halAPI.from(rootUri + '/jobs/' + job.id + "?projection=detailedJob")
+                halAPI.from(rootUri + '/jobs/' + job.id + '?projection=detailedJob')
                          .newRequest()
                          .getResource()
                          .result
@@ -220,51 +220,10 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             return deferred.promise;
         };
 
-        var getJobOwner = function (job) {
-            var deferred = $q.defer();
-                halAPI.from(rootUri + '/jobs/' + job.id)
-                         .newRequest()
-                         .follow('owner')
-                         .getResource()
-                         .result
-                         .then(
-                function (document) {
-                    deferred.resolve(document);
-                }, function (error) {
-                    MessageService.addError('Could not get Job ' + job.id + ' owner', error);
-                    deferred.reject();
-                });
-
-            return deferred.promise;
-        };
-
-        var getJobRequest;
-
-        var getJobDetails = function(job) {
-            var deferred = $q.defer();
-
-            getJobRequest = halAPI.from(rootUri + '/jobs/' + job.id)
-                .newRequest()
-                .follow('job')
-                .getResource();
-
-            getJobRequest.result.then(
-            function (document) {
-                deferred.resolve(document);
-            }, function (error) {
-                MessageService.addError('Could not get contents of Job ' + job.id, error);
-                deferred.reject();
-            });
-            return deferred.promise;
-        };
-
         var getJobLogs = function(job) {
             var deferred = $q.defer();
 
-            getJobRequest.continue().then(function (nextBuilder) {
-                var nextRequest = nextBuilder.newRequest();
-                nextRequest
-                .follow('logs')
+            halAPI.from(rootUri + '/jobs/' + job.id + '/logs')
                 .getResource()
                 .result
                 .then(function (document) {
@@ -273,7 +232,6 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
                     MessageService.addError('Could not get logs for Job ' + job.id, error);
                     deferred.reject();
                 });
-             });
 
             return deferred.promise;
         };
@@ -281,43 +239,20 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
         this.getJobConfig = function(job) {
             var deferred = $q.defer();
 
-            halAPI.from(rootUri + '/jobs/' + job.id)
-                .newRequest()
-                .follow('job')
-                .getResource()
-                .continue().then(function (nextBuilder) {
-                    var nextRequest = nextBuilder.newRequest();
-                    nextRequest
-                    .follow('config')
-                    .getResource()
-                    .result
-                    .then(function (document) {
-                        deferred.resolve(document);
-                    }, function (error) {
-                        MessageService.addError('Could not get contents of Job ' + job.id, error);
-                        deferred.reject();
-                    });
-                 });
-
-            return deferred.promise;
-        };
-
-        var getJobOutput = function(job, outputLink) {
-            var deferred = $q.defer();
-
-            halAPI.from(outputLink + '?projection=detailedFstepFile')
+            halAPI.from(rootUri + '/jobs/' + job.id + '/config')
                 .newRequest()
                 .getResource()
                 .result
                 .then(function (document) {
                     deferred.resolve(document);
                 }, function (error) {
-                    MessageService.addError('Could not get output for Job ' + job.id, error);
+                    MessageService.addError('Could not get contents of Job ' + job.id, error);
                     deferred.reject();
                 });
 
             return deferred.promise;
         };
+
 
         function getOutputFiles(job){
             var deferred = $q.defer();
@@ -366,32 +301,26 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
 
                 getJob(_this.params[page].selectedJob).then(function (job) {
 
-                    getJobOwner(job).then(function (owner) {
-                        job.owner = owner;
+                    getJobLogs(job).then(function (logs) {
+                        job.logs = logs;
                     });
 
-                    getJobDetails(job).then(function (details) {
-                        job.details = details;
+                    _this.getJobConfig(job).then(function (config) {
+                        job.config = config;
+                    });
 
-                        getJobLogs(job).then(function (logs) {
-                             job.logs = logs;
-                        });
-                        _this.getJobConfig(job).then(function (config) {
-                            job.config = config;
-                        });
-
-                        if (job.outputs) {
-                            getOutputFiles(job).then(function(result){
-                                job.outputFiles = result._embedded.fstepFiles;
-                                _this.params[page].selectedJob = job;
-                                if(page === 'explorer'){
-                                    _this.params.explorer.jobSelectedOutputs = [];
-                                }
-                            });
-                        } else {
+                    if (job.outputs) {
+                        getOutputFiles(job).then(function(result){
+                            job.outputFiles = result._embedded.fstepFiles;
                             _this.params[page].selectedJob = job;
-                        }
-                    });
+                            if(page === 'explorer'){
+                                _this.params.explorer.jobSelectedOutputs = [];
+                            }
+                        });
+                    } else {
+                        _this.params[page].selectedJob = job;
+                    }
+
 
                     if(page === 'community') {
                         CommunityService.getObjectGroups(job, 'job').then(function (data) {
@@ -403,13 +332,6 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             }
         };
 
-        function getTwoDigitNumber(num){
-            return (num > 9 ? num : '0'+num);
-        }
-
-        function getThreeDigitNumber(num){
-            return (num > 99 ? num : (num > 9 ? '0'+num : '00' + num));
-        }
 
         this.launchJob = function(jobConfig, service, page) {
             var deferred = $q.defer();
