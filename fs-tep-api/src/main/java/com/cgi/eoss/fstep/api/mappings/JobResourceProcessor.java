@@ -56,7 +56,9 @@ public class JobResourceProcessor extends BaseResourceProcessor<Job> {
                     .filter(e -> e.getValue().startsWith("fstep://"))
                     .forEach(e -> {
                         FstepFile fstepFile = fstepFileDataService.getByUri(e.getValue());
-                        resource.add(entityLinks.linkToSingleResource(fstepFile).withRel("output-" + e.getKey()).expand());
+                        if (fstepFile != null) {
+                        	resource.add(entityLinks.linkToSingleResource(fstepFile).withRel("output-" + e.getKey()).expand());
+                        }
                     });
         }
     }

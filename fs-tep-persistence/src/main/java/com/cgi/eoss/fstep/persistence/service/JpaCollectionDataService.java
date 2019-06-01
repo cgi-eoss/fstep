@@ -51,4 +51,10 @@ public class JpaCollectionDataService extends AbstractJpaDataService<Collection>
         return dao.findByOwner(user);
     }
 
+    @Override
+    public Collection refreshFull(Collection collection) {
+    	collection = refresh(collection);
+    	collection.getFstepFiles().size();
+    	return collection;
+    }
 }

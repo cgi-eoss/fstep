@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.persistence.dao.FstepEntityDao;
 import com.cgi.eoss.fstep.persistence.dao.FstepFileDao;
@@ -71,4 +72,14 @@ public class JpaFstepFileDataService extends AbstractJpaDataService<FstepFile> i
     	return 0L;
     }
 
+    
+    @Override
+    @Transactional
+    public void delete(FstepFile entity) {
+    	for(Job j: entity.getJobs()) {
+    		j.getOutputFiles().remove(entity);
+    	}
+    	entity.getJobs().clear();
+    	super.delete(entity);
+    }
 }

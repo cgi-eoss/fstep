@@ -27,6 +27,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 import java.net.URI;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,7 +36,7 @@ import java.util.UUID;
  * external files. These objects may be included in databaskets.</p>
  */
 @Data
-@EqualsAndHashCode(exclude = {"id", "geoserverLayers"})
+@EqualsAndHashCode(exclude = {"id", "geoserverLayers", "jobs"})
 @Table(name = "fstep_files",
         indexes = {
                 @Index(name = "fstep_files_uri_idx", columnList = "uri"),
@@ -121,6 +122,13 @@ public class FstepFile implements FstepEntityWithOwner<FstepFile> {
             inverseJoinColumns = @JoinColumn(name = "geoserver_layer_id", referencedColumnName = "id"),
             uniqueConstraints = @UniqueConstraint(name = "fstep_geoserver_layer_files_layer_file_idx", columnNames = {"geoserver_layer_id", "file_id"}))
     private Set<GeoserverLayer> geoserverLayers = Sets.newHashSet();
+    
+    /**
+     * <p>The FstepFiles produced as job outputs.</p>
+     */
+    @ManyToMany(fetch = FetchType.LAZY, mappedBy = "outputFiles")
+    private Set<Job> jobs = new HashSet<>();
+    
     
     /**
      * <p>Construct a new FstepFile instance with the minimum mandatory (and unique) parameters.</p>
