@@ -81,7 +81,7 @@ public class CreoDIASSearchProvider extends RestoSearchProvider {
             .put("identifier", v -> "%" + v + "%")
             .put("maxCloudCover", v -> "[0,"+ v +"]")
             .put("s1ProcessingLevel", v -> "LEVEL"+v)
-            .put("s2ProcessingLevel", v -> "LEVEL"+v)
+            .put("s2ProcessingLevel", v -> "LEVEL"+v.substring(1))
             .put("s3ProcessingLevel", v -> "LEVEL"+v)
             .put("s5pProcessingLevel",  v -> "LEVEL"+v)
             .put("s3Instrument", v-> v.substring(0, 2))
