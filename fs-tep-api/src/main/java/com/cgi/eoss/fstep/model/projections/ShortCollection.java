@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.model.projections;
 
 import com.cgi.eoss.fstep.model.Collection;
+import com.cgi.eoss.fstep.model.CostingExpression;
 import com.cgi.eoss.fstep.security.FstepAccess;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.rest.core.config.Projection;
@@ -18,5 +19,6 @@ public interface ShortCollection extends Identifiable<Long> {
     ShortUser getOwner();
     @Value("#{@fstepSecurityService.getCurrentAccess(T(com.cgi.eoss.fstep.model.Collection), target.id)}")
     FstepAccess getAccess();
-    
+    @Value("#{@costingService.getCollectionCostingExpression(target)}")
+    CostingExpression getCostingExpression();
 }

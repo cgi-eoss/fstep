@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.model.projections;
 
 import com.cgi.eoss.fstep.security.FstepAccess;
+import com.cgi.eoss.fstep.model.CostingExpression;
 import com.cgi.eoss.fstep.model.FstepService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.rest.core.config.Projection;
@@ -20,4 +21,6 @@ public interface ShortFstepService extends Identifiable<Long> {
     FstepService.Status getStatus();
     @Value("#{@fstepSecurityService.getCurrentAccess(T(com.cgi.eoss.fstep.model.FstepService), target.id)}")
     FstepAccess getAccess();
+    @Value("#{@costingService.getServiceCostingExpression(target)}")
+    CostingExpression getCostingExpression();
 }
