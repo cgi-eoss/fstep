@@ -24,6 +24,8 @@ public interface DetailedSubscription extends Identifiable<Long> {
     OffsetDateTime getCurrentEnd();
     boolean isRenew();
     Status getStatus();
+    Integer getDowngradeQuantity();
+    ShortSubscriptionPlan getDowngradePlan();
     @Value("#{@fstepSecurityService.getCurrentAccess(T(com.cgi.eoss.fstep.model.Subscription), target.id)}")
     FstepAccess getAccess();
 }
