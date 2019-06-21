@@ -95,6 +95,7 @@ public class FstepSecurityService {
      * @param objectClass The class of the entity being published.
      * @param identifier The identifier of the entity being published.
      */
+    @Transactional
     public void publish(Class<?> objectClass, Long identifier) {
         LOG.info("Publishing entity: {} (id: {})", objectClass, identifier);
 
@@ -106,6 +107,7 @@ public class FstepSecurityService {
      *
      * @param objectIdentity The identifier of the entity being published.
      */
+    @Transactional
     public void publish(ObjectIdentity objectIdentity) {
         MutableAcl acl = getAcl(objectIdentity);
 

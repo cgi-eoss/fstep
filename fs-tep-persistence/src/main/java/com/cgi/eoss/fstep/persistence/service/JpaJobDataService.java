@@ -75,7 +75,20 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Job buildNew(String extId, String ownerId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs, Job parentJob) {
-        User owner = userDataService.getByName(ownerId);
+        return buildNewJob(extId, ownerId, serviceId, jobConfigLabel, inputs, parentJob);
+    }
+
+    
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Job buildNew(String extId, String ownerId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs) {
+    		return buildNewJob(extId, ownerId, serviceId, jobConfigLabel, inputs, null);
+    }
+    
+
+	private Job buildNewJob(String extId, String ownerId, String serviceId, String jobConfigLabel,
+			Multimap<String, String> inputs, Job parentJob) {
+		User owner = userDataService.getByName(ownerId);
         FstepService service = serviceDataService.getByName(serviceId);
 
         JobConfig config = new JobConfig(owner, service);
@@ -84,14 +97,9 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         config.setParent(parentJob);
 
         return dao.save(new Job(jobConfigDataService.save(config), extId, owner, parentJob));
-    }
+	}
     
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Job buildNew(String extId, String ownerId, String serviceId, String jobConfigLabel, Multimap<String, String> inputs) {
-    		return buildNew(extId, ownerId, serviceId, jobConfigLabel, inputs, null);
-    }
-    
     public Job refreshFull(Long id) {
         Job job = dao.findOne(id);
         job.getOwner().getGroups().size();
@@ -100,6 +108,7 @@ public class JpaJobDataService extends AbstractJpaDataService<Job> implements Jo
         return job;
     }
     
+    @Override
     public Job refreshFull(Job job) {
         job = refresh(job);
         job.getOwner().getGroups().size();
