@@ -17,6 +17,7 @@ import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,16 +40,19 @@ public class ScheduledJobServiceImpl implements ScheduledJobService{
 	}
 	
 	@Override
+	@Transactional
 	public void scheduleCronJob(Class<? extends ScheduledJob> jobClass, String identity, String group, Map<String, Object> jobContext, String cronExpression, boolean ignoreMisfires) {
 		scheduleCronJob(jobClass, identity, group, jobContext, cronExpression, null, ignoreMisfires);
 	}
 	
 	@Override
+	@Transactional
 	public void scheduleCronJob(Class<? extends ScheduledJob> jobClass, String identity, String group, Map<String, Object> jobContext, String cronExpression, Date startDateTime, boolean ignoreMisfires) {
 		scheduleCronsJob(jobClass, identity, group, jobContext, ImmutableSet.of(cronExpression), startDateTime, ignoreMisfires);
 	}
 	
 	@Override
+	@Transactional
 	public void scheduleCronsJob(Class<? extends ScheduledJob> jobClass, String identity, String group, Map<String, Object> jobContext, Set<String> cronExpressions, Date startDateTime, boolean ignoreMisfires) {
 	    JobDetail jobDetail = createJobDetail(jobClass, identity, group, jobContext);
         int index = 0;
@@ -76,11 +80,13 @@ public class ScheduledJobServiceImpl implements ScheduledJobService{
 	}
 
 	@Override
-    public void scheduleJobEveryNSeconds(Class<? extends ScheduledJob> jobClass, String identity, String group, Map<String, Object> jobContext, int seconds) {
+	@Transactional
+	public void scheduleJobEveryNSeconds(Class<? extends ScheduledJob> jobClass, String identity, String group, Map<String, Object> jobContext, int seconds) {
 	    scheduleJobEveryNSeconds(jobClass, identity, group, jobContext, seconds, -1);
 	}
 	
 	@Override
+	@Transactional
     public void scheduleJobEveryNSeconds(Class<? extends ScheduledJob> jobClass, String identity, String group, Map<String, Object> jobContext, int seconds, int count) {
         JobDetail jobDetail = createJobDetail(jobClass, identity, group, jobContext);
         SimpleScheduleBuilder scheduleBuilder;
@@ -112,6 +118,7 @@ public class ScheduledJobServiceImpl implements ScheduledJobService{
     }
 
 	@Override
+	@Transactional
 	public void unscheduleJob(String identity, String group) {
 		try {
 		    JobKey jobKey = JobKey.jobKey(identity, group);
@@ -151,6 +158,7 @@ public class ScheduledJobServiceImpl implements ScheduledJobService{
 	}
 	
 	@Override
+	@Transactional
     public void deleteJob(String identity, String group) {
         try {
             scheduler.deleteJob(JobKey.jobKey(identity, group));
@@ -186,6 +194,7 @@ public class ScheduledJobServiceImpl implements ScheduledJobService{
 	}
 
     @Override
+    @Transactional
     public void pauseJob(String identity, String group) {
         try {
             JobKey jobKey = JobKey.jobKey(identity, group);
@@ -204,6 +213,7 @@ public class ScheduledJobServiceImpl implements ScheduledJobService{
     }
     
     @Override
+    @Transactional
     public void resumeJob(String identity, String group) {
         try {
             JobKey jobKey = JobKey.jobKey(identity, group);
