@@ -107,7 +107,7 @@ public class PersistentFolder implements FstepEntityWithOwner<PersistentFolder> 
         this.locator = locator;
     }
 
-    // @Override
+    @Override
     public int compareTo(PersistentFolder o) {
         return ComparisonChain.start().compare(owner.getId(), o.owner.getId()).compare(name, o.name).result();
     }

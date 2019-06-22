@@ -119,6 +119,7 @@ public class FstepSecurityService {
         saveAcl(acl);
     }
 
+    @Transactional
     public void unpublish(Class<?> objectClass, Long identifier) {
         if (!isPublic(new ObjectIdentityImpl(objectClass, identifier))) {
             LOG.warn("Attempted to unpublish non-public object: {} {}", objectClass, identifier);

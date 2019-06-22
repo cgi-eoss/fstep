@@ -258,6 +258,10 @@ public class FstepWorker extends FstepWorkerGrpc.FstepWorkerImplBase {
             } catch (IOException e) {
                 responseObserver.onError(e);
             } catch (InterruptedException e) {
+            	// Restore interrupted state
+                Thread.currentThread().interrupt();
+                LOG.error("Failed to prepare docker image: {}", request.getDockerImage(), e);
+                
                 responseObserver.onError(e);
             }
         }

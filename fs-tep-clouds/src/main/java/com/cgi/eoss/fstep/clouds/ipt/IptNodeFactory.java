@@ -98,7 +98,13 @@ public class IptNodeFactory implements NodeFactory {
         this.maxPoolSize = maxPoolSize;
         NovaApi novaApi = openstackAPIs.getNovaApi();
         NeutronApi neutronApi = openstackAPIs.getNeutronApi();
-        this.region = novaApi.getConfiguredRegions().stream().findFirst().get();
+        Optional<String> optionalRegion = novaApi.getConfiguredRegions().stream().findFirst();
+        if (optionalRegion.isPresent()) {
+        	region = optionalRegion.get(); 
+        }
+        else {
+        	throw new IllegalStateException("No Openstack Nova region is available");
+        }
         this.serverApi = novaApi.getServerApi(region);
         this.keyPairApi = novaApi.getKeyPairApi(region).get();
         this.floatingIPApi = novaApi.getFloatingIPApi(region).get();

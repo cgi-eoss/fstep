@@ -63,7 +63,7 @@ public class ApiKey implements FstepEntityWithOwner<ApiKey> {
     }
 
 
-    // @Override
+    @Override
     public int compareTo(ApiKey o) {
         return ComparisonChain.start().compare(owner.getId(), o.owner.getId()).result();
     }

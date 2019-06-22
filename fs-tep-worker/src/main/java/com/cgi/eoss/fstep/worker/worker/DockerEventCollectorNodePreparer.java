@@ -73,12 +73,14 @@ public class DockerEventCollectorNodePreparer implements NodePreparer{
     	
     	LOG.info("Pulling Docker image '{}' from registry {}", imageName, dockerRegistryConfig.getDockerRegistryUrl());
         PullImageCmd pullImageCmd = dockerClient.pullImageCmd(imageName);
-        AuthConfig authConfig = new AuthConfig()
-            .withRegistryAddress(dockerRegistryConfig.getDockerRegistryUrl())
-            .withUsername(dockerRegistryConfig.getDockerRegistryUsername())
-            .withPassword(dockerRegistryConfig.getDockerRegistryPassword());
-        dockerClient.authCmd().withAuthConfig(authConfig).exec();
-        pullImageCmd = pullImageCmd.withRegistry(dockerRegistryConfig.getDockerRegistryUrl()).withAuthConfig(authConfig);
+        if (dockerRegistryConfig != null) {
+	        AuthConfig authConfig = new AuthConfig()
+	            .withRegistryAddress(dockerRegistryConfig.getDockerRegistryUrl())
+	            .withUsername(dockerRegistryConfig.getDockerRegistryUsername())
+	            .withPassword(dockerRegistryConfig.getDockerRegistryPassword());
+	        dockerClient.authCmd().withAuthConfig(authConfig).exec();
+	        pullImageCmd = pullImageCmd.withRegistry(dockerRegistryConfig.getDockerRegistryUrl()).withAuthConfig(authConfig);
+        }
         pullImageCmd.exec(new PullImageResultCallback()).awaitSuccess();
         LOG.info("Pulled Docker image '{}' from registry {}", imageName, dockerRegistryConfig.getDockerRegistryUrl());
     

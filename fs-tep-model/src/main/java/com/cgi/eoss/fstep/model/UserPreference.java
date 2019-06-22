@@ -78,7 +78,7 @@ public class UserPreference implements FstepEntityWithOwner<UserPreference> {
     }
 
 
-    // @Override
+    @Override
     public int compareTo(UserPreference o) {
         return ComparisonChain.start().compare(owner.getId(), o.owner.getId()).result();
     }

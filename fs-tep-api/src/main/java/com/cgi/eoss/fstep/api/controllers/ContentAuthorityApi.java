@@ -171,17 +171,17 @@ public class ContentAuthorityApi {
     public ResponseEntity<Void> makeTemplateDefault(@ModelAttribute("serviceTemplateId") FstepServiceTemplate serviceTemplate) {
     	DefaultServiceTemplate defaultServiceTemplate = defaultServiceTemplateDataService.getByServiceType(serviceTemplate.getType());
     	if (defaultServiceTemplate != null) {
-    		if (defaultServiceTemplate.getServiceTemplate().getId() != serviceTemplate.getId()) {
+    		if (!defaultServiceTemplate.getServiceTemplate().getId().equals(serviceTemplate.getId())) {
     			defaultServiceTemplate.setServiceTemplate(serviceTemplate);
     			defaultServiceTemplateDataService.save(defaultServiceTemplate);
         	}
-    		return new ResponseEntity<Void>(HttpStatus.OK);
+    		return new ResponseEntity<>(HttpStatus.OK);
     	}
 		defaultServiceTemplate = new DefaultServiceTemplate();
 		defaultServiceTemplate.setServiceType(serviceTemplate.getType());
 		defaultServiceTemplate.setServiceTemplate(serviceTemplate);
 		defaultServiceTemplateDataService.save(defaultServiceTemplate);
-    	return new ResponseEntity<Void>(HttpStatus.OK);
+    	return new ResponseEntity<>(HttpStatus.OK);
     }
     
     @PostMapping("/collections/publish/{collectionId}")

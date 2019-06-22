@@ -92,7 +92,7 @@ public class UserMount implements FstepEntityWithOwner<UserMount> {
     }
 
 
-    // @Override
+    @Override
     public int compareTo(UserMount o) {
         return ComparisonChain.start().compare(owner.getId(), o.owner.getId()).result();
     }

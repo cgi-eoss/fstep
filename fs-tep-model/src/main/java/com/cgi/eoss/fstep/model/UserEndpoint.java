@@ -82,7 +82,7 @@ public class UserEndpoint implements FstepEntityWithOwner<UserEndpoint> {
     }
 
 
-    // @Override
+    @Override
     public int compareTo(UserEndpoint o) {
         return ComparisonChain.start().compare(owner.getId(), o.owner.getId()).result();
     }
