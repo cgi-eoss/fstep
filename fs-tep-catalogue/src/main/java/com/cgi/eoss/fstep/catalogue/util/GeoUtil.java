@@ -372,6 +372,9 @@ public class GeoUtil {
         	if (pointCount > threshold) {
         		throw new Exception("Geometry contains more points - " + pointCount +  " - than allowed threshold " + threshold );
         	}
+        	if (basicGeometryType == null) {
+        		throw new Exception("Unrecognized geometry type");
+        	}
         	GeometryFactory gf = new GeometryFactory();
         	Geometry combinedGeometry = null;
         	if (basicGeometryType.equals("Polygon")) {
