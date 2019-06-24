@@ -101,6 +101,7 @@ public class SubscriptionPlan implements FstepEntity<SubscriptionPlan>, Searchab
         this.name = name;
         this.usageType = usageType;
         this.unit = unit;
+        this.minQuantity = minQuantity;
         this.maxQuantity = maxQuantity;
         this.billingScheme = billingScheme;
         this.costQuotation = costQuotation;

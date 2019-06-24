@@ -1,5 +1,6 @@
 package com.cgi.eoss.fstep.worker.jobs;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
 import java.nio.file.Files;
@@ -34,7 +35,8 @@ public class FstepWorkerJobIT {
     @Test
     public void test() {
         WorkerJob j = new WorkerJob(UUID.randomUUID().toString(), "54");
-        jobDataService.save(j);
+        j = jobDataService.save(j);
+        assertNotNull(j);
     }
 
 

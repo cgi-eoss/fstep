@@ -1,5 +1,7 @@
 package com.cgi.eoss.fstep.subscriptions;
 
+import static org.junit.Assert.assertNotNull;
+
 import java.time.OffsetDateTime;
 
 import org.junit.Test;
@@ -46,8 +48,8 @@ public class SubscriptionServiceIT {
         subscriptionPlanDataService.save(ImmutableSet.of(plan));
 
         Subscription subscription = new Subscription(owner, plan, 20, OffsetDateTime.now());
-        subscriptionService.createSubscription(subscription);
-        
+        subscription = subscriptionService.createSubscription(subscription);
+        assertNotNull(subscription);
     }
     
     @Test
@@ -61,9 +63,11 @@ public class SubscriptionServiceIT {
         subscriptionPlanDataService.save(ImmutableSet.of(plan));
 
         Subscription subscription = new Subscription(owner, plan, 20, OffsetDateTime.now());
-        subscriptionService.createSubscription(subscription);
+        subscription = subscriptionService.createSubscription(subscription);
+        assertNotNull(subscription);
         Subscription newSubscription = new Subscription(owner, plan, 30, OffsetDateTime.now());
-        subscriptionService.changeSubscription(subscription, newSubscription);
+        subscription = subscriptionService.changeSubscription(subscription, newSubscription);
+        assertNotNull(subscription);
     }
     
    

@@ -10,11 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(classes = {IptPersistenceConfiguration.class})
 @TestPropertySource("classpath:test-ipt-persistence.properties")
-
+@Transactional
 public class KeypairRepositoryTest {
 
     @Autowired
@@ -52,7 +53,8 @@ public class KeypairRepositoryTest {
     @Test
     public void testKeypairCreation()  {
         Keypair kp = new Keypair("servId", samplePrivateKey, samplePublicKey);
-        keypairRepository.save(kp);
+        kp = keypairRepository.save(kp);
+        assertNotNull(kp);
     }
     
     @Test

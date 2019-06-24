@@ -250,7 +250,7 @@ public class CachingSymlinkDownloaderFacade implements DownloaderFacade {
 		                	}
 		                	
 		                	case DO_NOT_UNZIP: {
-		                		
+		                		return;
 		                	}
 	                	}                
 	                }
