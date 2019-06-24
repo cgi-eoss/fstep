@@ -71,9 +71,9 @@ public class DockerEventCollectorNodePreparer implements NodePreparer{
     		dockerClient.removeContainerCmd(c.getId()).exec();
     	}
     	
-    	LOG.info("Pulling Docker image '{}' from registry {}", imageName, dockerRegistryConfig.getDockerRegistryUrl());
         PullImageCmd pullImageCmd = dockerClient.pullImageCmd(imageName);
         if (dockerRegistryConfig != null) {
+        	LOG.info("Pulling Docker image '{}' from registry {}", imageName, dockerRegistryConfig.getDockerRegistryUrl());
 	        AuthConfig authConfig = new AuthConfig()
 	            .withRegistryAddress(dockerRegistryConfig.getDockerRegistryUrl())
 	            .withUsername(dockerRegistryConfig.getDockerRegistryUsername())
@@ -81,8 +81,11 @@ public class DockerEventCollectorNodePreparer implements NodePreparer{
 	        dockerClient.authCmd().withAuthConfig(authConfig).exec();
 	        pullImageCmd = pullImageCmd.withRegistry(dockerRegistryConfig.getDockerRegistryUrl()).withAuthConfig(authConfig);
         }
+        else {
+        	LOG.info("Pulling Docker image '{}'", imageName);
+        }
         pullImageCmd.exec(new PullImageResultCallback()).awaitSuccess();
-        LOG.info("Pulled Docker image '{}' from registry {}", imageName, dockerRegistryConfig.getDockerRegistryUrl());
+        LOG.info("Pulled Docker image '{}'", imageName);
     
     	try (CreateContainerCmd createContainerCmd =  dockerClient.createContainerCmd(imageName)
     			.withBinds(Bind.parse("/var/run/docker.sock:/var/run/docker.sock"))
