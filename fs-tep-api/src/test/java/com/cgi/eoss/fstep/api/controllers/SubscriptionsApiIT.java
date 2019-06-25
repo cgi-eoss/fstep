@@ -31,6 +31,7 @@ import com.cgi.eoss.fstep.model.Subscription.Status;
 import com.cgi.eoss.fstep.model.SubscriptionPlan;
 import com.cgi.eoss.fstep.model.UsageType;
 import com.cgi.eoss.fstep.model.User;
+import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.persistence.service.SubscriptionDataService;
 import com.cgi.eoss.fstep.persistence.service.SubscriptionPlanDataService;
 import com.cgi.eoss.fstep.persistence.service.UserDataService;
@@ -71,8 +72,14 @@ public class SubscriptionsApiIT {
 	public void setUp() {
 		fstepUser = new User("fstep-user");
 		fstepUser.setRole(Role.USER);
-		fstepUser2 = new User("fstep-user-2");
-		fstepUser2.setRole(Role.USER);
+		Wallet wallet = new Wallet(fstepUser);
+        wallet.setBalance(1000);
+        fstepUser.setWallet(wallet);
+        fstepUser2 = new User("fstep-user-2");
+		Wallet wallet2 = new Wallet(fstepUser2);
+        wallet.setBalance(1000);
+        fstepUser2.setWallet(wallet);
+        fstepUser2.setRole(Role.USER);
 		fstepAdmin = new User("fstep-admin");
 		fstepAdmin.setRole(Role.ADMIN);
 
@@ -127,7 +134,7 @@ public class SubscriptionsApiIT {
 	@Test()
 	public void testChange() throws Exception {
 		String body = "{\"owner\":\"" + userUri(fstepUser2) + "\", \"subscriptionPlan\":\"" + subscriptionPlanUri(plan2)
-				+ "\", \"quantity\":\"10\" }";
+				+ "\", \"quantity\":\"100\" }";
 		mockMvc.perform(post("/api/subscriptions/").header("REMOTE_USER", fstepUser2.getName()).content(body))
 				.andExpect(status().isCreated());
 		long id = dataService.findByOwnerAndSubscriptionPlanUsageTypeAndStatusIsNot(fstepUser2,
