@@ -142,6 +142,10 @@ public class GeoserverServiceImpl implements GeoserverService {
             	return new GeoserverLayer(null, workspace, datastoreName, coverageName, StoreType.GEOTIFF);
             case MOSAIC: 
             	ingestCoverageInMosaic(workspace, path, datastoreName, coverageName);
+            	if (coverageName == null) {
+            		//Assume coverage same name as datastore
+            		coverageName = datastoreName;
+            	}
             	return new GeoserverLayer(null, workspace, datastoreName, coverageName, StoreType.MOSAIC);
             case SHAPEFILE_POSTGIS_IMPORT: 
             	ingestShapefileInPostgis(path, layerName, id);
