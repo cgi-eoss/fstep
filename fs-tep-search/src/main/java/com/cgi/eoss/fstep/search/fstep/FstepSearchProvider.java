@@ -4,6 +4,7 @@ import com.cgi.eoss.fstep.catalogue.CatalogueService;
 import com.cgi.eoss.fstep.catalogue.resto.RestoService;
 import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.FstepFile.Type;
 import com.cgi.eoss.fstep.persistence.service.CollectionDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.search.api.SearchParameters;
@@ -14,6 +15,7 @@ import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ListMultimap;
@@ -43,7 +45,10 @@ import java.util.stream.Collectors;
 @Log4j2
 public class FstepSearchProvider extends RestoSearchProvider {
 
-    private final int priority;
+    private static final String CATALOGUE_PARAMETER = "catalogue";
+	private static final String OUTPUT_COLLECTION_PARAMETER = "collection";
+	private static final String REFERENCE_DATA_COLLECTION_PARAMETER = "refDataCollection";
+	private final int priority;
     private final CatalogueService catalogueService;
     private final RestoService restoService;
     private final FstepFileDataService fstepFileDataService;
@@ -99,7 +104,7 @@ public class FstepSearchProvider extends RestoSearchProvider {
 
     @Override
     public boolean supports(SearchParameters parameters) {
-        String catalogue = parameters.getValue("catalogue", "UNKNOWN");
+        String catalogue = parameters.getValue(CATALOGUE_PARAMETER, "UNKNOWN");
         return catalogue.equals("REF_DATA") || catalogue.equals("FSTEP_PRODUCTS");
     }
 
@@ -124,20 +129,14 @@ public class FstepSearchProvider extends RestoSearchProvider {
 
     @Override
     protected String getCollection(SearchParameters parameters) {
-        switch (parameters.getValue("catalogue").orElse("")) {
-            case "REF_DATA":
-                return restoService.getReferenceDataCollection();
-            case "FSTEP_PRODUCTS":
-                Optional<String> collection = parameters.getValue("collection");
-                if (collection.isPresent()){
-                    return collection.get();
-                }
-                else {
-                    return restoService.getOutputProductsCollection();
-                }
-            default:
-                throw new IllegalArgumentException("Could not identify Resto collection for repo type: " + parameters.getValue("catalogue"));
-        }
+    	switch (parameters.getValue(CATALOGUE_PARAMETER).orElse("")) {
+        case "REF_DATA":
+        	return parameters.getValue(REFERENCE_DATA_COLLECTION_PARAMETER).orElse(restoService.getReferenceDataCollection());
+        case "FSTEP_PRODUCTS":
+        	return parameters.getValue(OUTPUT_COLLECTION_PARAMETER).orElse(restoService.getOutputProductsCollection());
+        default:
+            throw new IllegalArgumentException("Could not identify Resto collection for repo type: " + parameters.getValue(CATALOGUE_PARAMETER));
+    	}
     }
 
     @SuppressWarnings("unchecked")
@@ -207,45 +206,55 @@ public class FstepSearchProvider extends RestoSearchProvider {
     
     @Override
     public boolean supportsDynamicParameter(String parameter) {
-        return "collection".equals(parameter);
+        return ImmutableList.of(OUTPUT_COLLECTION_PARAMETER, REFERENCE_DATA_COLLECTION_PARAMETER).contains(parameter);
     }
     
     @Override
     public List<Map<String, Object>> getDynamicParameterValues(String parameter){
-        if (parameter.equals("collection")) {
-            //Populate the collection list
-            return collectionDataService.getAll().stream()
-            .filter(collection -> securityService.isReadableByCurrentUser(Collection.class, collection.getId()))
-            .map(collection -> new HashMap<String, Object>() {{
-                put("title", collection.getName());
-                put("value", collection.getIdentifier());
-                put("description", collection.getDescription());
-                }})
-            .collect(Collectors.toList());
+        switch (parameter) {
+        	case OUTPUT_COLLECTION_PARAMETER: return getVisibleCollectionsByFileType(Type.OUTPUT_PRODUCT);
+        	case REFERENCE_DATA_COLLECTION_PARAMETER: return getVisibleCollectionsByFileType(Type.REFERENCE_DATA);
+        	default: return Collections.emptyList();
         }
-        return Collections.EMPTY_LIST;
     }
+
+    private List<Map<String, Object>> getVisibleCollectionsByFileType(Type fileType) {
+		return collectionDataService.findByFileType(fileType).stream()
+		.filter(collection -> securityService.isReadableByCurrentUser(Collection.class, collection.getId()))
+		.map(this::collectionToMap)
+		.collect(Collectors.toList());
+	}
+    
+    private Map<String, Object> collectionToMap(Collection collection){
+		HashMap<String, Object> collectionMap = new HashMap<>();
+		collectionMap.put("title", collection.getName());
+		collectionMap.put("value", collection.getIdentifier());
+		collectionMap.put("description", collection.getDescription());
+		return collectionMap;
+	}
     
     @Override
     public String getDynamicParameterDefaultValue(String parameter){
-        if (parameter.equals("collection")) {
-            List<Collection> readableCollections = collectionDataService.getAll().stream()
-            .filter(collection -> securityService.isReadableByCurrentUser(Collection.class, collection.getId()))
-            .collect(Collectors.toList());
-            if (readableCollections.size()  == 0) {
-                return catalogueService.getDefaultOutputProductCollection();
-            }
-            Collection defaultCollection = readableCollections.stream()
-            .filter(c -> c.getIdentifier().equals(catalogueService.getDefaultOutputProductCollection()))
-            .findFirst().orElse(readableCollections.get(0));
-            if (defaultCollection != null) {
-                return defaultCollection.getIdentifier();
-            }
-            return StringUtils.EMPTY;
-          
-        }
-        
-        return null;
+    	switch (parameter) {
+    		case OUTPUT_COLLECTION_PARAMETER: return getDefaultCollectionByFileType(Type.OUTPUT_PRODUCT, catalogueService.getDefaultOutputProductCollection())
+        		.orElse(StringUtils.EMPTY);
+    		case REFERENCE_DATA_COLLECTION_PARAMETER: return getDefaultCollectionByFileType(Type.REFERENCE_DATA, catalogueService.getDefaultReferenceDataCollection())
+    			.orElse(StringUtils.EMPTY);
+    		default: return null;
+    	}
     }
+
+	private Optional<String> getDefaultCollectionByFileType(Type fileType, String defaultCollectionForType) {
+		List<Collection> readableCollections = collectionDataService.findByFileType(fileType).stream()
+		.filter(collection -> securityService.isReadableByCurrentUser(Collection.class, collection.getId()))
+		.collect(Collectors.toList());
+		if (readableCollections.isEmpty()) {
+		    return Optional.empty();
+		}
+		return Optional.of(readableCollections.stream()
+		.filter(c -> c.getIdentifier().equals(defaultCollectionForType))
+		.findFirst().orElse(readableCollections.get(0)).getName());
+	}
+
 
 }

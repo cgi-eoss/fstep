@@ -76,9 +76,9 @@ public class JpaFstepFileDataService extends AbstractJpaDataService<FstepFile> i
 
     @Override
     @Transactional
-    public FstepFile syncGeoserverLayersAndSave(FstepFile osirisFile) {
-        geoserverLayerDataService.syncGeoserverLayers(osirisFile);
-        return this.save(osirisFile);
+    public FstepFile syncGeoserverLayersAndSave(FstepFile fstepFile) {
+        geoserverLayerDataService.syncGeoserverLayers(fstepFile);
+        return this.save(fstepFile);
     }
     
     @Override

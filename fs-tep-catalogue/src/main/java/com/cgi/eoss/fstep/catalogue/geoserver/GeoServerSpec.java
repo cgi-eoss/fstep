@@ -1,5 +1,8 @@
 package com.cgi.eoss.fstep.catalogue.geoserver;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -20,4 +23,7 @@ public class GeoServerSpec {
     private String crs;
     
     private String style;
+    
+    @Builder.Default
+    private Map<String, String> options = new HashMap<>();
 }

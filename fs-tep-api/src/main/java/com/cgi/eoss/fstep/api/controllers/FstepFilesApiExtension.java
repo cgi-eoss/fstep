@@ -3,6 +3,7 @@ package com.cgi.eoss.fstep.api.controllers;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -72,7 +73,7 @@ public class FstepFilesApiExtension {
 
     @PostMapping("/refData")
     @ResponseBody
-    public ResponseEntity saveRefData(@RequestPart(required=false) Map<String, Object> userProperties,@RequestParam UploadableFileType fileType, @RequestPart(name = "file", required = true) MultipartFile file) throws Exception {
+    public ResponseEntity saveRefData(@RequestPart(required=false) Map<String, Object> userProperties, @RequestParam UploadableFileType fileType, @RequestPart(name = "file", required = true) MultipartFile file, @RequestParam(required=false) String collection) throws Exception {
         User owner = fstepSecurityService.getCurrentUser();
         String filename = file.getOriginalFilename();
 
@@ -89,12 +90,23 @@ public class FstepFilesApiExtension {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(String.format("Reference data filename '%s' already exists for user %s", filename, owner.getName()));
         }
 
+        
+        if (collection != null && !catalogueService.canUserWrite(owner, collection)) {
+        	return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User does not have access to the requested collection");
+        }
+        
+        if (userProperties == null) {
+        	userProperties = new HashMap<>();
+        }
+        
+        userProperties.put("collection", collection);
+        
         try {
         	ReferenceDataMetadata metadata = ReferenceDataMetadata.builder()
                     .owner(owner)
                     .filename(filename)
                     .filetype(fileType)
-                    .userProperties(userProperties == null? Collections.emptyMap(): userProperties) 
+                    .userProperties(userProperties) 
                     .build();
 
             FstepFileIngestion fstepFileIngestion = catalogueService.ingestReferenceData(metadata, file);

@@ -95,5 +95,32 @@ public class GeoserverLayerDataServiceIT {
         layer = geoserverLayerDataService.refreshFull(layer);
         assertThat(layer.getFiles().size(), is (2));
     }
+    
+    @Test
+    public void testDeleteGeoserverLayer() throws Exception {
+        User owner = new User("owner-uid");
+        userService.save(ImmutableSet.of(owner));
+
+        FstepFile fstepFile1 = new FstepFile();
+        fstepFile1.setUri(URI.create("fstep://fstepFile"));
+        fstepFile1.setRestoId(UUID.randomUUID());
+        fstepFile1.setOwner(owner);
+        
+        GeoserverLayer geoserverLayer1 = new GeoserverLayer(owner, "test", "test", StoreType.GEOTIFF);
+        fstepFile1.getGeoserverLayers().add(geoserverLayer1);
+        
+        geoserverLayerDataService.syncGeoserverLayers(fstepFile1);
+        fileDataService.save(ImmutableSet.of(fstepFile1));
+        
+        assertThat(geoserverLayerDataService.getAll().size(), is (1));
+        GeoserverLayer layer = geoserverLayerDataService.getAll().get(0);
+        layer = geoserverLayerDataService.refreshFull(layer);
+        assertThat(layer.getFiles().size(), is (1));
+       
+        fileDataService.delete(fstepFile1);
+        fstepFile1.getGeoserverLayers().forEach( l -> geoserverLayerDataService.delete(l));
+        assertThat(geoserverLayerDataService.getAll().size(), is (0));
+        
+    }
 
 }

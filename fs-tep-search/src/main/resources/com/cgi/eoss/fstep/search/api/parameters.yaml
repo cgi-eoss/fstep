@@ -25,6 +25,15 @@ collection:
     'catalogue':
       - 'FSTEP_PRODUCTS'
 
+refDataCollection:
+  title: 'Collection'
+  type: 'dynamic'
+  allowed: 
+    values: ''
+  onlyIf:
+    'catalogue':
+      - 'REF_DATA'  
+      
 clmscollection:
   title: 'Collection'
   type: 'dynamic'

@@ -83,7 +83,7 @@ public class ExternalProductDataServiceImpl implements ExternalProductDataServic
 
     @Override
     public void delete(FstepFile file) throws IOException {
-        resto.deleteReferenceData(file.getRestoId());
+        resto.deleteExternalProduct(file.getRestoId());
     }
 
     @SuppressWarnings("unchecked")

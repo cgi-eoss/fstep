@@ -7,14 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -56,13 +50,15 @@ public class FilesystemOutputProductService implements OutputProductService {
     private final RestoService resto;
     private final GeoserverService geoserver;
 	private boolean useGeoServerDefaultIngestions;
+	private final OGCLinkService ogcLinkService;
     
     @Autowired
-    public FilesystemOutputProductService(@Qualifier("outputProductBasedir") Path outputProductBasedir, RestoService resto, GeoserverService geoserver, @Value("${fstep.outputs.useGeoserverDefaultIngestion:true}") boolean useGeoServerDefaultIngestions) {
+    public FilesystemOutputProductService(@Qualifier("outputProductBasedir") Path outputProductBasedir, RestoService resto, GeoserverService geoserver, @Value("${fstep.outputs.useGeoserverDefaultIngestion:true}") boolean useGeoServerDefaultIngestions, OGCLinkService ogcLinkService) {
         this.outputProductBasedir = outputProductBasedir;
         this.resto = resto;
         this.geoserver = geoserver;
         this.useGeoServerDefaultIngestions = useGeoServerDefaultIngestions;
+        this.ogcLinkService = ogcLinkService;
     }
 
     @Override
@@ -217,51 +213,7 @@ public class FilesystemOutputProductService implements OutputProductService {
 
     @Override
     public Set<Link> getOGCLinks(FstepFile fstepFile) {
-        Set<Link> links = new HashSet<>();
-        for (GeoserverLayer geoserverLayer : fstepFile.getGeoserverLayers()) {
-            switch (geoserverLayer.getStoreType()) {
-                case MOSAIC:
-                    links.add(new Link(getWMSLinkToFileInMosaic(fstepFile, geoserverLayer), "wms"));
-                    break;
-                case GEOTIFF:
-                    links.add(new Link(getWMSLinkToLayer(geoserverLayer), "wms"));
-                    break;
-                case POSTGIS:
-                    links.add(new Link(getWMSLinkToLayer(geoserverLayer), "wms"));
-                    links.add(new Link(getWFSLinkToLayer(fstepFile, geoserverLayer), "wfs"));
-                    break;
-            }
-        }
-        return links;
-    }
-
-    private String getWMSLinkToFileInMosaic(FstepFile fstepFile, GeoserverLayer geoserverLayer) {
-        OffsetDateTime start = OffsetDateTime.of(LocalDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT), ZoneOffset.UTC);
-        OffsetDateTime end = start.plusYears(140);
-        
-        return geoserver.getExternalUrl().newBuilder().addPathSegment(geoserverLayer.getWorkspace()).addPathSegment("wms")
-                        .addQueryParameter("service", "WMS").addQueryParameter("version", "1.1.0")
-                        .addQueryParameter("layers", geoserverLayer.getWorkspace() + ":" + geoserverLayer.getLayer())
-                        .addQueryParameter("time", DateTimeFormatter.ISO_INSTANT.format(start) + "/" + DateTimeFormatter.ISO_INSTANT.format(end))
-                        .addQueryParameter("cql_filter", "(location LIKE '%" + fstepFile.getFilename() + "%')")
-                        .build().toString();
-    }
-
-    private String getWMSLinkToLayer(GeoserverLayer geoserverLayer) {
-        return geoserver.getExternalUrl().newBuilder().addPathSegment(geoserverLayer.getWorkspace()).addPathSegment("wms")
-                        .addQueryParameter("service", "WMS").addQueryParameter("version", "1.1.0")
-                        .addQueryParameter("layers", geoserverLayer.getWorkspace() + ":" + geoserverLayer.getLayer())
-                        .build().toString();
-        
-        
-    }
-
-    private String getWFSLinkToLayer(FstepFile fstepFile, GeoserverLayer geoserverLayer) {
-        return geoserver.getExternalUrl().newBuilder().addPathSegment(geoserverLayer.getWorkspace()).addPathSegment("wfs")
-                        .addQueryParameter("service", "WFS").addQueryParameter("version", "1.0.0")
-                        .addQueryParameter("typeName", geoserverLayer.getWorkspace() + ":" + geoserverLayer.getLayer())                        
-                        .addQueryParameter("cql_filter", "(fstep_id  = '" + fstepFile.getRestoId() + "')")
-                        .build().toString();
+        return ogcLinkService.getOGCLinks(fstepFile);
     }
 
     @Override
@@ -281,30 +233,11 @@ public class FilesystemOutputProductService implements OutputProductService {
         }
         resto.deleteOutputProduct(collection, file.getRestoId());
         for (GeoserverLayer geoserverLayer: file.getGeoserverLayers()) {
-            cleanUpGeoserverLayer(file, geoserverLayer);
+            geoserver.cleanUpGeoserverLayer(file.getFilename(), geoserverLayer);
         }
     }
     
-    private void cleanUpGeoserverLayer(FstepFile file, GeoserverLayer geoserverLayer) {
-        switch (geoserverLayer.getStoreType()) {
-            case GEOTIFF: 
-			deleteGeoTiffFromGeoserver(geoserverLayer);
-                break;
-            case MOSAIC: 
-                geoserver.deleteGranuleFromMosaic(geoserverLayer.getWorkspace(), geoserverLayer.getStore(), geoserverLayer.getLayer(), file.getFilename());
-                break;            
-            case POSTGIS:
-                //Simply delete the layer - update of Postgis table is not supported in geoserver
-                geoserver.deleteLayer(geoserverLayer.getWorkspace(), geoserverLayer.getLayer());
-                break;
-            default: return;
-        }
-    }
-
-	private void deleteGeoTiffFromGeoserver(GeoserverLayer geoserverLayer) {
-		geoserver.unpublishCoverage(geoserverLayer.getWorkspace(), geoserverLayer.getStore(), geoserverLayer.getLayer());
-		geoserver.deleteCoverageStore(geoserverLayer.getWorkspace(), geoserverLayer.getStore());
-	}
+    
 
     @Override
     public void createCollection(Collection collection) throws IOException{

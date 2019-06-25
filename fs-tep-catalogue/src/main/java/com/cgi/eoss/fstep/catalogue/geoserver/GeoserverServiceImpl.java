@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.catalogue.geoserver;
 
 import static it.geosolutions.geoserver.rest.encoder.GSResourceEncoder.ProjectionPolicy.REPROJECT_TO_DECLARED;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -18,12 +19,15 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import com.cgi.eoss.fstep.catalogue.IngestionException;
+import com.cgi.eoss.fstep.catalogue.geoserver.model.GeoserverImportTask;
+import com.cgi.eoss.fstep.catalogue.geoserver.model.GeoserverImportTask.UpdateMode;
 import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
 import com.cgi.eoss.fstep.model.GeoserverLayer;
 import com.cgi.eoss.fstep.model.GeoserverLayer.StoreType;
-import com.cgi.eoss.fstep.catalogue.geoserver.model.GeoserverImportTask;
-import com.google.common.io.MoreFiles;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import it.geosolutions.geoserver.rest.GeoServerRESTManager;
 import it.geosolutions.geoserver.rest.GeoServerRESTPublisher;
 import it.geosolutions.geoserver.rest.GeoServerRESTReader;
@@ -135,7 +139,7 @@ public class GeoserverServiceImpl implements GeoserverService {
         String layerName = geoServerSpec.getLayerName();
         String srs = geoServerSpec.getCrs();
         String style = geoServerSpec.getStyle();
-        
+        Map<String, String> options = geoServerSpec.getOptions();
         switch (geoServerSpec.getGeoserverType()) {
             case SINGLE_COVERAGE: 
             	ingestCoverage(workspace, path, srs, datastoreName, coverageName, style);
@@ -148,7 +152,8 @@ public class GeoserverServiceImpl implements GeoserverService {
             	}
             	return new GeoserverLayer(null, workspace, datastoreName, coverageName, StoreType.MOSAIC);
             case SHAPEFILE_POSTGIS_IMPORT: 
-            	ingestShapefileInPostgis(path, layerName, id);
+            	UpdateMode updateMode = parseUpdateMode(options.getOrDefault("mode", "append"));
+            	ingestShapefileInPostgis(path, layerName, id, updateMode);
             	return new GeoserverLayer(null, postgisWorkspace, postgisStore, layerName, StoreType.POSTGIS);
             default: throw new IngestionException("GeoServerType not specified");
         }
@@ -291,7 +296,7 @@ public class GeoserverServiceImpl implements GeoserverService {
 		mosaicManager.createEmptyMosaic(workspace, storeName, coverageName, timeRegexp);
 	}
 	
-	private String ingestShapefileInPostgis(Path path, String layerName, UUID id) {
+	private String ingestShapefileInPostgis(Path path, String layerName, UUID id, UpdateMode updateMode) {
 		String importUrl;
 		try {
 			importUrl = importer.createImport(postgisWorkspace, postgisStore);
@@ -301,9 +306,7 @@ public class GeoserverServiceImpl implements GeoserverService {
 			newAttributes.put("fstep_id", id);
 			Path transformedShapeFile = GeoUtil.duplicateShapeFile(path, layerName, newAttributes, true);
 			String taskUrl = importer.addShapeFileToImport(transformedShapeFile, importUrl);
-			if (importer.existsFeatureType(postgisWorkspace, postgisStore, layerName)) {
-				importer.setTaskUpdateMode(taskUrl, GeoserverImportTask.UpdateMode.APPEND);
-			}
+			setTaskUpdateMode(taskUrl, layerName, updateMode);
 			importer.runImport(importUrl);
 			return importUrl;
 		} catch (IOException e) {
@@ -311,9 +314,59 @@ public class GeoserverServiceImpl implements GeoserverService {
 		}
 	}
 
-    @Override
+	private void setTaskUpdateMode(String taskUrl, String layerName, UpdateMode updateMode) throws JsonProcessingException {
+    	switch(updateMode) {
+    		case CREATE:
+    			//Create is the default task update mode
+    			return;
+    		case REPLACE:
+    			if (importer.existsFeatureType(postgisWorkspace, postgisStore, layerName)) {
+    				importer.setTaskUpdateMode(taskUrl, GeoserverImportTask.UpdateMode.REPLACE);
+    			}
+    			return;
+    		case APPEND:
+    			default:
+    			if (importer.existsFeatureType(postgisWorkspace, postgisStore, layerName)) {
+    				importer.setTaskUpdateMode(taskUrl, GeoserverImportTask.UpdateMode.APPEND);
+    			}
+    			return;
+    	}
+    }
+
+	private UpdateMode parseUpdateMode(String mode) {
+		switch (mode) {
+			case "append": return UpdateMode.APPEND;
+			case "replace": return UpdateMode.REPLACE;
+			case "create": return UpdateMode.CREATE;
+			default: return UpdateMode.APPEND;
+		}
+			
+	}
+
+	@Override
     public void deleteGranuleFromMosaic(String workspace, String storeName, String coverageName, String location) {
         mosaicManager.deleteGranuleFromMosaic(workspace, storeName, coverageName, location);
     }
+	
+	@Override
+	public void cleanUpGeoserverLayer(String path, GeoserverLayer geoserverLayer) {
+        switch (geoserverLayer.getStoreType()) {
+            case GEOTIFF: 
+            	deleteGeoTiffFromGeoserver(geoserverLayer);
+                break;
+            case MOSAIC: 
+                deleteGranuleFromMosaic(geoserverLayer.getWorkspace(), geoserverLayer.getStore(), geoserverLayer.getLayer(), path);
+                break;            
+            case POSTGIS:
+                //Do not delete the layer, as geoserver will not delete the underlying postgis table
+                break;
+            default: return;
+        }
+    }
+
+	private void deleteGeoTiffFromGeoserver(GeoserverLayer geoserverLayer) {
+		unpublishCoverage(geoserverLayer.getWorkspace(), geoserverLayer.getStore(), geoserverLayer.getLayer());
+		deleteCoverageStore(geoserverLayer.getWorkspace(), geoserverLayer.getStore());
+	}
 
 }

@@ -40,7 +40,6 @@ public interface GeoserverService {
 
     void deleteGranuleFromMosaic(String workspace, String storeName, String coverageName, String location);
 
-
-
+	void cleanUpGeoserverLayer(String path, GeoserverLayer geoserverLayer);
 
 }

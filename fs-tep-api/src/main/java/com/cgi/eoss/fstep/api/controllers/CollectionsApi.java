@@ -10,6 +10,7 @@ import org.springframework.data.rest.core.annotation.RestResource;
 import org.springframework.security.access.method.P;
 import org.springframework.security.access.prepost.PreAuthorize;
 import com.cgi.eoss.fstep.model.Collection;
+import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.projections.ShortCollection;
 
@@ -50,5 +51,10 @@ public interface CollectionsApi extends BaseRepositoryApi<Collection>, Collectio
     @RestResource(path="findByFilterAndNotOwner", rel="findByFilterAndNotOwner")
     @Query("select t from Collection t where not t.owner=:owner and (t.name like %:filter% or t.description like %:filter%)")
     Page<Collection> findByFilterAndNotOwner(@Param("filter") String filter, @Param("owner") User user, Pageable pageable);
+
+    @Override
+    @RestResource(path="parametricFind", rel = "parametricFind")
+    @Query("select t from Collection t where (t.id like %:filter% or t.name like %:filter%) and t.fileType=:fileType and not t.owner=:notOwner and t.owner=:owner")
+    Page<Collection> parametricFind(@Param("filter") String filter, @Param("fileType") FstepFile.Type fileType, @Param("owner") User user,@Param("notOwner") User notOwner, Pageable pageable);
 
 }

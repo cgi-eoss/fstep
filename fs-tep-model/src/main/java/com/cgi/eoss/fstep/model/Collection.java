@@ -5,6 +5,8 @@ import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -17,6 +19,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import com.cgi.eoss.fstep.model.FstepFile.Type;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.ComparisonChain;
 
@@ -66,6 +69,13 @@ public class Collection implements FstepEntityWithOwner<Collection>, Searchable 
     @Column(name = "productsType")
     private String productsType;
 
+    /**
+     * <p>Type of files inside this collection</p>
+     */
+    @Column(name = "file_type")
+    @Enumerated(EnumType.STRING)
+    private FstepFile.Type fileType = Type.OUTPUT_PRODUCT;
+    
     /**
      * <p>The user owning the collection, typically the collection creator.</p>
      */

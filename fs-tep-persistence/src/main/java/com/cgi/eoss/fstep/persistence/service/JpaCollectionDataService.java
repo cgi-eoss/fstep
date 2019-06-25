@@ -2,11 +2,14 @@ package com.cgi.eoss.fstep.persistence.service;
 
 import static com.cgi.eoss.fstep.model.QCollection.collection;
 import com.cgi.eoss.fstep.model.Collection;
+import com.cgi.eoss.fstep.model.FstepFile.Type;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.persistence.dao.CollectionDao;
 import com.cgi.eoss.fstep.persistence.dao.FstepEntityDao;
 import com.querydsl.core.types.Predicate;
 import java.util.List;
+import java.util.Set;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,4 +60,9 @@ public class JpaCollectionDataService extends AbstractJpaDataService<Collection>
     	collection.getFstepFiles().size();
     	return collection;
     }
+
+	@Override
+	public Set<Collection> findByFileType(Type fileType) {
+		return dao.findByFileType(fileType);
+	}
 }

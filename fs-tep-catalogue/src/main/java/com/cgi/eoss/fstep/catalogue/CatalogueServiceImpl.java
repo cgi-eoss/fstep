@@ -29,10 +29,12 @@ import com.cgi.eoss.fstep.model.Collection;
 import com.cgi.eoss.fstep.model.DataSource;
 import com.cgi.eoss.fstep.model.Databasket;
 import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.model.FstepFile.Type;
 import com.cgi.eoss.fstep.model.FstepFilesCumulativeUsageRecord;
 import com.cgi.eoss.fstep.model.Quota;
 import com.cgi.eoss.fstep.model.UsageType;
 import com.cgi.eoss.fstep.model.FstepFilesRelation;
+import com.cgi.eoss.fstep.model.GeoserverLayer;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.internal.FstepFileIngestion;
 import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
@@ -44,6 +46,7 @@ import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFilesCumulativeUsageRecordDataService;
 import com.cgi.eoss.fstep.persistence.service.FstepFilesRelationDataService;
+import com.cgi.eoss.fstep.persistence.service.GeoserverLayerDataService;
 import com.cgi.eoss.fstep.persistence.service.QuotaDataService;
 import com.cgi.eoss.fstep.persistence.service.UserDataService;
 import com.cgi.eoss.fstep.rpc.FileStream;
@@ -80,9 +83,10 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     private final FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService;
     private final QuotaDataService quotaDataService;
     private final FstepFilesRelationDataService fstepFilesRelationDataService;
+    private final GeoserverLayerDataService geoserverLayerDataService;
     
     @Autowired
-    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService, FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService, QuotaDataService quotaDataService, FstepFilesRelationDataService fstepFilesRelationDataService) {
+    public CatalogueServiceImpl(FstepFileDataService fstepFileDataService, CollectionDataService collectionDataService, DataSourceDataService dataSourceDataService, DatabasketDataService databasketDataService, OutputProductService outputProductService, ReferenceDataService referenceDataService, ExternalProductDataService externalProductDataService, FstepSecurityService securityService, UserDataService userDataService, FstepFilesCumulativeUsageRecordDataService fstepFilesCumulativeUsageRecordDataService, QuotaDataService quotaDataService, FstepFilesRelationDataService fstepFilesRelationDataService, GeoserverLayerDataService geoserverLayerDataService) {
         this.fstepFileDataService = fstepFileDataService;
         this.collectionDataService = collectionDataService;
         this.dataSourceDataService = dataSourceDataService;
@@ -95,26 +99,33 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
         this.fstepFilesCumulativeUsageRecordDataService = fstepFilesCumulativeUsageRecordDataService;
         this.quotaDataService = quotaDataService;
         this.fstepFilesRelationDataService = fstepFilesRelationDataService;
+        this.geoserverLayerDataService = geoserverLayerDataService;
     }
 
     @Override
-    public FstepFileIngestion ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException {
-    	checkQuota(referenceData.getOwner(), file.getSize(), FstepFile.Type.REFERENCE_DATA);
-		FstepFileIngestion fstepFileIngestion = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getFiletype(), referenceData.getUserProperties(), file);
+    public FstepFileIngestion ingestReferenceData(ReferenceDataMetadata referenceDataMetadata, MultipartFile file) throws IOException {
+    	checkQuota(referenceDataMetadata.getOwner(), file.getSize());
+    	String collection = (String) referenceDataMetadata.getUserProperties().get("collection");
+        if (collection == null) {
+            collection = getDefaultReferenceDataCollection();
+        }
+        ensureReferenceDataCollectionExists(collection);
+        FstepFileIngestion fstepFileIngestion = referenceDataService.ingest(collection, referenceDataMetadata.getOwner(), referenceDataMetadata.getFilename(), referenceDataMetadata.getFiletype(), referenceDataMetadata.getUserProperties(), file);
     	FstepFile fstepFile = fstepFileIngestion.getFstepFile();
     	fstepFile.setDataSource(dataSourceDataService.getForRefData(fstepFile));
-    	fstepFile = fstepFileDataService.save(fstepFile);
-    	fstepFilesCumulativeUsageRecordDataService.updateUsageRecordsOnCreate(fstepFile);
+    	fstepFile.setCollection(collectionDataService.getByIdentifier(collection));
+    	fstepFile = fstepFileDataService.syncGeoserverLayersAndSave(fstepFile);
+        fstepFilesCumulativeUsageRecordDataService.updateUsageRecordsOnCreate(fstepFile);
         return new FstepFileIngestion(fstepFileIngestion.getStatusMessage(), fstepFile);
 	}
     
     @Override
     public Path provisionNewOutputProduct(OutputProductMetadata outputProduct, String filename, long filesize) throws IOException {
-    	checkQuota(outputProduct.getOwner(), filesize, FstepFile.Type.OUTPUT_PRODUCT);
+    	checkQuota(outputProduct.getOwner(), filesize);
 		return outputProductService.provision(outputProduct.getJobId(), filename);
     }
     
-    private void checkQuota(User owner, long filesize, FstepFile.Type fileType) throws IOException {
+    private void checkQuota(User owner, long filesize) throws IOException {
     	Quota userFilesQuota = quotaDataService.getByOwnerAndUsageType(owner, UsageType.FILES_STORAGE_MB);
     	long currentUsage;
     	FstepFilesCumulativeUsageRecord usageRecord = fstepFilesCumulativeUsageRecordDataService.findTopByOwnerAndFileTypeIsNullAndRecordDateLessThanEqualOrderByRecordDateDesc(owner, LocalDate.now());
@@ -172,12 +183,32 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
            Collection collection = new Collection(getDefaultOutputProductCollection(), userDataService.getDefaultUser());
            collection.setDescription("Output Products");
            collection.setProductsType("Misc");
+           collection.setFileType(Type.OUTPUT_PRODUCT);
            collection.setIdentifier(getDefaultOutputProductCollection());
            collectionDataService.save(collection);
            securityService.publish(Collection.class, collection.getId());
        }
         
     }
+    
+    private void ensureReferenceDataCollectionExists(String collectionIdentifier) {
+        Collection collection = collectionDataService.getByIdentifier(collectionIdentifier);
+        if (collection == null) {
+            createReferenceDataCollection(collectionIdentifier);
+        }
+    }
+    
+    private void createReferenceDataCollection(String collectionIdentifier) {
+        if (collectionIdentifier.equals(getDefaultReferenceDataCollection())) {
+            Collection collection = new Collection(getDefaultReferenceDataCollection(), userDataService.getDefaultUser());
+            collection.setDescription("Reference Data");
+            collection.setProductsType("Misc");
+            collection.setFileType(Type.REFERENCE_DATA);
+            collection.setIdentifier(getDefaultReferenceDataCollection());
+            collectionDataService.save(collection);
+            securityService.publish(Collection.class, collection.getId());
+        }
+     }
 
     @Override
     public FstepFile indexExternalProduct(GeoJsonObject geoJson) {
@@ -206,6 +237,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
         switch (file.getType()) {
             case REFERENCE_DATA:
                 referenceDataService.delete(file);
+                fstepFilesCumulativeUsageRecordDataService.updateUsageRecordsOnDelete(file);
                 break;
             case OUTPUT_PRODUCT:
                 outputProductService.delete(file);
@@ -216,14 +248,35 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
                 break;
         }
         fstepFileDataService.delete(file);
+        for (GeoserverLayer geoserverLayer: file.getGeoserverLayers()) {
+        	evaluateLayerDeletion(geoserverLayer);
+        }
     }
 
-    @Override
+    private void evaluateLayerDeletion(GeoserverLayer geoserverLayer) {
+    	switch (geoserverLayer.getStoreType()) {
+		case GEOTIFF: 
+			geoserverLayerDataService.delete(geoserverLayer);
+			return;
+		case MOSAIC:
+		case POSTGIS:
+			default:
+			return;
+		}
+	}
+
+	@Override
     public Set<Link> getOGCLinks(FstepFile fstepFile) {
     	Set<Link> links = new HashSet<>();
         switch (fstepFile.getType()) {
             case OUTPUT_PRODUCT:
             	links.addAll(outputProductService.getOGCLinks(fstepFileDataService.refreshFull(fstepFile)));
+            	for (FstepFilesRelation relation: fstepFilesRelationDataService.findByTargetFileAndType(fstepFile, FstepFilesRelation.Type.VISUALIZATION_OF)) {
+            		links.addAll(getOGCLinks(relation.getSourceFile()));
+            	}
+            	break;
+            case REFERENCE_DATA:
+            	links.addAll(referenceDataService.getOGCLinks(fstepFileDataService.refreshFull(fstepFile)));
             	for (FstepFilesRelation relation: fstepFilesRelationDataService.findByTargetFileAndType(fstepFile, FstepFilesRelation.Type.VISUALIZATION_OF)) {
             		links.addAll(getOGCLinks(relation.getSourceFile()));
             	}
@@ -380,19 +433,40 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
         LOG.debug("Listing databasket contents for id {}", databasketId);
         return databasket;
     }
-
+    
     @Override
-    public void createOutputCollection(Collection collection) throws IOException {
-        outputProductService.createCollection(collection); 
-    }
-
-    @Override
-    public void deleteOutputCollection(Collection collection) throws IOException {
-    	collection = collectionDataService.refreshFull(collection);
-    	for (FstepFile fstepFile: collection.getFstepFiles()) {
-    		this.delete(fstepFile);
+    public void createCollection(Collection collection) throws IOException {
+    	switch(collection.getFileType()) {
+    		case OUTPUT_PRODUCT: 
+    			outputProductService.createCollection(collection);
+    			return;
+    		case REFERENCE_DATA:
+    			referenceDataService.createCollection(collection);
+    			return;
+    		case EXTERNAL_PRODUCT:
+    		default:
+    			return;
     	}
-        outputProductService.deleteCollection(collection);
+    }
+    
+    @Override
+    public void deleteCollection(Collection collection) throws IOException {
+    	collection = collectionDataService.refreshFull(collection);
+    	switch(collection.getFileType()) {
+    		case OUTPUT_PRODUCT: 
+    			outputProductService.deleteCollection(collection);
+    			return;
+    		case REFERENCE_DATA:
+    			referenceDataService.deleteCollection(collection);
+    			return;
+    		case EXTERNAL_PRODUCT:
+    		default:
+    			return;
+    	}
     }
 
+    @Override
+    public String getDefaultReferenceDataCollection() {
+        return referenceDataService.getDefaultCollection();
+    }
 }

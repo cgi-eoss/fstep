@@ -1,6 +1,7 @@
 package com.cgi.eoss.fstep.model.projections;
 
 import com.cgi.eoss.fstep.model.Collection;
+import com.cgi.eoss.fstep.model.FstepFile;
 import com.cgi.eoss.fstep.security.FstepAccess;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.rest.core.config.Projection;
@@ -15,6 +16,7 @@ public interface DetailedCollection extends Identifiable<Long> {
     String getIdentifier();
     String getDescription();
     String getProductsType();
+    FstepFile.Type getFileType();
     ShortUser getOwner();
     @Value("#{target.fstepFiles.size()}")
     Integer getSize();

@@ -87,8 +87,8 @@ public class RestoServiceImpl implements RestoService {
     }
 
     @Override
-    public UUID ingestReferenceData(GeoJsonObject object) {
-        return ingest(refDataCollection, object);
+    public UUID ingestReferenceData(String collection, GeoJsonObject object) {
+        return ingest(collection, object);
     }
 
     @Override
@@ -110,8 +110,16 @@ public class RestoServiceImpl implements RestoService {
     }
 
     @Override
-    public void deleteReferenceData(UUID restoId) {
-        delete(refDataCollection, restoId);
+    public void deleteReferenceData(String collection, UUID restoId) {
+    	if(collection == null) {
+    		collection = refDataCollection;
+    	}
+        delete(collection, restoId);
+    }
+    
+    @Override
+    public void deleteExternalProduct(UUID restoId) {
+        delete(externalProductCollection, restoId);
     }
 
     @Override
@@ -305,6 +313,27 @@ public class RestoServiceImpl implements RestoService {
                         .longName(collection.getOwner().getName()+" - " + collection.getName()).description(collection.getDescription())
                         .tags("fstep fs-tep output outputs generated " + collection.getName()).query(collection.getName()).build()))
         .propertiesMapping(ImmutableMap.of("fstepFileType", FstepFile.Type.OUTPUT_PRODUCT.toString()));
+        return builder.build();
+    }
+    
+    @Override
+    public boolean createReferenceDataCollection(Collection collection) {
+        RestoCollection restoCollection = getReferenceDataRestoCollectionForCollection(collection);
+        if (!getRestoCollections().contains(restoCollection.getName())) {
+            return createRestoCollection(restoCollection);
+        }
+        return false;
+    }
+
+    private RestoCollection getReferenceDataRestoCollectionForCollection(Collection collection) {
+        RestoCollection.RestoCollectionBuilder builder = RestoCollection.builder().name(collection.getIdentifier()).status("public")
+                .licenseId("unlicensed").rights(ImmutableMap.of("download", 0, "visualize", 1));
+        builder.model(refDataModel)
+        .osDescription(ImmutableMap.of("en",
+        		RestoCollection.OpensearchDescription.builder().shortName(collection.getName().substring(0, Math.min(RESTO_COLLECTION_SHORT_NAME_LIMIT, collection.getName().length())))
+                        .longName(collection.getOwner().getName()+" - " + collection.getName()).description(collection.getDescription())
+                        .tags("fstep fs-tep refData reference generated " + collection.getName()).query(collection.getName()).build()))
+        .propertiesMapping(ImmutableMap.of("fstepFileType", FstepFile.Type.REFERENCE_DATA.toString()));
         return builder.build();
     }
     

@@ -188,7 +188,8 @@ CREATE INDEX fstep_data_sources_owner_idx
   owner   BIGINT    NOT NULL REFERENCES fstep_users (uid),
   name 	  CHARACTER VARYING(255)	    NOT NULL,
   identifier CHARACTER VARYING(255)	NOT NULL,
-  description CLOB, 
+  description CLOB,
+  file_type        CHARACTER VARYING(255) default 'OUTPUT_PRODUCT' CHECK (file_type IN ('REFERENCE_DATA', 'OUTPUT_PRODUCT', 'EXTERNAL_PRODUCT')),
   products_type    CHARACTER VARYING(255)				
 );
   

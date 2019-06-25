@@ -13,7 +13,7 @@ public interface RestoService {
      * <p>Ingest the given GeoJsonObject to the Resto catalogue, in the FS-TEP Reference Data collection, and return the
      * new record's UUID.</p>
      */
-    UUID ingestReferenceData(GeoJsonObject object);
+    UUID ingestReferenceData(String collection, GeoJsonObject object);
     
     /**
      * Ingest the given GeoJsonObject product in a specific collection
@@ -34,7 +34,12 @@ public interface RestoService {
     /**
      * <p>Remove the given FS-TEP Reference Data product from the Resto catalogue.</p>
      */
-    void deleteReferenceData(UUID restoId);
+    void deleteReferenceData(String collection, UUID restoId);
+    
+    /**
+     * <p>Remove the given FS-TEP External product from the Resto catalogue.</p>
+     */
+    void deleteExternalProduct(UUID restoId);
 
     /**
      * @return The Resto catalogue GeoJSON data for the given FstepFile.
@@ -57,14 +62,19 @@ public interface RestoService {
     String getOutputProductsCollection();
     
     /**
-     * Creates a new Resto collection
+     * Creates a new Resto collection for outputs
      */
     boolean createOutputCollection(Collection collection);
+    
+    /**
+     * Creates a new Resto collection for reference data 
+     */
+    boolean createReferenceDataCollection(Collection collection);
     
     /**
      * Deletes a resto collection
      * @return 
      */
     boolean deleteCollection(Collection collection);
-
+    
 }

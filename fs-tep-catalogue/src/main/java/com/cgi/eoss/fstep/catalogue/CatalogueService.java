@@ -64,6 +64,12 @@ public interface CatalogueService {
     String getDefaultOutputProductCollection();
     
     /**
+     * <p>Returns the identifier of the default reference data collection</p>
+     * 
+     */
+	String getDefaultReferenceDataCollection();
+    
+    /**
      * <p>Store an external product's metadata for later reference by FS-TEP.</p>
      *
      * @param geoJson
@@ -113,7 +119,7 @@ public interface CatalogueService {
      * @return
      * @throws IOException 
      */
-    public void createOutputCollection(Collection collection) throws IOException;
+    public void createCollection(Collection collection) throws IOException;
     
     /**
      * <p>Deletes the underlying collection represented by the collection parameter
@@ -123,7 +129,7 @@ public interface CatalogueService {
      * @throws IOException 
      * 
      */
-    public void deleteOutputCollection(Collection collection) throws IOException;
+    public void deleteCollection(Collection collection) throws IOException;
 
     /**
      * <p>Check that the user has write access on the collection
