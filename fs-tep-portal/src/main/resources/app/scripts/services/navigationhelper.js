@@ -70,7 +70,7 @@ define(['../fstepmodules'], function(fstepmodules) {
         this.goToCollectionFiles = function(collection) {
             FileService.params.community.selectedOwnershipFilter = FileService.fileOwnershipFilters.ALL_FILES;
             FileService.params.community.searchText = undefined;
-            FileService.params.community.activeFileType = 'OUTPUT_PRODUCT';
+            FileService.params.community.activeFileType = collection.fileType;
             FileService.params.community.collectionSearchString = collection.name;
             FileService.params.community.collection = {
                 id: collection.id,

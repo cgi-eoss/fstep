@@ -20,88 +20,182 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
 
         /** PRESERVE USER SELECTIONS **/
         this.dbOwnershipFilters = {
-            ALL_COLLECTIONS: {id: 0, name: 'All', searchUrl: 'search/findByFilterOnly'},
-            MY_COLLECTIONS: {id: 1, name: 'Mine', searchUrl: 'search/findByFilterAndOwner'},
-            SHARED_COLLECTIONS: {id: 2, name: 'Shared', searchUrl: 'search/findByFilterAndNotOwner'}
+            ALL_COLLECTIONS: {id: 0, name: 'All'},
+            MY_COLLECTIONS: {id: 1, name: 'Mine'},
+            SHARED_COLLECTIONS: {id: 2, name: 'Shared'}
         };
+
+        this.fileTypes = [
+            {name: 'Output product', value: 'OUTPUT_PRODUCT'},
+            {name: 'Reference data', value: 'REFERENCE_DATA'}
+        ]
+
+        this.fileTypeFilters = this.fileTypes.slice();
+        this.fileTypeFilters.unshift({
+            name: 'All', value: ''
+        });
 
         this.params = {
             community: {
-                pollingUrl: rootUri + '/collections/?sort=name',
                 pagingData: {},
                 collections: undefined,
-                items: undefined,
                 selectedCollection: undefined,
-                searchText: '',
+                searchParams: {
+                    ownership: self.dbOwnershipFilters.ALL_COLLECTIONS,
+                    fileType: null,
+                    searchText: null
+                },
                 sharedGroups: undefined,
                 sharedGroupsSearchText: '',
-                selectedOwnershipFilter: self.dbOwnershipFilters.ALL_COLLECTIONS
             }
         };
 
-        /** END OF PRESERVE USER SELECTIONS **/
+        var polling = {
+            frequency: 20 * 1000,
+            remainingAttempts: 3,
+            pollTimeout: null
+        }
 
-        var POLLING_FREQUENCY = 20 * 1000;
-        var pollCount = 3;
-        var startPolling = true;
-        var pollingTimer;
+        var buildSearchUrlFromParams = function(params) {
 
-        var pollCollections = function(page) {
-            pollingTimer = $timeout(function() {
-                halAPI.from(self.params[page].pollingUrl)
-                    .newRequest()
-                    .getResource()
-                    .result
-                    .then(function(document) {
-                        self.params[page].pagingData._links = document._links;
-                        self.params[page].pagingData.page = document.page;
+            var url = rootUri + '/collections/search/parametricFind?sort=name';
 
-                        $rootScope.$broadcast('poll.collections', document._embedded.collections);
-                        pollCollections(page);
-                    }, function(error) {
-                        error.retriesLeft = pollCount;
-                        MessageService.addError('Could not poll Collections', error);
-                        if (pollCount > 0) {
-                            pollCount -= 1;
-                            pollCollections(page);
-                        }
-                    });
-            }, POLLING_FREQUENCY);
-        };
-
-        this.stopPolling = function() {
-            if (pollingTimer) {
-                $timeout.cancel(pollingTimer);
+            if (params.ownership === self.dbOwnershipFilters.MY_COLLECTIONS) {
+                url += '&owner=' + UserService.params.activeUser._links.self.href
+            } else if (params.ownership === self.dbOwnershipFilters.SHARED_COLLECTIONS) {
+                url += '&notOwner=' + UserService.params.activeUser._links.self.href
             }
-            startPolling = true;
-        };
 
-        var getCollections = function(page) {
+            if (params.fileType) {
+                url += '&fileType=' + params.fileType;
+            }
+
+            if (params.searchText) {
+                url += '&filter=' + params.searchText;
+            }
+
+            return url;
+        }
+
+        var updateCollectionsForState = function(state) {
             var deferred = $q.defer();
-            halAPI.from(self.params[page].pollingUrl)
+            halAPI.from(state.pollingUrl)
                 .newRequest()
                 .getResource()
                 .result
                 .then(function(document) {
-                    if (startPolling) {
-                        pollCollections(page);
-                        startPolling = false;
-                    }
-                    self.params[page].pagingData._links = document._links;
-                    self.params[page].pagingData.page = document.page;
 
-                    deferred.resolve(document._embedded.collections);
+                    state.pagingData = {
+                        _links: document._links,
+                        page: document.page
+                    }
+                    state.collections = document._embedded.collections;
+
+                    deferred.resolve(document);
                 }, function(error) {
                     MessageService.addError('Could not get Collections', error);
                     deferred.reject();
                 });
 
             return deferred.promise;
+        }
+
+        var setPollingTimeout = function(state) {
+            polling.pollTimeout = $timeout(function() {
+                updateCollectionsForState(state).then(function() {
+                    setPollingTimeout(state);
+                }, function(error) {
+                    if (polling.remainingAttempts) {
+                        polling.remainingAttempts--;
+                        setPollingTimeout(state);
+                    }
+                });
+            }, polling.frequency);
+        }
+
+        this.refreshCollections = function(page, action, collection) {
+
+            var state = self.params[page];
+
+            if (state) {
+
+                self.stopPolling();
+
+                state.pollingUrl = buildSearchUrlFromParams(state.searchParams);
+
+                /* Get collection list */
+                updateCollectionsForState(state).then(function(data) {
+
+                    /* Select last collection if created */
+                    if (action === "Create") {
+                        self.params[page].selectedCollection = collection;
+                    }
+
+                    /* Clear collection if deleted */
+                    if (action === "Remove") {
+                        if (collection && self.params[page].selectedCollection && collection.id === self.params[page].selectedCollection.id) {
+                            self.params[page].selectedCollection = undefined;
+                            self.params[page].items = [];
+                        }
+                    }
+
+                    /* Update the selected collection */
+                    self.refreshSelectedCollection(page);
+
+                }).finally(function() {
+                    setPollingTimeout(state);
+                });
+
+            }
+        }
+
+        this.refreshSelectedCollection = function(page) {
+
+            var state = self.params[page];
+
+            if (state) {
+                /* Get collection contents if selected */
+                if (state.selectedCollection) {
+
+                    getCollection(state.selectedCollection).then(function(collection) {
+                        state.selectedCollection = collection;
+
+                        if (page === 'community') {
+                            CommunityService.getObjectGroups(collection, 'collection').then(function(data) {
+                                state.sharedGroups = data;
+                            });
+                        }
+                    });
+                }
+            }
+        };
+
+        this.refreshCollectionsFromUrl = function(page, url) {
+
+            var state = self.params[page];
+
+            if (state) {
+                state.pollingUrl = url;
+                updateCollectionsForState(state);
+            }
+        };
+
+
+        this.stopPolling = function() {
+            if (polling.pollTimeout) {
+                $timeout.cancel(polling.pollTimeout);
+                delete polling.pollTimeout;
+            }
         };
 
         this.createCollection = function(data) {
             return $q(function(resolve, reject) {
-                var collection = {name: data.name, description: (data.description ? data.description : ''), productsType: data.productsType};
+                var collection = {
+                    name: data.name,
+                    description: (data.description ? data.description : ''),
+                    fileType: data.fileType,
+                    productsType: data.productsType
+                };
                 halAPI.from(rootUri + '/collections/')
                     .newRequest()
                     .post(collection)
@@ -173,82 +267,8 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
             return deferred.promise;
         };
 
-        this.refreshCollections = function(page, action, collection) {
-            if (self.params[page]) {
-                /* Get collection list */
-                getCollections(page).then(function(data) {
-
-                    self.params[page].collections = data;
-
-                    /* Select last collection if created */
-                    if (action === "Create") {
-                        self.params[page].selectedCollection = collection;
-                    }
-
-                    /* Clear collection if deleted */
-                    if (action === "Remove") {
-                        if (collection && self.params[page].selectedCollection && collection.id === self.params[page].selectedCollection.id) {
-                            self.params[page].selectedCollection = undefined;
-                            self.params[page].items = [];
-                        }
-                    }
-
-                    /* Update the selected collection */
-                    self.refreshSelectedCollection(page);
-                });
-            }
-        };
-
-        /* Fetch a new page */
-        this.getCollectionsPage = function(page, url) {
-            if (self.params[page]) {
-                self.params[page].pollingUrl = url;
-
-                /* Get databasket list */
-                getCollections(page).then(function(data) {
-                    self.params[page].collections = data;
-                });
-            }
-        };
-
-        this.getCollectionsByFilter = function(page) {
-            if (self.params[page]) {
-                var url = rootUri + '/collections/' + self.params[page].selectedOwnershipFilter.searchUrl +
-                    '?sort=name&filter=' + (self.params[page].searchText ? self.params[page].searchText : '');
-
-                if (self.params[page].selectedOwnershipFilter !== self.dbOwnershipFilters.ALL_COLLECTIONS) {
-                    url += '&owner=' + UserService.params.activeUser._links.self.href;
-                }
-                self.params[page].pollingUrl = url;
-
-                /* Get databasket list */
-                getCollections(page).then(function(data) {
-                    self.params[page].collections = data;
-                });
-            }
-        };
-
-
-        this.refreshSelectedCollection = function(page) {
-            if (self.params[page]) {
-                /* Get collection contents if selected */
-                if (self.params[page].selectedCollection) {
-
-                    getCollection(self.params[page].selectedCollection).then(function(collection) {
-                        self.params[page].selectedCollection = collection;
-
-                        if (page === 'community') {
-                            CommunityService.getObjectGroups(collection, 'collection').then(function(data) {
-                                self.params.community.sharedGroups = data;
-                            });
-                        }
-                    });
-                }
-            }
-        };
-
-        this.findCollections = function(searchString) {
-            var url = rootUri + '/collections/search/findByFilterOnly?sort=name&filter=' + searchString
+        this.findCollections = function(params) {
+            var url = buildSearchUrlFromParams(params);
 
             return halAPI.from(url)
                 .newRequest()

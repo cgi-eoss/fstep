@@ -19,7 +19,7 @@
 
             <md-input-container class="md-input-has-value">
                     <label>File type</label>
-                    <md-radio-group ng-model="fileParams.activeFileType" ng-change="filter()">
+                    <md-radio-group ng-model="fileParams.activeFileType" ng-change="onFileTypeFilterChange()">
                         <md-radio-button ng-repeat="filetype in filetypes" ng-value="filetype.value">
                             {{filetype.name}}
                         </md-radio-button>
@@ -37,7 +37,7 @@
 
 
 
-            <md-input-container ng-if="fileParams.activeFileType === 'OUTPUT_PRODUCT'">
+            <md-input-container>
                 <label>Collection</label>
                 <md-autocomplete
                     md-input-name="collection"
@@ -45,6 +45,7 @@
                     md-search-text="fileParams.collectionSearchString"
                     md-selected-item="fileParams.collection"
                     md-select-on-match="true"
+                    md-no-cache="true"
                     md-item-text="collection.name"
                     md-require-match="true"
                     md-delay="500"

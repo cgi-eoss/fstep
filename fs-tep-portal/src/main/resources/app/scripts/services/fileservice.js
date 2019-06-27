@@ -146,6 +146,7 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
                     data: {
                         file: file,
                         fileType: newReference.fileType,
+                        collection: newReference.collection,
                         userProperties: Upload.jsonBlob(newReference.userProperties)
                     }
                 }).then(function (resp) {
@@ -273,10 +274,11 @@ define(['../fstepmodules', 'traversonHal'], function (fstepmodules, TraversonJso
 
                 url += '&type='  + params.activeFileType;
 
+                if (params.collection) {
+                    url += '&collection=' + rootUri + '/collections/' + params.collection.id;
+                }
+
                 if (params.activeFileType === 'OUTPUT_PRODUCT') {
-                    if (params.collection) {
-                        url += '&collection=' + rootUri + '/collections/' + params.collection.id;
-                    }
                     if (params.job) {
                         url += '&job=' + rootUri + '/jobs/' + params.job;
                     }

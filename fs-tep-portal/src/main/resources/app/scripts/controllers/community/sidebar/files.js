@@ -46,7 +46,10 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         };
 
         $scope.searchCollection = function() {
-            return CollectionService.findCollections($scope.fileParams.collectionSearchString).then(function(collections) {
+            return CollectionService.findCollections({
+                searchText: $scope.fileParams.collectionSearchString,
+                fileType: $scope.fileParams.activeFileType
+            }).then(function(collections) {
                 return collections.map(function(collection) {
                     return {
                         id: collection.id,
@@ -59,6 +62,12 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         $scope.filter = function(){
             FileService.getFstepFilesByFilter('community');
         };
+
+        $scope.onFileTypeFilterChange = function() {
+            $scope.fileParams.collectionSearchString = null;
+            delete $scope.fileParams.collection
+            $scope.filter();
+        }
 
         /* Select a File */
         $scope.selectFile = function (item) {
@@ -73,6 +82,9 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         /* Add reference data */
         $scope.addReferenceFileDialog = function ($event) {
+
+            var searchCollection = $scope.searchCollection;
+
             function AddReferenceFileDialog($scope, $mdDialog, FileService) {
 
                 $scope.item = "File";
@@ -99,6 +111,21 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                         $scope.validation = "Valid";
                     }
                 };
+
+                $scope.searchCollection = function() {
+                    return CollectionService.findCollections({
+                        searchText: $scope.collectionSearchString,
+                        fileType: 'REFERENCE_DATA'
+                    }).then(function(collections) {
+                        return collections.map(function(collection) {
+                            return {
+                                id: collection.id,
+                                identifier: collection.identifier,
+                                name: collection.name
+                            };
+                        })
+                    });
+                }
 
                 $scope.updateFieldsForFileType = function() {
                     $scope.geometryFieldEnabled = false;
@@ -137,6 +164,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
                     FileService.uploadFile("community", {
                         file: $scope.newReference.file,
                         fileType: $scope.newReference.fileType,
+                        collection: $scope.newReference.collection.identifier,
                         userProperties: userProperties
                     }).then(function (response) {
 

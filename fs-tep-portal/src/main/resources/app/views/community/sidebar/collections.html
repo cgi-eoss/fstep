@@ -13,14 +13,22 @@
 
                 <md-input-container>
                     <label>Filter</label>
-                    <input ng-model="collectionParams.searchText" type="text" placeholder="Search" ng-keyup="filter()" aria-label="Collection Search Filter">
+                    <input ng-model="collectionParams.searchParams.searchText" type="text" placeholder="Search" ng-keyup="filter()" aria-label="Collection Search Filter">
                 </md-input-container>
 
+                <md-input-container>
+                    <label>File type</label>
+                    <md-select ng-model="collectionParams.searchParams.fileType" ng-change="filter()" aria-label="File Type">
+                        <md-option ng-repeat="fileType in fileTypeFilters" ng-value="fileType.value">
+                            {{fileType.name}}
+                        </md-option>
+                    </md-select>
+                </md-input-container>
 
                 <md-input-container class="md-input-has-value">
                     <label>Ownership</label>
-                    <md-radio-group ng-model="collectionParams.selectedOwnershipFilter" ng-change="filter()">
-                        <md-radio-button ng-repeat="ownershipFilter in collectionOwnershipFilters" ng-value="ownershipFilter">
+                    <md-radio-group ng-model="collectionParams.searchParams.ownership" ng-change="filter()">
+                        <md-radio-button ng-repeat="ownershipFilter in dbOwnershipFilters" ng-value="ownershipFilter">
                             {{ownershipFilter.name}}
                         </md-radio-button>
                     </md-radio-group>
@@ -43,7 +51,7 @@
             <div class="md-list-item-text" layout="column">
                 <h3 class="selectable" ng-bind="collection.name" />
                 <span><b>Owner:</b> <span ng-bind="collection.owner.name" /></span>
-                <span><b>Data type:</b> <span ng-bind="collection.productsType" /></span>
+                <span><b>File type:</b> <span ng-bind="collection.fileType" /></span>
                 <span><b>Item download cost:</b> <span ng-if="collection.costingExpression">{{collection.costingExpression.costExpression}} {{collection.costingExpression.costExpression !== '1' ? 'coins' : 'coin'}}</span>
             </div>
 

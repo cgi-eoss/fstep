@@ -14,13 +14,10 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         $scope.collectionParams = CollectionService.params.community;
         $scope.dbOwnershipFilters = CollectionService.dbOwnershipFilters;
+        $scope.fileTypeFilters = CollectionService.fileTypeFilters;
         $scope.item = "Collection";
 
         CollectionService.refreshCollections("community");
-
-        $scope.$on('poll.collections', function (event, data) {
-            $scope.collectionParams.collections = data;
-        });
 
         /* Stop polling */
         $scope.$on("$destroy", function() {
@@ -28,11 +25,11 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         });
 
         $scope.getPage = function(url){
-            CollectionService.getCollectionsPage('community', url);
+            CollectionService.refreshCollectionsFromUrl('community', url);
         };
 
         $scope.filter = function(){
-            CollectionService.getCollectionsByFilter('community');
+            CollectionService.refreshCollections('community');
         };
 
         $scope.selectCollection = function (item) {
@@ -41,14 +38,18 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         };
 
         $scope.createItemDialog = function ($event) {
-            CommonService.createItemDialog($event, 'CollectionService', 'createCollection', 'createcollection').then(function (newCollection) {
+            CommonService.createItemDialog($event, 'CollectionService', 'createCollection', 'createcollection', {
+                fileTypes: CollectionService.fileTypes
+            }).then(function (newCollection) {
                 CollectionService.refreshCollections("community", "Create", newCollection);
             });
         };
 
         $scope.editItemDialog = function ($event, item) {
-            CommonService.editItemDialog($event, item, 'CollectionService', 'updateCollection', 'editcollection').then(function (updatedCollection) {
-                CollectionService.refreshCollections("community");
+            CommonService.editItemDialog($event, item, 'CollectionService', 'updateCollection', 'editcollection',  {
+                fileTypes: CollectionService.fileTypes
+            }).then(function (updatedCollection) {
+                CollectionService.refreshCollections("community", updatedCollection._deleted ? 'Remove': 'Update', updatedCollection);
             });
         };
 

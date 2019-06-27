@@ -96,6 +96,12 @@
 #subscription-dialog table tbody tr td md-radio-button {
   display: initial;
 }
+#subscription-dialog .error-message {
+  -ms-flex-order: 1;
+      order: 1;
+  padding-left: 25px;
+  margin-top: 10px;
+}
 
 #admin-container #management-container #user-list-card {
   height: 100%;
@@ -949,6 +955,12 @@
 #community-container section.filter-list md-input-container .hint {
   font-size: 0.6rem;
   color: rgba(0, 0, 0, 0.4);
+}
+#referencedata-dialog md-autocomplete {
+  background: transparent;
+}
+#referencedata-dialog md-autocomplete md-autocomplete-wrap {
+  box-shadow: none;
 }
 
 #file-manage-container #file-details,

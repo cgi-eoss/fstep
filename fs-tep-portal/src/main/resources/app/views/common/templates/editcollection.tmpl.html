@@ -8,6 +8,15 @@
             </md-input-container>
             <br>
             <md-input-container class="md-block" flex-gt-sm>
+                <label>File type</label>
+                <md-select ng-model="tempItem.fileType" disabled>
+                    <md-option ng-repeat="type in data.fileTypes" ng-value="type.value">
+                        {{type.name}}
+                    </md-option>
+                </md-select>
+            </md-input-container>
+            <br>
+            <md-input-container class="md-block" flex-gt-sm>
                 <label>Data type</label>
                 <textarea ng-model="tempItem.productsType" type="text" aria-label="Data type"/>
             </md-input-container>

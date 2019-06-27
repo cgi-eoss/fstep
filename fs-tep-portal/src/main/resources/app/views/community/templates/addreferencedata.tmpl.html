@@ -60,6 +60,29 @@
                                 <textarea ng-model="newReference.userProperties.description" />
                             </md-input-container>
 
+                            <md-input-container>
+                                <label>Collection</label>
+                                <md-autocomplete
+                                    md-input-name="collection"
+                                    md-items="collection in searchCollection(collectionSearchString)"
+                                    md-search-text="collectionSearchString"
+                                    md-selected-item="newReference.collection"
+                                    md-select-on-match="true"
+                                    md-item-text="collection.name"
+                                    md-require-match="true"
+                                    md-delay="500"
+                                    md-min-length="0"
+                                    md-selected-item-change="filter()">
+                                    <md-item-template>
+                                        <span md-highlight-text="collectionSearchString"
+                                            md-highlight-flags="ig">{{collection.name}}</span>
+                                    </md-item-template>
+                                    <md-not-found>
+                                        No collection matching "{{collectionSearchString}}" found
+                                    </md-not-found>
+                                </md-autocomplete>
+                            </md-input-container>
+
                             <section ng-if="showGeometryField">
                                 <md-input-container style="margin-bottom: 0">
                                     <md-checkbox ng-model="geometryFieldEnabled">Geometry</md-checkbox>
