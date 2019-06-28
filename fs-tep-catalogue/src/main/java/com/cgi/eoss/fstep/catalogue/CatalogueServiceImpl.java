@@ -127,6 +127,13 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     
     private void checkQuota(User owner, long filesize) throws IOException {
     	Quota userFilesQuota = quotaDataService.getByOwnerAndUsageType(owner, UsageType.FILES_STORAGE_MB);
+    	Long userQuotaValue;
+		if(userFilesQuota != null) {
+			userQuotaValue = userFilesQuota.getValue();
+		}
+		else {
+			userQuotaValue = UsageType.FILES_STORAGE_MB.getDefaultValue();
+		}
     	long currentUsage;
     	FstepFilesCumulativeUsageRecord usageRecord = fstepFilesCumulativeUsageRecordDataService.findTopByOwnerAndFileTypeIsNullAndRecordDateLessThanEqualOrderByRecordDateDesc(owner, LocalDate.now());
     	if (usageRecord != null) {
@@ -135,10 +142,11 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     	else {
     		currentUsage = fstepFileDataService.sumFilesizeByOwner(owner);
     	}
-    	if (currentUsage + filesize > userFilesQuota.getValue() * 1_048_576) {
+    	if (currentUsage + filesize > userQuotaValue * 1_048_576) {
     		throw new IOException("User quota exceeded");
     	}
     }
+
     
     @Override
     public String getDefaultOutputProductCollection() {
