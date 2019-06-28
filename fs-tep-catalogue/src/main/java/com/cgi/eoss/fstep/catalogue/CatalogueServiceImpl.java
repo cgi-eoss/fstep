@@ -99,7 +99,7 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
 
     @Override
     public FstepFileIngestion ingestReferenceData(ReferenceDataMetadata referenceData, MultipartFile file) throws IOException {
-    	checkQuota(referenceData.getOwner(), file.getSize(), FstepFile.Type.REFERENCE_DATA);
+    	checkQuota(referenceData.getOwner(), file.getSize());
 		FstepFileIngestion fstepFileIngestion = referenceDataService.ingest(referenceData.getOwner(), referenceData.getFilename(), referenceData.getFiletype(), referenceData.getUserProperties(), file);
     	FstepFile fstepFile = fstepFileIngestion.getFstepFile();
     	fstepFile.setDataSource(dataSourceDataService.getForRefData(fstepFile));
@@ -110,12 +110,19 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     
     @Override
     public Path provisionNewOutputProduct(OutputProductMetadata outputProduct, String filename, long filesize) throws IOException {
-    	checkQuota(outputProduct.getOwner(), filesize, FstepFile.Type.OUTPUT_PRODUCT);
+    	checkQuota(outputProduct.getOwner(), filesize);
 		return outputProductService.provision(outputProduct.getJobId(), filename);
     }
     
-    private void checkQuota(User owner, long filesize, FstepFile.Type fileType) throws IOException {
+    private void checkQuota(User owner, long filesize) throws IOException {
     	Quota userFilesQuota = quotaDataService.getByOwnerAndUsageType(owner, UsageType.FILES_STORAGE_MB);
+    	Long userQuotaValue;
+		if(userFilesQuota != null) {
+			userQuotaValue = userFilesQuota.getValue();
+		}
+		else {
+			userQuotaValue = UsageType.FILES_STORAGE_MB.getDefaultValue();
+		}
     	long currentUsage;
     	FstepFilesCumulativeUsageRecord usageRecord = fstepFilesCumulativeUsageRecordDataService.findTopByOwnerAndFileTypeIsNullAndRecordDateLessThanEqualOrderByRecordDateDesc(owner, LocalDate.now());
     	if (usageRecord != null) {
@@ -124,10 +131,11 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     	else {
     		currentUsage = fstepFileDataService.sumFilesizeByOwner(owner);
     	}
-    	if (currentUsage + filesize > userFilesQuota.getValue() * 1_048_576) {
+    	if (currentUsage + filesize > userQuotaValue * 1_048_576) {
     		throw new IOException("User quota exceeded");
     	}
     }
+
     
     @Override
     public String getDefaultOutputProductCollection() {
