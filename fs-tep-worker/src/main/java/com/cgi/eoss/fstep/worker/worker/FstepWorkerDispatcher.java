@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.cgi.eoss.fstep.queues.service.FstepQueueService;
-import com.cgi.eoss.fstep.rpc.worker.JobSpec;
+import com.cgi.eoss.fstep.rpc.JobSpec;
 
 import lombok.extern.log4j.Log4j2;
 import shadow.dockerjava.com.github.dockerjava.api.model.Event;

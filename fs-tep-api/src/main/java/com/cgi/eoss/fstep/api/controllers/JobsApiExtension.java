@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.text.StrSubstitutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,11 +21,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+
 import com.cgi.eoss.fstep.model.Job;
-import com.cgi.eoss.fstep.model.Job.Status;
+import com.cgi.eoss.fstep.orchestrator.utils.ModelToGrpcUtils;
 import com.cgi.eoss.fstep.rpc.CancelJobParams;
 import com.cgi.eoss.fstep.rpc.CancelJobResponse;
-import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.IngestJobOutputsParams;
 import com.cgi.eoss.fstep.rpc.IngestJobOutputsResponse;
 import com.cgi.eoss.fstep.rpc.LocalJobLauncher;
@@ -36,6 +37,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+
 import io.grpc.stub.StreamObserver;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
@@ -136,7 +138,7 @@ public class JobsApiExtension {
     @PreAuthorize("hasAnyRole('CONTENT_AUTHORITY', 'ADMIN') or hasPermission(#job, 'write')")
     public ResponseEntity stop(@ModelAttribute("jobId") Job job) throws InterruptedException {
         StopServiceParams stopServiceParams = StopServiceParams.newBuilder()
-                .setJob(GrpcUtil.toRpcJob(job))
+                .setJob(ModelToGrpcUtils.toRpcJob(job))
                 .build();
 
         final CountDownLatch latch = new CountDownLatch(1);
@@ -153,7 +155,7 @@ public class JobsApiExtension {
     @ResponseBody
     public void cancelJob(@ModelAttribute("jobId") Job job) throws IOException {
         CancelJobParams.Builder cancelJobParamsBuilder = CancelJobParams.newBuilder()
-                .setJob(GrpcUtil.toRpcJob(job));
+                .setJob(ModelToGrpcUtils.toRpcJob(job));
 
         CancelJobParams cancelJobParams = cancelJobParamsBuilder.build();
 
@@ -171,7 +173,7 @@ public class JobsApiExtension {
     @ResponseBody
     public void relaunchFailedJob(@ModelAttribute("jobId") Job job) throws IOException {
         RelaunchFailedJobParams.Builder relaunchJobParamsBuilder = RelaunchFailedJobParams.newBuilder()
-                .setJob(GrpcUtil.toRpcJob(job));
+                .setJob(ModelToGrpcUtils.toRpcJob(job));
         
         RelaunchFailedJobParams relaunchJobParams = relaunchJobParamsBuilder.build();
 
@@ -189,7 +191,7 @@ public class JobsApiExtension {
     @ResponseBody
     public void ingestJobOutputs(@ModelAttribute("jobId") Job job) throws IOException {
         IngestJobOutputsParams.Builder ingestJobOutputsParamsBuilder = IngestJobOutputsParams.newBuilder()
-                .setJob(GrpcUtil.toRpcJob(job));
+                .setJob(ModelToGrpcUtils.toRpcJob(job));
         
         IngestJobOutputsParams ingestJobOutputsParams = ingestJobOutputsParamsBuilder.build();
 

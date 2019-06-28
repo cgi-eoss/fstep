@@ -53,7 +53,9 @@ public abstract class FileStreamClient<T extends Message> implements Closeable {
 
     @Override
     public void close() throws IOException {
-        this.outputStream.close();
+    	if (this.outputStream != null) {
+    		this.outputStream.close();
+        }
     }
 
     protected abstract OutputStream buildOutputStream(FileStream.FileMeta fileMeta) throws IOException;

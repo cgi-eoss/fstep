@@ -10,10 +10,10 @@ import org.springframework.stereotype.Service;
 
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
+import com.cgi.eoss.fstep.rpc.JobSpec;
 import com.cgi.eoss.fstep.rpc.LocalWorker;
 import com.cgi.eoss.fstep.rpc.worker.JobEvent;
 import com.cgi.eoss.fstep.rpc.worker.JobEventType;
-import com.cgi.eoss.fstep.rpc.worker.JobSpec;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJob;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJob.Status;

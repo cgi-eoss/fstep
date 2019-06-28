@@ -74,6 +74,7 @@ import com.cgi.eoss.fstep.orchestrator.service.CachingWorkerFactory;
 import com.cgi.eoss.fstep.orchestrator.service.DynamicProxyService;
 import com.cgi.eoss.fstep.orchestrator.service.FstepGuiServiceManager;
 import com.cgi.eoss.fstep.orchestrator.service.FstepJobLauncher;
+import com.cgi.eoss.fstep.orchestrator.service.FstepJobUpdatesDispatcher;
 import com.cgi.eoss.fstep.orchestrator.service.FstepJobUpdatesManager;
 import com.cgi.eoss.fstep.orchestrator.service.JobValidator;
 import com.cgi.eoss.fstep.orchestrator.service.QueueScheduler;
@@ -281,6 +282,7 @@ public class FstepServicesClientIT {
         when(workerFactory.getWorkerById(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         FstepJobUpdatesManager updatesManager = new FstepJobUpdatesManager(jobDataService, dynamicProxyService, guiService, workerFactory, 
         		catalogueService, securityService, jobProcessingDataService, costingService, walletDataService, walletTransactionDataService, filesRelationDataService);
+        FstepJobUpdatesDispatcher updatesDispatcher = new FstepJobUpdatesDispatcher(jobDataService, updatesManager);
         String workerId = "local1";
         JobValidator jobValidator = new JobValidator(costingService, catalogueService);
         FstepJobLauncher fstepJobLauncher = new FstepJobLauncher(workerFactory, jobDataService, jobProcessingDataService, databasketDataService, guiService, 
@@ -329,7 +331,7 @@ public class FstepServicesClientIT {
             	}
             	com.cgi.eoss.fstep.queues.service.Message message =  queueService.receiveNoWait(FstepQueueService.jobUpdatesQueueName);
             	while (message != null) {
-            		updatesManager.receiveJobUpdate(message.getPayload(), (String) message.getHeaders().get("workerId"), (String) message.getHeaders().get("jobId"));
+            		updatesDispatcher.dispatchJobUpdate(message.getPayload(), (String) message.getHeaders().get("workerId"), (String) message.getHeaders().get("jobId"));
             		message =  queueService.receiveNoWait(FstepQueueService.jobUpdatesQueueName);
             	}
             }

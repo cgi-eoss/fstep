@@ -37,6 +37,7 @@ import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.PersistentFolder;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.model.UserMount;
+import com.cgi.eoss.fstep.orchestrator.utils.ModelToGrpcUtils;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
@@ -57,19 +58,19 @@ import com.cgi.eoss.fstep.rpc.IngestJobOutputsResponse;
 import com.cgi.eoss.fstep.rpc.JobOutputsResponse;
 import com.cgi.eoss.fstep.rpc.JobOutputsResponse.JobOutputs;
 import com.cgi.eoss.fstep.rpc.JobParam;
+import com.cgi.eoss.fstep.rpc.JobSpec;
 import com.cgi.eoss.fstep.rpc.JobStatus;
 import com.cgi.eoss.fstep.rpc.JobStatusResponse;
 import com.cgi.eoss.fstep.rpc.ListWorkersParams;
 import com.cgi.eoss.fstep.rpc.RelaunchFailedJobParams;
 import com.cgi.eoss.fstep.rpc.RelaunchFailedJobResponse;
+import com.cgi.eoss.fstep.rpc.ResourceRequest;
 import com.cgi.eoss.fstep.rpc.StopServiceParams;
 import com.cgi.eoss.fstep.rpc.StopServiceResponse;
 import com.cgi.eoss.fstep.rpc.WorkersList;
 import com.cgi.eoss.fstep.rpc.worker.DockerImageConfig;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
-import com.cgi.eoss.fstep.rpc.worker.JobSpec;
-import com.cgi.eoss.fstep.rpc.worker.ResourceRequest;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.google.common.base.Strings;
 import com.google.common.collect.Multimap;
@@ -161,7 +162,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 job = jobDataService.buildNew(zooId, userId, serviceId, jobConfigLabel, inputs);
             } 
 
-            rpcJob = GrpcUtil.toRpcJob(job);
+            rpcJob = ModelToGrpcUtils.toRpcJob(job);
             // Post back the job metadata for async responses
             responseObserver.onNext(FstepJobResponse.newBuilder().setJob(rpcJob).build());
 
@@ -208,7 +209,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                 for (Job subJob : subJobs) {
                 	JobProcessing jobProcessing = jobProcessingDataService.buildNew(subJob);
                     chargeUserForProcessing(subJob.getOwner(), jobProcessing);
-                    submitJob(subJob, GrpcUtil.toRpcJob(subJob),
+                    submitJob(subJob, ModelToGrpcUtils.toRpcJob(subJob),
                             GrpcUtil.mapToParams(subJob.getConfig().getInputs()), getJobPriority(i));
                     i++;
                 }
@@ -217,7 +218,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             else {
             	if (!Strings.isNullOrEmpty(parentId)) {
             		Job subJob = jobDataService.buildNew(zooId, userId, serviceId, jobConfigLabel, inputs, job);
-            		submitSingleJob(userId, rpcInputs, subJob, GrpcUtil.toRpcJob(subJob));
+            		submitSingleJob(userId, rpcInputs, subJob, ModelToGrpcUtils.toRpcJob(subJob));
                     
             	}
             	else {
@@ -385,7 +386,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
                         failedSubJob.setStage(null);
                         failedSubJob.setWorkerId(null);
                         jobDataService.save(failedSubJob);
-                        submitJob(failedSubJob, GrpcUtil.toRpcJob(failedSubJob), failedSubJobInputs, getJobPriority(i));
+                        submitJob(failedSubJob, ModelToGrpcUtils.toRpcJob(failedSubJob), failedSubJobInputs, getJobPriority(i));
                     }
                     i++;
                 }
@@ -504,7 +505,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
             throws IOException {
         FstepService service = job.getConfig().getService();
         JobSpec.Builder jobSpecBuilder = JobSpec.newBuilder()
-                .setService(GrpcUtil.toRpcService(service)).setJob(rpcJob).addAllInputs(rpcInputs);
+                .setService(ModelToGrpcUtils.toRpcService(service)).setJob(rpcJob).addAllInputs(rpcInputs);
         if (service.getType() == FstepService.Type.APPLICATION) {
             jobSpecBuilder.addExposedPorts(FstepGuiServiceManager.GUACAMOLE_PORT);
         }
@@ -577,7 +578,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     	//it is normally transmitted to the server by the worker in the containerExit rpc call
     	//Either the location should be saved together with the job status or the outputLocation call should be made available by the worker
     	String outputRootPath = "/data/jobs/Job_" + job.getExtId() + "/outDir";
-        fstepJobUpdatesManager.ingestOutput(job, GrpcUtil.toRpcJob(job), worker, outputRootPath);
+        fstepJobUpdatesManager.ingestOutput(job, ModelToGrpcUtils.toRpcJob(job), worker, outputRootPath);
         
     }
     

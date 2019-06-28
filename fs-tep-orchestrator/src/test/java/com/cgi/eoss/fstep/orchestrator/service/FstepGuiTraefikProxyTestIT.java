@@ -23,9 +23,9 @@ import com.cgi.eoss.fstep.model.Job.Status;
 import com.cgi.eoss.fstep.model.User;
 import com.cgi.eoss.fstep.orchestrator.OrchestratorConfig;
 import com.cgi.eoss.fstep.orchestrator.OrchestratorTestConfig;
+import com.cgi.eoss.fstep.orchestrator.utils.ModelToGrpcUtils;
 import com.cgi.eoss.fstep.persistence.service.GroupDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
-import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.Job;
 import com.cgi.eoss.fstep.rpc.worker.Binding;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
@@ -108,12 +108,13 @@ public class FstepGuiTraefikProxyTestIT {
     	 jobDataService = mock(JobDataService.class);
          when(jobDataService.findByStatusAndGuiUrlNotNull(Status.RUNNING)).thenReturn(Collections.singletonList(job));
      	TraefikProxyService dynamicProxyService = new TraefikProxyService(webServer.url("").toString(), "test", "test", "http://fstep", "/gui/", false, null, jobDataService, groupDataService, securityService);
-    	PortBinding guiPortBinding = fstepGuiServiceManager.getGuiPortBinding(worker,GrpcUtil.toRpcJob(job));
-        ReverseProxyEntry proxyEntry = dynamicProxyService.getProxyEntry(GrpcUtil.toRpcJob(job),guiPortBinding.getBinding().getIp(), guiPortBinding.getBinding().getPort());
+    	PortBinding guiPortBinding = fstepGuiServiceManager.getGuiPortBinding(worker,ModelToGrpcUtils.toRpcJob(job));
+        ReverseProxyEntry proxyEntry = dynamicProxyService.getProxyEntry(ModelToGrpcUtils.toRpcJob(job),guiPortBinding.getBinding().getIp(), guiPortBinding.getBinding().getPort());
         job.setGuiUrl(proxyEntry.getPath());
         job.setGuiEndpoint(proxyEntry.getEndpoint());
         dynamicProxyService.update();
     	RecordedRequest request = webServer.takeRequest();
+    	System.out.println(request.toString());
     }
 
     private class WorkerStub extends FstepWorkerGrpc.FstepWorkerImplBase {

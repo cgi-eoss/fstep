@@ -10,7 +10,6 @@ import static java.util.stream.Collectors.toSet;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -34,15 +33,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import javax.jms.JMSException;
-import javax.jms.ObjectMessage;
-
 import org.apache.logging.log4j.CloseableThreadContext;
 import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jms.annotation.JmsListener;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 import com.cgi.eoss.fstep.catalogue.CatalogueService;
@@ -70,22 +63,18 @@ import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
 import com.cgi.eoss.fstep.model.internal.OutputProductMetadata.OutputProductMetadataBuilder;
 import com.cgi.eoss.fstep.model.internal.ParameterRelationTypeToFileRelationTypeUtil;
 import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
+import com.cgi.eoss.fstep.orchestrator.utils.ModelToGrpcUtils;
 import com.cgi.eoss.fstep.persistence.service.FstepFilesRelationDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
 import com.cgi.eoss.fstep.persistence.service.WalletDataService;
 import com.cgi.eoss.fstep.persistence.service.WalletTransactionDataService;
-import com.cgi.eoss.fstep.queues.service.FstepQueueService;
 import com.cgi.eoss.fstep.rpc.FileStream;
 import com.cgi.eoss.fstep.rpc.FileStreamClient;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
-import com.cgi.eoss.fstep.rpc.worker.ContainerExit;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
 import com.cgi.eoss.fstep.rpc.worker.GetOutputFileParam;
-import com.cgi.eoss.fstep.rpc.worker.JobError;
-import com.cgi.eoss.fstep.rpc.worker.JobEvent;
-import com.cgi.eoss.fstep.rpc.worker.JobEventType;
 import com.cgi.eoss.fstep.rpc.worker.ListOutputFilesParam;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileItem;
 import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
@@ -144,50 +133,7 @@ public class FstepJobUpdatesManager {
 	        this.platformParameterExtractor = new PlatformParameterExtractor();
 	    }
 
-    @JmsListener(destination = FstepQueueService.jobUpdatesQueueName)
-    public void receiveJobUpdateMessage(@Payload ObjectMessage objectMessage, @Header("workerId") String workerId,
-            @Header("jobId") String internalJobId) {
-        try {
-        	// TODO change into Chain of Responsibility type pattern
-        	Serializable update = objectMessage.getObject();
-            receiveJobUpdate(update, workerId, internalJobId);
-        } catch (JMSException e) {
-        	Job job = jobDataService.refreshFull(Long.parseLong(internalJobId));
-            onJobError(job, e);
-        }
-
-    }
-    
-    public void receiveJobUpdate(Object update, String workerId, String internalJobId) {
-        Job job = jobDataService.refreshFull(Long.parseLong(internalJobId));
-        if (update instanceof JobEvent) {
-            JobEvent jobEvent = (JobEvent) update;
-            JobEventType jobEventType = jobEvent.getJobEventType();
-            if (jobEventType == JobEventType.DATA_FETCHING_STARTED) {
-                onJobDataFetchingStarted(job, workerId);
-            } else if (jobEventType == JobEventType.DATA_FETCHING_COMPLETED) {
-                onJobDataFetchingCompleted(job);
-            } else if (jobEventType == JobEventType.PROCESSING_STARTED) {
-                onJobProcessingStarted(job, workerId, jobEvent.getTimestamp());
-            }
-            else if (jobEventType == JobEventType.HEARTBEAT) {
-                onJobHeartbeat(job, workerId, jobEvent.getTimestamp());
-            }
-        } else if (update instanceof JobError) {
-            JobError jobError = (JobError) update;
-            onJobError(job, jobError.getErrorDescription());
-        } else if (update instanceof ContainerExit) {
-            ContainerExit containerExit = (ContainerExit) update;
-            try {
-                onContainerExit(job, workerId, containerExit.getOutputRootPath(),
-                        containerExit.getExitCode(), containerExit.getTimestamp());
-            } catch (Exception e) {
-                onJobError(job, e);
-            }
-        }
-    }
-
-    private void onJobHeartbeat(Job job, String workerId, Timestamp timestamp) {
+    void onJobHeartbeat(Job job, Timestamp timestamp) {
     	LOG.debug("Received heartbeat for job {}", job.getId());
     	JobProcessing jobProcessing = jobProcessingDataService.findByJobAndMaxSequenceNum(job);
     	if (jobProcessing == null) {
@@ -215,7 +161,7 @@ public class FstepJobUpdatesManager {
 					//Stop processing due to insufficient credits
 					FstepWorkerGrpc.FstepWorkerBlockingStub worker =
 			                workerFactory.getWorkerById(job.getWorkerId());
-					worker.stopContainer(GrpcUtil.toRpcJob(job));
+					worker.stopContainer(ModelToGrpcUtils.toRpcJob(job));
 				}
 			}
 		}
@@ -223,7 +169,7 @@ public class FstepJobUpdatesManager {
     	jobProcessingDataService.save(jobProcessing);
     }
 
-	private void onJobDataFetchingStarted(Job job, String workerId) {
+	void onJobDataFetchingStarted(Job job, String workerId) {
         LOG.info("Downloading input data for {}", job.getExtId());
         job.setWorkerId(workerId);
         //Update the start time if this is the first job execution
@@ -236,11 +182,11 @@ public class FstepJobUpdatesManager {
 
     }
 
-    private void onJobDataFetchingCompleted(Job job) {
+    void onJobDataFetchingCompleted(Job job) {
         LOG.info("Launching docker container for job {}", job.getExtId());
     }
 
-    private void onJobProcessingStarted(Job job, String workerId, Timestamp timestamp) {
+    void onJobProcessingStarted(Job job, String workerId, Timestamp timestamp) {
         FstepService service = job.getConfig().getService();
         LOG.info("Job {} ({}) launched for service: {}", job.getId(), job.getExtId(),
                 service.getName());
@@ -248,7 +194,7 @@ public class FstepJobUpdatesManager {
         if (service.getType() == FstepService.Type.APPLICATION) {
             String zooId = job.getExtId();
             FstepWorkerBlockingStub worker = workerFactory.getWorkerById(workerId);
-            com.cgi.eoss.fstep.rpc.Job rpcJob = GrpcUtil.toRpcJob(job);
+            com.cgi.eoss.fstep.rpc.Job rpcJob = ModelToGrpcUtils.toRpcJob(job);
             PortBinding portBinding = guiService.getGuiPortBinding(worker, rpcJob);
             ReverseProxyEntry guiEntry = dynamicProxyService.getProxyEntry(rpcJob, portBinding.getBinding().getIp(), portBinding.getBinding().getPort());
             LOG.info("Updating GUI URL for job {} ({}): {}", zooId,
@@ -270,7 +216,7 @@ public class FstepJobUpdatesManager {
 
     }
 
-    private void onContainerExit(Job job, String workerId, String outputRootPath,
+    void onContainerExit(Job job, String workerId, String outputRootPath,
             int exitCode, Timestamp timestamp) throws Exception {
         JobProcessing jobProcessing = jobProcessingDataService.findByJobAndMaxSequenceNum(job);
         if (jobProcessing != null) {
@@ -300,7 +246,7 @@ public class FstepJobUpdatesManager {
         jobDataService.save(job);
         try {
         	FstepWorkerBlockingStub worker = workerFactory.getWorkerById(workerId);
-            ingestOutput(job, GrpcUtil.toRpcJob(job), worker, outputRootPath);
+            ingestOutput(job, ModelToGrpcUtils.toRpcJob(job), worker, outputRootPath);
         } catch (IOException e) {
             throw new Exception("Error ingesting output for : " + e.getMessage());
         }
@@ -335,13 +281,13 @@ public class FstepJobUpdatesManager {
 		}
 	}
 
-	private void onJobError(Job job, String description) {
+	void onJobError(Job job, String description) {
         LOG.error("Error in Job {}: {}",
                 job.getExtId(), description);
         endJobWithError(job);
     }
 
-    private void onJobError(Job job, Throwable t) {
+    void onJobError(Job job, Throwable t) {
         LOG.error("Error in Job " + job.getExtId(), t);
         endJobWithError(job);
     }

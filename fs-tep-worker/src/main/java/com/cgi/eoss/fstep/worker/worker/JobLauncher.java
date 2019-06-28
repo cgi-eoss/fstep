@@ -18,8 +18,8 @@ import com.cgi.eoss.fstep.rpc.worker.JobError;
 import com.cgi.eoss.fstep.rpc.worker.JobEvent;
 import com.cgi.eoss.fstep.rpc.worker.JobEventType;
 import com.cgi.eoss.fstep.rpc.worker.JobInputs;
-import com.cgi.eoss.fstep.rpc.worker.JobSpec;
-import com.cgi.eoss.fstep.rpc.worker.ResourceRequest;
+import com.cgi.eoss.fstep.rpc.JobSpec;
+import com.cgi.eoss.fstep.rpc.ResourceRequest;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJob;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
 
@@ -61,10 +61,10 @@ public class JobLauncher implements Runnable {
 			jobUpdateListener
 					.jobUpdate(workerJob, JobEvent.newBuilder().setJobEventType(JobEventType.DATA_FETCHING_COMPLETED).setTimestamp(GrpcUtil.timestampFromOffsetDateTime(OffsetDateTime.now(ZoneId.of("Z")))).build());
 	
-			List<String> ports = new ArrayList<String>();
+			List<String> ports = new ArrayList<>();
 			ports.addAll(jobSpec.getExposedPortsList());
 	
-			List<String> binds = new ArrayList<String>();
+			List<String> binds = new ArrayList<>();
 			binds.add("/data/dl:/data/dl:ro");// TODO Do not bind everything, just the required folder (can be derived)
 			binds.add(jobEnvironment.getWorkingDir() + "/FSTEP-WPS-INPUT.properties:"
 					+ "/home/worker/workDir/FSTEP-WPS-INPUT.properties:ro");
@@ -118,8 +118,7 @@ public class JobLauncher implements Runnable {
 	private String generateRandomDirName(String prefix) {
 		long n = new Random().nextLong();
 		n = (n == Long.MIN_VALUE) ? 0 : Math.abs(n);
-		String name = prefix + Long.toString(n);
-		return name;
+		return prefix + Long.toString(n);
 	}
 
 }
