@@ -13,6 +13,7 @@ import com.cgi.eoss.fstep.io.download.Downloader;
 import com.cgi.eoss.fstep.io.download.DownloaderFacade;
 import com.cgi.eoss.fstep.io.download.UnzipStrategy;
 import com.cgi.eoss.fstep.queues.QueuesConfig;
+import com.cgi.eoss.fstep.rpc.DiscoveryClientManagedChannelProvider;
 import com.cgi.eoss.fstep.rpc.FstepServerClient;
 import com.cgi.eoss.fstep.rpc.InProcessRpcConfig;
 import com.cgi.eoss.fstep.worker.jobs.WorkerJobDataService;
@@ -158,7 +159,7 @@ public class WorkerConfig {
     @Bean
     public FstepServerClient fstepServerClient(DiscoveryClient discoveryClient,
                                                @Value("${fstep.worker.server.eurekaServiceId:fs-tep server}") String fstepServerServiceId) {
-        return new FstepServerClient(discoveryClient, fstepServerServiceId);
+        return new FstepServerClient(new DiscoveryClientManagedChannelProvider(discoveryClient, fstepServerServiceId));
     }
 
     @Bean

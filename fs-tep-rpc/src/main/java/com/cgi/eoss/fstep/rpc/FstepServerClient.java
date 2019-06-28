@@ -8,12 +8,11 @@ import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 
 public class FstepServerClient {
-    private final DiscoveryClient discoveryClient;
-    private final String fstepServerServiceId;
-
-    public FstepServerClient(DiscoveryClient discoveryClient, String fstepServerServiceId) {
-        this.discoveryClient = discoveryClient;
-        this.fstepServerServiceId = fstepServerServiceId;
+	
+	private final ManagedChannelProvider managedChannelProvider;
+	
+    public FstepServerClient(ManagedChannelProvider managedChannelProvider) {
+    	this.managedChannelProvider = managedChannelProvider;
     }
 
     public ServiceContextFilesServiceGrpc.ServiceContextFilesServiceBlockingStub serviceContextFilesServiceBlockingStub() {
@@ -33,11 +32,7 @@ public class FstepServerClient {
     }
 
     private ManagedChannel getChannel() {
-        ServiceInstance fstepServer = Iterables.getOnlyElement(discoveryClient.getInstances(fstepServerServiceId));
-
-        return ManagedChannelBuilder.forAddress(fstepServer.getHost(), Integer.parseInt(fstepServer.getMetadata().get("grpcPort")))
-                .usePlaintext(true)
-                .build();
+    	return managedChannelProvider.getChannel();
     }
 
 }
