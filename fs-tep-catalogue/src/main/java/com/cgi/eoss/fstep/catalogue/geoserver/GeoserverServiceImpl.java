@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -139,7 +140,7 @@ public class GeoserverServiceImpl implements GeoserverService {
         String layerName = geoServerSpec.getLayerName();
         String srs = geoServerSpec.getCrs();
         String style = geoServerSpec.getStyle();
-        Map<String, String> options = geoServerSpec.getOptions();
+        Map<String, String> options = geoServerSpec.getOptions() != null ? geoServerSpec.getOptions() : Collections.emptyMap();
         switch (geoServerSpec.getGeoserverType()) {
             case SINGLE_COVERAGE: 
             	ingestCoverage(workspace, path, srs, datastoreName, coverageName, style);
