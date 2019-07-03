@@ -61,9 +61,14 @@ public class WalletTransactionsApiImpl extends BaseRepositoryApiImpl<WalletTrans
 	public Page<WalletTransaction> parametricFind(User owner, Collection<Type> types, Long associatedId, OffsetDateTime startDateTime,
 			OffsetDateTime endDateTime, Pageable pageable) {
 		Predicate p = buildPredicate(owner, types, associatedId, startDateTime, endDateTime);
-		return getFilteredResults(p, pageable);
+		if (getSecurityService().isSuperUser()) {
+            return getDao().findAll(p, pageable);
+        } else {
+        	BooleanExpression isOwned = QWalletTransaction.walletTransaction.wallet.owner.eq(getSecurityService().getCurrentUser());
+            return getDao().findAll(isOwned.and(p), pageable);
+        }
 	}
-
+	
 	private Predicate buildPredicate(User owner, Collection<Type> types, Long associatedId, OffsetDateTime startDateTime,
 			OffsetDateTime endDateTime) {
 		BooleanBuilder builder = new BooleanBuilder(Expressions.asBoolean(true).isTrue());
