@@ -343,8 +343,8 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
         function getBasketItemLink(item, itemLinks) {
             var partialPromise = $q.defer();
 
-            if (item._links && item._links.self) {
-                itemLinks.push(item._links.self.href);
+            if (item.properties._links && item.properties._links.fstepFile && item.properties._links.fstepFile.href) {
+                itemLinks.push(item.properties._links.fstepFile.href);
                 partialPromise.resolve();
             } else {
                 FileService.createGeoResultFile(item).then(function(fstepFile) {

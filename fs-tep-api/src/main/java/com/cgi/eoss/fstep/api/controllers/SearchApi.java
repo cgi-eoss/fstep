@@ -1,15 +1,13 @@
 package com.cgi.eoss.fstep.api.controllers;
 
-import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
-import com.cgi.eoss.fstep.search.api.SearchFacade;
-import com.cgi.eoss.fstep.search.api.SearchParameters;
-import com.cgi.eoss.fstep.search.api.SearchResults;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.google.common.io.ByteStreams;
-import lombok.extern.log4j.Log4j2;
-import okhttp3.HttpUrl;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.net.URISyntaxException;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.rest.webmvc.BasePathAwareController;
@@ -21,12 +19,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.net.URISyntaxException;
-import java.util.Map;
+import com.cgi.eoss.fstep.model.FstepFile;
+import com.cgi.eoss.fstep.persistence.service.FstepFileDataService;
+import com.cgi.eoss.fstep.search.api.SearchFacade;
+import com.cgi.eoss.fstep.search.api.SearchParameters;
+import com.cgi.eoss.fstep.search.api.SearchResults;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.io.ByteStreams;
+
+import lombok.extern.log4j.Log4j2;
+import okhttp3.HttpUrl;
 
 /**
  * <p>Functionality for accessing the FS-TEP unifying search facade.</p>
@@ -40,10 +44,11 @@ public class SearchApi {
     private final SearchFacade searchFacade;
     private final ObjectMapper objectMapper;
     private final FstepFilesApiExtension fstepFilesApiExtension;
+    private final FstepFilesApi fstepFilesApi;
     private final FstepFileDataService fstepFileDataService;
 
     @Autowired
-    public SearchApi(SearchFacade searchFacade, ObjectMapper objectMapper, FstepFilesApiExtension fstepFilesApiExtension, FstepFileDataService fstepFileDataService) {
+    public SearchApi(SearchFacade searchFacade, ObjectMapper objectMapper, FstepFilesApiExtension fstepFilesApiExtension, FstepFileDataService fstepFileDataService, FstepFilesApi fstepFilesApi) {
         // Handle single-/multi-value parameters
         this.objectMapper = objectMapper.copy()
                 .configure(SerializationFeature.WRITE_SINGLE_ELEM_ARRAYS_UNWRAPPED, true)
@@ -51,6 +56,7 @@ public class SearchApi {
                 .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
         this.searchFacade = searchFacade;
         this.fstepFilesApiExtension = fstepFilesApiExtension;
+        this.fstepFilesApi = fstepFilesApi;
         this.fstepFileDataService = fstepFileDataService;
     }
 
@@ -104,6 +110,11 @@ public class SearchApi {
                 new OutputStreamWriter(response.getOutputStream()).write("Could not locate download");
                 response.flushBuffer();
         }
+    }
+    
+    @GetMapping("/products/fstep/{productIdentifier}")
+    public org.springframework.hateoas.Resource<FstepFile> getFile(@PathVariable("productIdentifier") String productIdentifier) {
+    	return new org.springframework.hateoas.Resource<>(fstepFilesApi.findOne(Long.valueOf(productIdentifier)));
     }
 
 }
