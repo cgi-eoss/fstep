@@ -224,6 +224,7 @@ define(['../fstepmodules', 'traversonHal', 'moment'], function (fstepmodules, Tr
             var deferred = $q.defer();
 
             halAPI.from(rootUri + '/jobs/' + job.id + '/logs')
+                .newRequest()
                 .getResource()
                 .result
                 .then(function (document) {
