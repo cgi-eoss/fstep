@@ -112,7 +112,7 @@ define(['../../../fstepmodules'], function(fstepmodules) {
         };
 
         $scope.removeDatabasketItem = function(item) {
-            BasketService.removeDatabasketItem($scope.dbParams.selectedDatabasket, $scope.dbParams.items, item).then(function(data) {
+            BasketService.removeDatabasketItem($scope.dbParams.selectedDatabasket, item).then(function(data) {
                 BasketService.refreshDatabaskets("explorer");
             });
         };

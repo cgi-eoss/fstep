@@ -52,8 +52,8 @@ define(['../../../fstepmodules'], function (fstepmodules) {
         };
 
         /* Remove file from databasket */
-        $scope.removeDatabasketItem = function(files, file) {
-            BasketService.removeDatabasketItem($scope.basketParams.selectedDatabasket, files, file).then(function (data) {
+        $scope.removeDatabasketItem = function(file) {
+            BasketService.removeDatabasketItem($scope.basketParams.selectedDatabasket, file).then(function (data) {
                 BasketService.refreshDatabaskets("community");
             });
         };

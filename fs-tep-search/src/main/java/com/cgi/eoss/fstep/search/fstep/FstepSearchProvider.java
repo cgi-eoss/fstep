@@ -24,6 +24,7 @@ import com.google.common.collect.Multimaps;
 import lombok.extern.log4j.Log4j2;
 import okhttp3.Credentials;
 import okhttp3.HttpUrl;
+import okhttp3.HttpUrl.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.logging.HttpLoggingInterceptor;
@@ -159,6 +160,10 @@ public class FstepSearchProvider extends RestoSearchProvider {
                     fstepUsable = securityService.isReadableByCurrentUser(FstepFile.class, fstepFile.getId());
                     fstepUri = fstepFile.getUri();
                     featureLinks.add(new Link(fstepUri.toASCIIString(), "fstep"));
+                    Builder productUrlBuilder = parameters.getRequestUrl().newBuilder();
+                    parameters.getRequestUrl().queryParameterNames().forEach(productUrlBuilder::removeAllQueryParameters);
+                    productUrlBuilder.addPathSegment("products").addPathSegment("fstep").addPathSegment(String.valueOf(fstepFile.getId()));
+                    featureLinks.add(new Link(productUrlBuilder.build().toString(), "fstepFile"));
                     filesize = fstepFile.getFilesize();
 
                     if (fstepUsable) {

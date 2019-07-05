@@ -343,8 +343,8 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
         function getBasketItemLink(item, itemLinks) {
             var partialPromise = $q.defer();
 
-            if (item._links && item._links.self) {
-                itemLinks.push(item._links.self.href);
+            if (item.properties._links && item.properties._links.fstepFile && item.properties._links.fstepFile.href) {
+                itemLinks.push(item.properties._links.fstepFile.href);
                 partialPromise.resolve();
             } else {
                 FileService.createGeoResultFile(item).then(function(fstepFile) {
@@ -365,81 +365,53 @@ define(['../fstepmodules', 'traversonHal'], function(fstepmodules, TraversonJson
         }
 
         this.addItems = function(databasket, fileLinks) {
+
             return $q(function(resolve, reject) {
 
-                var itemsArray = [];
-
-                /* Collect links from current items */
-                if (databasket.files && databasket.files.length > 0) {
-                    for (var item in databasket.files) {
-                        itemsArray.push(databasket.files[item]._links.self.href);
-                    }
-                }
-
-                /* Append links of new items */
-                var newItems = fileLinks.filter(function(i) {
-                    return itemsArray.indexOf(i) < 0;
+                var requests = fileLinks.map(function(fileLink) {
+                    return $http.post(rootUri + '/databaskets/' + databasket.id + '/files/', fileLink, {headers: {'Content-Type': 'text/uri-list'}})
                 });
-                itemsArray.push(newItems);
 
-                /* Set new files object */
-                var updatedItems = {"files": itemsArray};
-
-                /* Patch members with updated member list */
-                halAPI.from(rootUri + '/databaskets/' + databasket.id)
-                    .newRequest()
-                    .patch(updatedItems)
-                    .result
-                    .then(
-                        function(document) {
-                            if (200 <= document.status && document.status < 300) {
-                                MessageService.addInfo('Files successfully added', 'Files added to ' + databasket.name);
-                                resolve(document);
-                            } else {
-                                MessageService.addError('Could not add file/s to Databasket ' + databasket.name, document);
-                                reject();
-                            }
-                        }, function(error) {
-                            MessageService.addError('Could not add file/s to Databasket ' + databasket.name, error);
-                            reject();
+                $q.all(requests).then(
+                    function(responses) {
+                        var anyError = responses.find(function(response) {
+                            return (response.status < 200 || response.status >= 300)
                         });
+                        if (anyError) {
+                            MessageService.addError('Could not add file/s to Databasket ' + databasket.name, document);
+                            reject();
+                        } else {
+                            MessageService.addInfo('Files successfully added', 'Files added to ' + databasket.name);
+                            resolve();
+                        }
+                    }, function(error) {
+                        MessageService.addError('Could not add file/s to Databasket ' + databasket.name, error);
+                        reject();
+                    }
+                );
 
             });
+
         };
 
-        this.removeDatabasketItem = function(databasket, files, file) {
+        this.removeDatabasketItem = function(databasket, file) {
             return $q(function(resolve, reject) {
 
-                /* Create array of user links */
-                var itemsArray = [];
-                for (var item in files) {
-                    /* Don't add user to updated list */
-                    if (files[item].id !== file.id) {
-                        itemsArray.push(files[item]._links.self.href);
-                    }
-                }
+                $http.delete(rootUri + '/databaskets/' + databasket.id + '/files/' + file.id).then(
 
-                /* Set list of files to empty array */
-                var updatedItems = {"files": itemsArray};
-
-                /* Patch databasket with empty item list */
-                halAPI.from(rootUri + '/databaskets/' + databasket.id)
-                    .newRequest()
-                    .patch(updatedItems)
-                    .result
-                    .then(
-                        function(document) {
-                            if (200 <= document.status && document.status < 300) {
-                                MessageService.addInfo('File removed from Databasket', 'File ' + file.filename + ' removed from ' + databasket.name);
-                                resolve(databasket);
-                            } else {
-                                MessageService.addError('Could not remove item from Databasket ' + databasket.name, document);
-                                reject();
-                            }
-                        }, function(error) {
-                            MessageService.addError('Could not remove item from Databasket ' + databasket.name, error);
+                    function(document) {
+                        if (200 <= document.status && document.status < 300) {
+                            MessageService.addInfo('File removed from Databasket', 'File ' + file.filename + ' removed from ' + databasket.name);
+                            resolve(databasket);
+                        } else {
+                            MessageService.addError('Could not remove item from Databasket ' + databasket.name, document);
                             reject();
-                        });
+                        }
+                    }, function(error) {
+                        MessageService.addError('Could not remove item from Databasket ' + databasket.name, error);
+                        reject();
+                    }
+                );
             });
         };
 
