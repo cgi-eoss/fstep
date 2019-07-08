@@ -185,7 +185,7 @@ public class RestoServiceImpl implements RestoService {
                 return UUID.fromString(uuid);
             } else {
                 LOG.error("Failed to ingest Resto object to collection '{}': {} {}: {}", collection, response.code(),
-                        response.message(), response.body());
+                        response.message(), response.body().string());
                 throw new IngestionException("Failed to ingest Resto object");
             }
         } catch (Exception e) {
@@ -216,7 +216,7 @@ public class RestoServiceImpl implements RestoService {
             	return;
             }
             LOG.error("Failed to delete Resto object from collection '{}': {} {}: {}", collection, response.code(),
-                        response.message(), response.body());
+                        response.message(), response.body().string());
             throw new CatalogueException("Failed to delete Resto object");
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -256,7 +256,7 @@ public class RestoServiceImpl implements RestoService {
                 return true;
             } else {
                 LOG.warn("Failed to create Resto collection '{}': {} {}: {}", collection.getName(), response.code(),
-                        response.message(), response.body());
+                        response.message(), response.body().string());
                 return false;
             }
         } catch (IOException e) {
@@ -353,7 +353,7 @@ public class RestoServiceImpl implements RestoService {
             	return true;
             }
             LOG.warn("Failed to delete Resto collection '{}': {} {}: {}", collection.getName(), response.code(),
-            response.message(), response.body());
+            response.message(), response.body().string());
             return false;
             
         } catch (IOException e) {
