@@ -15,6 +15,7 @@ configurations {
 dependencies {
     packages project(path: ':fs-tep-portal', configuration: 'pkg')
     packages project(path: ':fs-tep-ui', configuration: 'pkg')
+    packages project(path: ':fs-tep-user-manual', configuration: 'pkg')
     packages project(path: ':fs-tep-server', configuration: 'pkg')
     packages project(path: ':fs-tep-serviceregistry', configuration: 'pkg')
     packages project(path: ':fs-tep-worker', configuration: 'pkg')

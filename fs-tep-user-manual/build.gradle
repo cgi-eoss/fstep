@@ -1,0 +1,46 @@
+buildscript {
+    dependencies {
+        classpath pl.osPackage
+        classpath "kr.motd.gradle:sphinx-gradle-plugin:2.5.0"
+    }
+}
+
+group 'com.cgi.eoss.fs-tep'
+version '1.3.6-SNAPSHOT'
+
+apply plugin: 'base'
+apply plugin: 'nebula.ospackage'
+apply plugin: "kr.motd.sphinx"
+
+sphinx {
+  // Change the source directory.
+  sourceDirectory = "${projectDir}/source"
+  // Change the output directory.
+  outputDirectory = "${project.buildDir}/user-manual"
+  // Add environment variables.
+  env 'RELEASE_VERSION', "${project.version}"
+  builder = "singlehtml"
+}
+
+
+buildRpm.dependsOn site
+buildDeb.dependsOn site
+
+ospackage {
+    packageName 'fs-tep-user-manual'
+    version getRpmVersion(project.version).version
+    release getRpmVersion(project.version).release
+    arch NOARCH
+    os LINUX
+
+    into '/var/www/html/user-manual'
+
+    from("${project.buildDir}/user-manual") {
+        user 'root'
+        include '**'
+    }
+}
+
+configurations { pkg }
+artifacts { pkg buildRpm }
+
