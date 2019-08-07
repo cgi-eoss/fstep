@@ -56,6 +56,7 @@ public class CreoDIASSearchProvider extends RestoSearchProvider {
             .put(MissionPlatform.builder().mission("sentinel2").platform(null).build(), "Sentinel2")
             .put(MissionPlatform.builder().mission("sentinel3").platform(null).build(), "Sentinel3")
             .put(MissionPlatform.builder().mission("sentinel5p").platform(null).build(), "Sentinel5P")
+            .put(MissionPlatform.builder().mission("smos").platform(null).build(), "SMOS")
             .build();
     private static final Set<String> INTERNAL_FSTEP_PARAMS = ImmutableSet.of(
             "catalogue",
@@ -69,9 +70,11 @@ public class CreoDIASSearchProvider extends RestoSearchProvider {
             .put("s2ProcessingLevel", "processingLevel")
             .put("s3ProcessingLevel", "processingLevel")
             .put("s5pProcessingLevel", "processingLevel")
+            .put("smosProcessingLevel", "processingLevel")
             .put("s3Instrument", "instrument")
             .put("s1ProductType", "productType")
             .put("s5pProductType", "productType")
+            .put("smosProductType", "productType")
             .put("productDateStart", "startDate")
             .put("productDateEnd", "completionDate")
             .put("maxCloudCover", "cloudCover")
@@ -190,11 +193,16 @@ public class CreoDIASSearchProvider extends RestoSearchProvider {
 
         Set<Link> featureLinks = new HashSet<>();
         featureLinks.add(new Link(fstepUri.toASCIIString(), "fstep"));
-
-        Long filesize = Optional.ofNullable((Map<String, Map<String, Object>>) extraParams.get("services"))
+        //when no services are available, the cast to map will fail.
+        Long filesize;
+        if (extraParams.get("services") instanceof List) {
+        	filesize = 0L;
+        }
+        else {
+        	filesize = Optional.ofNullable((Map<String, Map<String, Object>>) extraParams.get("services"))
                 .map(services -> Optional.ofNullable(services.get("download")).map(dl -> ((Number) dl.get("size")).longValue()).orElse(0L))
                 .orElse(0L);
-
+        }
         // Required parameters for FstepFile ingestion
         feature.setProperty("productSource", productSource);
         feature.setProperty("productIdentifier", productIdentifier);

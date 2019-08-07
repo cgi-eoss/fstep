@@ -70,7 +70,7 @@ public class CreoDIASDownloader implements Downloader {
 
     @Override
     public Set<String> getProtocols() {
-        return ImmutableSet.of("sentinel1", "sentinel2", "sentinel3", "sentinel5p", "landsat5", "landsat7", "landsat8", "envisat");
+        return ImmutableSet.of("sentinel1", "sentinel2", "sentinel3", "sentinel5p", "landsat5", "landsat7", "landsat8", "envisat", "smos");
     }
     
     private AmazonS3 initS3Client() {
@@ -194,6 +194,7 @@ public class CreoDIASDownloader implements Downloader {
 			case "landsat5": return "Landsat5";
 			case "landsat7": return "Landsat7";
 			case "landsat8": return "Landsat8";
+			case "smos": return "SMOS";
 			default: throw new ServiceIoException("Unsupported collection");
 			
 		}

@@ -69,10 +69,12 @@ mission:
         title: 'Landsat'
       - value: 'envisat'
         title: 'Envisat MERIS L1B'
+      - value: 'smos'
+        title: 'SMOS'
   onlyIf:
     'catalogue':
       - 'SATELLITE'
-
+  
 s2ProcessingLevel:
   title: 'Processing level'
   type: 'select'
@@ -132,6 +134,14 @@ identifier:
   type: 'text'
   description: 'Product identifier string'
 
+semantic:
+  title: 'Semantic Search'
+  type: 'text'
+  description: 'e.g. Italy 2019'
+  onlyIf:
+    'catalogue':
+      - 'SATELLITE'
+      
 platform:
   title: 'Platform'
   type: 'select'
@@ -300,6 +310,7 @@ orbitDirection:
     'mission':
       - 'sentinel1'
       - 'sentinel3'
+      - 'smos'
       
 s3Instrument:
   title: 'Instrument'
@@ -318,3 +329,59 @@ s3Instrument:
   onlyIf:
     'mission':
       - 'sentinel3' 
+
+smosProcessingLevel:
+  title: 'Processing Level'
+  type: 'select'
+  defaultValue: '2'
+  allowed:
+    values:
+      - value: ''
+        title: ''    
+      - value: '1B'
+        title: 'L1B'
+      - value: '1C'
+        title: 'L1C'
+      - value: '2'
+        title: 'L2'
+  onlyIf:
+    'mission':
+      - 'smos'
+      
+smosProductType:
+  title: 'Product Type'
+  type: 'select'
+  defaultValue: ''
+  allowed:
+    values:
+      - value: ''
+        title: ''
+      - value: 'MIR_SC_D1B'
+        title: 'MIR_SC_F1B'
+      - value: 'MIR_SC_D1B'
+        title: 'MIR_SC_D1B'
+      - value: 'MIR_BWLD1C'
+        title: 'MIR_BWLD1C'
+      - value: 'MIR_BWLF1C'
+        title: 'MIR_BWLF1C'
+      - value: 'MIR_BWSD1C'
+        title: 'MIR_BWSD1C'
+      - value: 'MIR_BWSF1C'
+        title: 'MIR_BWSF1C'
+      - value: 'MIR_SCLD1C'
+        title: 'MIR_SCLD1C'
+      - value: 'MIR_SCLF1C'
+        title: 'MIR_SCLF1C'
+      - value: 'MIR_SCSD1C'
+        title: 'MIR_SCSD1C'
+      - value: 'MIR_SCSF1C'
+        title: 'MIR_SCSF1C'
+      - value: 'MIR_OSUDP2'
+        title: 'MIR_OSUDP2'
+      - value: 'MIR_SMUDP2'
+        title: 'MIR_SMUDP2'                
+  onlyIf:
+    'mission':
+      - 'smos' 
+
+
