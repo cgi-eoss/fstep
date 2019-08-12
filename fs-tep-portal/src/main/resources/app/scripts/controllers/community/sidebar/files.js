@@ -23,7 +23,7 @@ define(['../../../fstepmodules'], function (fstepmodules) {
 
         var uploadFileTypes = [
             { name: "GeoTIFF", value: "GEOTIFF"},
-            { name: "Shapefile", value: "SHAPEFILE"},
+            { name: "Shapefile (.zip)", value: "SHAPEFILE"},
             { name: "Other", value: "OTHER"}
         ];
 

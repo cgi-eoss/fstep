@@ -175,7 +175,11 @@ User can upload GeoTiff, Shapefiles or other files.
 
 For GeoTiff, the geometry is automatically extracted from the file and inserted in the platform metadata catalogue.
 
-For Shapefiles, the geometry is automatically extracted from the file and inserted in the platform metadata catalogue..If the resulting geometry has less than 10.000 points, it is preserved as it is, otherwise only the bounding box is saved (in the metadata catalogue, the original file is preserved as it is in storage).
+For Shapefiles, the geometry is automatically extracted from the file and inserted in the platform metadata catalogue.
+
+Shapefiles should be uploaded as a zip archive including at least the .shp, .shx, .dbf and .prj files. 
+
+If the resulting geometry has less than 10.000 points, it is preserved as it is, otherwise only the bounding box is saved (in the metadata catalogue, the original file is preserved as it is in storage).
 
 For other files, a WKT geometry can be optionally specified.
 
