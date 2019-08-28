@@ -106,7 +106,6 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
     private final DynamicProxyService dynamicProxyService;
     private final PersistentFolderDataService persistentFolderDataService;
     private final JobValidator jobValidator;
-    private final PlatformParameterExtractor platformParameterExtractor;
     FstepJobUpdatesManager fstepJobUpdatesManager;
     
     @Autowired
@@ -132,7 +131,6 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         this.dynamicProxyService = dynamicProxyService;
         this.persistentFolderDataService = persistentFolderDataService;
         this.jobValidator = jobValidator;
-        this.platformParameterExtractor = new PlatformParameterExtractor();
         this.fstepJobUpdatesManager = fstepJobUpdatesManager;
     }
 
@@ -509,7 +507,7 @@ public class FstepJobLauncher extends FstepJobLauncherGrpc.FstepJobLauncherImplB
         if (service.getType() == FstepService.Type.APPLICATION) {
             jobSpecBuilder.addExposedPorts(FstepGuiServiceManager.GUACAMOLE_PORT);
         }
-        Integer timeout = platformParameterExtractor.getTimeout(job);
+        Integer timeout = PlatformParameterExtractor.getTimeout(job);
         jobSpecBuilder = jobSpecBuilder.setTimeoutValue(timeout);
         
         Map<Long, String> additionalMounts = job.getConfig().getService().getAdditionalMounts();

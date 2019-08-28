@@ -1,76 +1,40 @@
 package com.cgi.eoss.fstep.orchestrator.service;
 
 import static com.google.common.collect.Multimaps.toMultimap;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.logging.log4j.CloseableThreadContext;
-import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.cgi.eoss.fstep.catalogue.CatalogueService;
-import com.cgi.eoss.fstep.catalogue.geoserver.GeoServerSpec;
-import com.cgi.eoss.fstep.catalogue.util.GeoUtil;
 import com.cgi.eoss.fstep.costing.CostingService;
 import com.cgi.eoss.fstep.logging.Logging;
 import com.cgi.eoss.fstep.model.CostQuotation;
 import com.cgi.eoss.fstep.model.CostQuotation.Recurrence;
 import com.cgi.eoss.fstep.model.FstepFile;
-import com.cgi.eoss.fstep.model.FstepFilesRelation;
-import com.cgi.eoss.fstep.model.FstepFilesRelation.Type;
 import com.cgi.eoss.fstep.model.FstepService;
 import com.cgi.eoss.fstep.model.FstepServiceDescriptor;
-import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Parameter;
-import com.cgi.eoss.fstep.model.FstepServiceDescriptor.Relation;
 import com.cgi.eoss.fstep.model.Job;
 import com.cgi.eoss.fstep.model.JobProcessing;
 import com.cgi.eoss.fstep.model.JobStep;
 import com.cgi.eoss.fstep.model.Wallet;
 import com.cgi.eoss.fstep.model.WalletTransaction;
-import com.cgi.eoss.fstep.model.internal.OutputFileMetadata;
-import com.cgi.eoss.fstep.model.internal.OutputFileMetadata.OutputFileMetadataBuilder;
-import com.cgi.eoss.fstep.model.internal.OutputProductMetadata;
-import com.cgi.eoss.fstep.model.internal.OutputProductMetadata.OutputProductMetadataBuilder;
-import com.cgi.eoss.fstep.model.internal.ParameterRelationTypeToFileRelationTypeUtil;
-import com.cgi.eoss.fstep.model.internal.RetrievedOutputFile;
 import com.cgi.eoss.fstep.orchestrator.utils.ModelToGrpcUtils;
-import com.cgi.eoss.fstep.persistence.service.FstepFilesRelationDataService;
 import com.cgi.eoss.fstep.persistence.service.JobDataService;
 import com.cgi.eoss.fstep.persistence.service.JobProcessingDataService;
 import com.cgi.eoss.fstep.persistence.service.WalletDataService;
 import com.cgi.eoss.fstep.persistence.service.WalletTransactionDataService;
-import com.cgi.eoss.fstep.rpc.FileStream;
-import com.cgi.eoss.fstep.rpc.FileStreamClient;
 import com.cgi.eoss.fstep.rpc.GrpcUtil;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc;
 import com.cgi.eoss.fstep.rpc.worker.FstepWorkerGrpc.FstepWorkerBlockingStub;
@@ -81,12 +45,10 @@ import com.cgi.eoss.fstep.rpc.worker.OutputFileList;
 import com.cgi.eoss.fstep.rpc.worker.PortBinding;
 import com.cgi.eoss.fstep.security.FstepSecurityService;
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.protobuf.Timestamp;
-import com.mysema.commons.lang.Pair;
 
 import lombok.extern.log4j.Log4j2;
 
@@ -98,39 +60,34 @@ public class FstepJobUpdatesManager {
     private final DynamicProxyService dynamicProxyService;
     private final FstepGuiServiceManager guiService;
     private final CachingWorkerFactory workerFactory;
-    private final CatalogueService catalogueService;
     private final FstepSecurityService securityService;
     private final JobProcessingDataService jobProcessingDataService;
     private final CostingService costingService;
-    private WalletDataService walletDataService;
+    private final WalletDataService walletDataService;
     private final WalletTransactionDataService walletTransactionDataService;
-    private final FstepFilesRelationDataService fileRelationDataService;
-	private final PlatformParameterExtractor platformParameterExtractor;
+	private final OutputIngestionService outputIngestionService;
 	
 	 @Autowired
 	    public FstepJobUpdatesManager(JobDataService jobDataService, 
 	    		DynamicProxyService dynamicProxyService, 
 	    		FstepGuiServiceManager guiService, 
 	    		CachingWorkerFactory workerFactory,
-	    		CatalogueService catalogueService,
 	    		FstepSecurityService securityService,
 	    		JobProcessingDataService jobProcessingDataService,
 	    		CostingService costingService, 
 	    		WalletDataService walletDataService,
 	    		WalletTransactionDataService walletTransactionDataService,
-	    		FstepFilesRelationDataService fileRelationDataService) {
+	    		OutputIngestionService outputIngestionService) {
 	        this.jobDataService = jobDataService;
 	        this.dynamicProxyService = dynamicProxyService;
 	        this.guiService = guiService;
 	        this.workerFactory = workerFactory;
-	        this.catalogueService = catalogueService;
 	        this.securityService = securityService;
 	        this.jobProcessingDataService = jobProcessingDataService;
 	        this.costingService = costingService;
 	        this.walletDataService = walletDataService;
 	        this.walletTransactionDataService = walletTransactionDataService;
-	        this.fileRelationDataService = fileRelationDataService;
-	        this.platformParameterExtractor = new PlatformParameterExtractor();
+	        this.outputIngestionService = outputIngestionService;
 	    }
 
     void onJobHeartbeat(Job job, Timestamp timestamp) {
@@ -304,14 +261,12 @@ public class FstepJobUpdatesManager {
     }
     
     public void ingestOutput(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
-            FstepWorkerBlockingStub worker, String outputRootPath)
-            throws IOException, Exception {
+            FstepWorkerBlockingStub worker, String outputRootPath) throws IOException, InterruptedException {
         // Enumerate files in the job output directory
         Multimap<String, String> outputsByRelativePath =
                 listOutputFiles(job, rpcJob, worker, outputRootPath);
         // Repatriate output files
-        Multimap<String, FstepFile> outputFiles = repatriateAndIngestOutputFiles(job, rpcJob, worker,
-                job.getConfig().getInputs(), outputRootPath, outputsByRelativePath);
+        Multimap<String, FstepFile> outputFiles = repatriateAndIngestOutputFiles(job, rpcJob, worker, outputRootPath, outputsByRelativePath);
         job.setStatus(Job.Status.COMPLETED);
         job.setOutputs(outputFiles.entries().stream()
                 .collect(toMultimap(e -> e.getKey(), e -> e.getValue().getUri().toString(),
@@ -351,8 +306,7 @@ public class FstepJobUpdatesManager {
     }
 
     private Multimap<String, String> listOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
-            FstepWorkerGrpc.FstepWorkerBlockingStub worker, String outputRootPath)
-            throws Exception {
+            FstepWorkerGrpc.FstepWorkerBlockingStub worker, String outputRootPath) {
         FstepService service = job.getConfig().getService();
 
         OutputFileList outputFileList = worker.listOutputFiles(ListOutputFilesParam.newBuilder()
@@ -390,204 +344,18 @@ public class FstepJobUpdatesManager {
     }
 
     private Multimap<String, FstepFile> repatriateAndIngestOutputFiles(Job job, com.cgi.eoss.fstep.rpc.Job rpcJob,
-            FstepWorkerGrpc.FstepWorkerBlockingStub worker, Multimap<String, String> inputs, String outputRootPath,
+            FstepWorkerGrpc.FstepWorkerBlockingStub worker, String outputRootPath,
             Multimap<String, String> outputsByRelativePath) throws IOException, InterruptedException {
-        List<RetrievedOutputFile> retrievedOutputFiles = new ArrayList<RetrievedOutputFile>(outputsByRelativePath.size());
-
         Multimap<String, FstepFile> outputFiles = ArrayListMultimap.create();
-        Map<String, GeoServerSpec> geoServerSpecs = platformParameterExtractor.getGeoServerSpecs(job);
-        Map<String, String> collectionSpecs = platformParameterExtractor.getCollectionSpecs(job);
-
+        FstepWorkerGrpc.FstepWorkerStub asyncWorker = FstepWorkerGrpc.newStub(worker.getChannel());
         for (String outputId : outputsByRelativePath.keySet()) {
-            OutputProductMetadata outputProduct = getOutputMetadata(job, geoServerSpecs, collectionSpecs, outputId);
-
-            for (String relativePath : outputsByRelativePath.get(outputId)) {
-                GetOutputFileParam getOutputFileParam = GetOutputFileParam.newBuilder().setJob(rpcJob)
+        	for (String relativePath : outputsByRelativePath.get(outputId)) {
+        		GetOutputFileParam getOutputFileParam = GetOutputFileParam.newBuilder().setJob(rpcJob)
                         .setPath(Paths.get(outputRootPath).resolve(relativePath).toString()).build();
-
-                FstepWorkerGrpc.FstepWorkerStub asyncWorker = FstepWorkerGrpc.newStub(worker.getChannel());
-
-                try (FileStreamClient<GetOutputFileParam> fileStreamClient = new FileStreamClient<GetOutputFileParam>() {
-                    private OutputFileMetadata outputFileMetadata;
-
-                    @Override
-                    public OutputStream buildOutputStream(FileStream.FileMeta fileMeta) throws IOException {
-                        LOG.info("Collecting output '{}' with filename {} ({} bytes)", outputId, fileMeta.getFilename(),
-                                fileMeta.getSize());
-
-                        OutputFileMetadataBuilder outputFileMetadataBuilder = OutputFileMetadata.builder();
-
-                        outputFileMetadata = outputFileMetadataBuilder.outputProductMetadata(outputProduct)
-                                .build();
-
-                        setOutputPath(catalogueService.provisionNewOutputProduct(outputProduct, relativePath.toString(), fileMeta.getSize()));
-                        LOG.info("Writing output file for job {}: {}", job.getExtId(), getOutputPath());
-                        return new BufferedOutputStream(Files.newOutputStream(getOutputPath(), CREATE, TRUNCATE_EXISTING, WRITE));
-                    }
-
-                    @Override
-                    public void onCompleted() {
-                        super.onCompleted();
-                        Pair<OffsetDateTime, OffsetDateTime> startEndDateTimes = getServiceOutputParameter(job.getConfig().getService(), outputId).map(this::extractStartEndDateTimes)
-                                .orElseGet(() -> new Pair<>(null, null));
-                        outputFileMetadata.setStartDateTime(startEndDateTimes.getFirst());
-                        outputFileMetadata.setEndDateTime(startEndDateTimes.getSecond());
-                        retrievedOutputFiles.add(new RetrievedOutputFile(outputFileMetadata, getOutputPath()));
-                    }
-
-					private Pair<OffsetDateTime, OffsetDateTime> extractStartEndDateTimes(Parameter outputParameter) {
-						try {
-                            String regexp = outputParameter.getTimeRegexp();
-	                        if (regexp != null) {
-	                        	Pattern p = Pattern.compile(regexp);
-	                        	Matcher m = p.matcher(getOutputPath().getFileName().toString());
-	                        	if (m.find()) {
-	                        		if (regexp.contains("?<startEnd>")) {
-	                        			OffsetDateTime startEndDateTime = parseOffsetDateTime(m.group("startEnd"), LocalTime.MIDNIGHT);
-	                        			return new Pair<OffsetDateTime, OffsetDateTime>(startEndDateTime, startEndDateTime);
-	                        		}
-	                        		else {
-	                        			OffsetDateTime start = null, end = null;
-	                        			if (regexp.contains("?<start>")) {
-	                            			start = parseOffsetDateTime(m.group("start"), LocalTime.MIDNIGHT);
-	                            		}
-	                        			
-	                        			if (regexp.contains("?<end>")) {
-	                            			end = parseOffsetDateTime(m.group("end"), LocalTime.MIDNIGHT);
-	                            		}
-	                        			return new Pair<OffsetDateTime, OffsetDateTime>(start, end);
-	                        		}
-	                            }
-	                        }
-	                    } catch(RuntimeException e) {
-                        	LOG.error("Unable to parse date from regexp");
-                        }
-						return new Pair<OffsetDateTime, OffsetDateTime> (null, null);
-					}
-					
-					private OffsetDateTime parseOffsetDateTime(String startDateStr, LocalTime defaultTime) {
-						DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd[[ ]['T']HHmm[ss][.SSS][XXX][VV]]");
-						TemporalAccessor temporalAccessor = formatter.parseBest(startDateStr, OffsetDateTime::from, LocalDateTime::from, LocalDate::from);
-						if (temporalAccessor instanceof OffsetDateTime) {
-							return (OffsetDateTime) temporalAccessor;
-						} 
-						else if (temporalAccessor instanceof LocalDateTime){
-							return ((LocalDateTime) temporalAccessor).atOffset(ZoneOffset.UTC);
-						} 
-						else
-						{
-							return ((LocalDate) temporalAccessor).atTime(defaultTime).atOffset(ZoneOffset.UTC);
-						}
-					}
-                }) {
-                    asyncWorker.getOutputFile(getOutputFileParam, fileStreamClient.getFileStreamObserver());
-                    fileStreamClient.getLatch().await();
-                }catch (Exception e) {
-                	//TODO this should reach the user
-                	LOG.error(e.getMessage());
-				}
-            }
+        		FstepFile fstepFile = outputIngestionService.repatriateAndIngestOutputFile(job, outputId, Paths.get(relativePath), f -> asyncWorker.getOutputFile(getOutputFileParam, f));
+        		outputFiles.put(outputId, fstepFile);
+    		}
         }
-        postProcessOutputProducts(retrievedOutputFiles).forEach( Unchecked.consumer(retrievedOutputFile -> outputFiles.put(retrievedOutputFile.getOutputFileMetadata().getOutputProductMetadata().getOutputId(), catalogueService.ingestOutputProduct(retrievedOutputFile.getOutputFileMetadata(), retrievedOutputFile.getPath()))));
-        buildOutputFileRelations(outputFiles, job.getConfig().getService());
-        
         return outputFiles;
     }
-    
-    private Optional<Parameter> getServiceOutputParameter(FstepService service, String outputId) {
-		return service.getServiceDescriptor().getDataOutputs().stream().filter(p -> p.getId().equals(outputId)).findFirst();
-	}
-    
-
-    private void buildOutputFileRelations(Multimap<String, FstepFile> outputFiles, FstepService service) {
-		if (service.getServiceDescriptor().getDataOutputs() == null) {
-			return;
-		}
-    	for ( Parameter output: service.getServiceDescriptor().getDataOutputs()) {
-			if (output.getParameterRelations() != null){
-				for (Relation parameterRelation: output.getParameterRelations()) {
-					Collection<FstepFile> filesForSourceOutput = outputFiles.get(output.getId());
-					Collection<FstepFile> filesForTargetOutput = outputFiles.get(parameterRelation.getTargetParameterId());
-					for (FstepFile sourceFile: filesForSourceOutput) {
-						for (FstepFile targetFile: filesForTargetOutput) {
-							Type relationType = ParameterRelationTypeToFileRelationTypeUtil.fromParameterRelationType(parameterRelation.getType());
-							FstepFilesRelation relation = new FstepFilesRelation(sourceFile, targetFile, relationType);
-							fileRelationDataService.save(relation);
-						}
-					}
-				}
-			}
-		}
-	}
-    
-
-    private OutputProductMetadata getOutputMetadata(Job job, Map<String, GeoServerSpec> geoServerSpecs,
-            Map<String, String> collectionSpecs, String outputId) {
-        OutputProductMetadataBuilder outputProductMetadataBuilder = OutputProductMetadata.builder()
-                .owner(job.getOwner())
-                .service(job.getConfig().getService())
-                .outputId(outputId)
-                .jobId(job.getExtId());
-                
-        
-        HashMap<String, Object> properties = new HashMap<>(ImmutableMap.<String, Object>builder()
-                .put("jobId", job.getExtId()).put("intJobId", job.getId())
-                .put("serviceName", job.getConfig().getService().getName())
-                .put("jobOwner", job.getOwner().getName())
-                .put("jobStartTime",
-                        job.getStartTime().atOffset(ZoneOffset.UTC).toString())
-                .put("jobEndTime", job.getEndTime().atOffset(ZoneOffset.UTC).toString())
-                .build());
-        
-        GeoServerSpec geoServerSpecForOutput = geoServerSpecs.get(outputId);
-        if (geoServerSpecForOutput != null) {
-            properties.put("geoServerSpec", geoServerSpecForOutput);
-        }
-        
-        String collectionSpecForOutput = collectionSpecs.get(outputId);
-        if (collectionSpecForOutput != null) {
-            properties.put("collection", collectionSpecForOutput);
-        }
-        
-        getServiceOutputParameter(job.getConfig().getService(), outputId).ifPresent(p -> addPlatformMetadata(properties, p));
-        
-        OutputProductMetadata outputProduct = outputProductMetadataBuilder.productProperties(properties).build();
-        return outputProduct;
-    }
-
-    private void addPlatformMetadata(Map<String, Object> properties, Parameter outputParameter) {
-	    if (outputParameter.getPlatformMetadata() != null && outputParameter.getPlatformMetadata().size() > 0 ) {
-	        properties.put("extraParams", outputParameter.getPlatformMetadata());
-        }
-	}
-    
-    private List<RetrievedOutputFile> postProcessOutputProducts(List<RetrievedOutputFile> retrievedOutputFiles) throws IOException {
-        // Try to read CRS/AOI from all files - note that CRS/AOI may still be null after this
-        retrievedOutputFiles.forEach(retrievedOutputFile -> {
-            retrievedOutputFile.getOutputFileMetadata().setCrs(getOutputCrs(retrievedOutputFile.getPath()));
-            retrievedOutputFile.getOutputFileMetadata().setGeometry(getOutputGeometry(retrievedOutputFile.getPath()));
-        });
-
-        return retrievedOutputFiles;
-    }
-    
-
-    private String getOutputCrs(Path outputPath) {
-        try {
-            return GeoUtil.extractEpsg(outputPath);
-        } catch (Exception e) {
-        	LOG.info("Could not extract bounding box from file: {}", outputPath);
-            return null;
-        }
-    }
-
-    private String getOutputGeometry(Path outputPath) {
-        try {
-            return GeoUtil.geojsonToWkt(GeoUtil.extractBoundingBox(outputPath));
-        } catch (Exception e) {
-        	LOG.info("Could not extract bounding box from file: {}", outputPath);
-            return null;
-        }
-    }
-
 }

@@ -77,6 +77,7 @@ import com.cgi.eoss.fstep.orchestrator.service.FstepJobLauncher;
 import com.cgi.eoss.fstep.orchestrator.service.FstepJobUpdatesDispatcher;
 import com.cgi.eoss.fstep.orchestrator.service.FstepJobUpdatesManager;
 import com.cgi.eoss.fstep.orchestrator.service.JobValidator;
+import com.cgi.eoss.fstep.orchestrator.service.OutputIngestionService;
 import com.cgi.eoss.fstep.orchestrator.service.QueueScheduler;
 import com.cgi.eoss.fstep.orchestrator.service.ReverseProxyEntry;
 import com.cgi.eoss.fstep.persistence.service.DatabasketDataService;
@@ -280,8 +281,8 @@ public class FstepServicesClientIT {
         FstepQueueService queueService = new FstepJMSQueueService(blockingJmsTemplate, nonblockingJmsTemplate);
         when(workerFactory.getWorker(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
         when(workerFactory.getWorkerById(any())).thenReturn(FstepWorkerGrpc.newBlockingStub(channelBuilder.build()));
-        FstepJobUpdatesManager updatesManager = new FstepJobUpdatesManager(jobDataService, dynamicProxyService, guiService, workerFactory, 
-        		catalogueService, securityService, jobProcessingDataService, costingService, walletDataService, walletTransactionDataService, filesRelationDataService);
+        OutputIngestionService outputIngestionService = new OutputIngestionService(catalogueService, filesRelationDataService);
+        FstepJobUpdatesManager updatesManager = new FstepJobUpdatesManager(jobDataService, dynamicProxyService, guiService, workerFactory, securityService, jobProcessingDataService, costingService, walletDataService, walletTransactionDataService, outputIngestionService);
         FstepJobUpdatesDispatcher updatesDispatcher = new FstepJobUpdatesDispatcher(jobDataService, updatesManager);
         String workerId = "local1";
         JobValidator jobValidator = new JobValidator(costingService, catalogueService);

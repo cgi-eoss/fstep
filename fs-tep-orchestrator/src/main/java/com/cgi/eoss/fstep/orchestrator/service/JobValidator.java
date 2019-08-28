@@ -25,8 +25,6 @@ import com.google.common.collect.Multimap;
 
 @Component
 public class JobValidator {
-
-	private PlatformParameterExtractor platformParameterExtractor;
 	
 	private CostingService costingService;
 	private CatalogueService catalogueService;
@@ -35,7 +33,6 @@ public class JobValidator {
 	public JobValidator(CostingService costingService, CatalogueService catalogueService) {
 		this.costingService = costingService;
 		this.catalogueService = catalogueService;
-		platformParameterExtractor = new PlatformParameterExtractor();
 	}
 	
 	public void checkCost(User user, JobConfig jobConfig) {
@@ -102,7 +99,7 @@ public class JobValidator {
     public boolean checkAccessToOutputCollection(Job job) {
     	User user = job.getOwner();
     	try {
-        	return platformParameterExtractor.getCollectionSpecs(job)
+        	return PlatformParameterExtractor.getCollectionSpecs(job)
         			.values().stream()
                     .allMatch(collectionId -> catalogueService.canUserWrite(user, collectionId));
         } catch (IOException e) {
