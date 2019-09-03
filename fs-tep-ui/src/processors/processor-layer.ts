@@ -151,7 +151,7 @@ export class ProcessorLayer {
                 });
 
                 return records.slice(3, records.length - 1).map((value) => {
-                    return [value[0], dataSource.scaleValue(parseFloat(value[1]), true)];
+                    return [value[0], dataSource.scaleValue(parseFloat(value[1]), dataSource.getOptions().forceNumericValueInTimeSeries)];
                 }).filter((value) => {
                     return typeof(value[1]) == "number";
                 });
