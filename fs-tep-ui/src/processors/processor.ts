@@ -31,7 +31,8 @@ export class Processor {
         this.legendConfig = config.legend;
         this.infoFormat = config.infoFormat;
         this.mapSource = this.createMapSource(config.layer, {
-            disableAutoZoom: config.disableAutoZoom || false
+            disableAutoZoom: config.disableAutoZoom || false,
+            forceNumericValueInTimeSeries: config.forceNumericValueInTimeSeries || false
         });
     }
 
