@@ -460,6 +460,9 @@ public class CatalogueServiceImpl extends CatalogueServiceGrpc.CatalogueServiceI
     @Override
     public void deleteCollection(Collection collection) throws IOException {
     	collection = collectionDataService.refreshFull(collection);
+    	for (FstepFile fstepFile: collection.getFstepFiles()) {
+    		this.delete(fstepFile);
+    	}
     	switch(collection.getFileType()) {
     		case OUTPUT_PRODUCT: 
     			outputProductService.deleteCollection(collection);
