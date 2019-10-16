@@ -114,7 +114,8 @@ export class ProcessorsService {
                                             legend: true,
                                             srs: 'EPSG:900913'
                                         }
-                                    }
+                                    },
+                                    extent: layer.EX_GeographicBoundingBox
                                 }
 
                                 if (times) {

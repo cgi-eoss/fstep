@@ -10,6 +10,7 @@ export class Processor {
     domainConfig;
     legendConfig;
     infoFormat;
+    extent;
     timeRange?: {start: moment.Moment, end: moment.Moment, frequency: moment.Duration, list: Array<moment.Moment>}
 
     constructor(config) {
@@ -30,6 +31,7 @@ export class Processor {
         this.domainConfig = config.domain;
         this.legendConfig = config.legend;
         this.infoFormat = config.infoFormat;
+        this.extent = config.extent;
         this.mapSource = this.createMapSource(config.layer, {
             disableAutoZoom: config.disableAutoZoom || false,
             forceNumericValueInTimeSeries: config.forceNumericValueInTimeSeries || false
@@ -38,6 +40,10 @@ export class Processor {
 
     hasTimeDimension() {
         return !!this.timeRange;
+    }
+
+    getExtent() {
+        return this.extent;
     }
 
     getNearestTime(dt) {
@@ -61,7 +67,7 @@ export class Processor {
 
     private createMapSource(params, options) {
         if (params.type == 'WMS') {
-            return new ProcessorWMSSource(params.config, this.timeRange, this.domainConfig, this.legendConfig, this.infoFormat, options);
+            return new ProcessorWMSSource(params.config, this.timeRange, this.domainConfig, this.legendConfig, this.infoFormat, this.extent, options);
         }
     }
 }

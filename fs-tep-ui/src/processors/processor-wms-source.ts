@@ -17,15 +17,17 @@ export class ProcessorWMSSource {
     private domainConfig;
     private legendConfig;
     private infoFormat;
+    private extent;
     private options;
 
-    constructor(config, timeRange, domainConfig, legendConfig, infoFormat, options) {
+    constructor(config, timeRange, domainConfig, legendConfig, infoFormat, extent, options) {
 
         this.config = config;
         this.timeRange = timeRange;
         this.domainConfig = domainConfig;
         this.legendConfig = legendConfig || {};
         this.infoFormat = infoFormat || 'application/json';
+        this.extent = extent;
         this.options = options || {};
 
         let source =  new TileWMS({
@@ -103,6 +105,10 @@ export class ProcessorWMSSource {
 
     hasTimeDimension() {
         return !!this.timeRange;
+    }
+
+    getExtent() {
+        return this.extent;
     }
 
     getLegendUrl() {

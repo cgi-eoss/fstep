@@ -7,6 +7,7 @@ import XYZSource from 'ol/source/xyz';
 
 import Tile from 'ol/layer/tile';
 import Proj from 'ol/proj';
+import olExtent from 'ol/extent';
 
 import 'ol/ol.css';
 import "font-awesome/css/font-awesome.css";
@@ -61,16 +62,21 @@ export class MapService {
         return this.viewer;
     }
 
-    fitExtent(extent) {
+    fitExtent(extent, options: {force?: boolean} = {}) {
         this.getViewer().then((viewer)=>{
             let mapProj = viewer.getView().getProjection().getCode();
             let fitExtent = extent;
             if (mapProj !== 'EPSG:4326') {
                 fitExtent = Proj.transformExtent(extent, 'EPSG:4326', mapProj);
             }
-            viewer.getView().fit(fitExtent, {
-                duration: 500
-            });
+            
+            let currentExtent = viewer.getView().calculateExtent();
+            
+            if (options.force || !olExtent.intersects(currentExtent, fitExtent)) {
+                viewer.getView().fit(fitExtent, {
+                    duration: 500
+                });
+            }
         });
     }
 

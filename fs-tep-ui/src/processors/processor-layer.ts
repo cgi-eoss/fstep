@@ -75,10 +75,13 @@ export class ProcessorLayer {
             }
         }
 
-        if (source && source.hasTimeDimension()) {
-            source.updateSourceTime(this.timeService.getCurrentDate());
+        if (source) {
+            if (source.hasTimeDimension()) {
+                source.updateSourceTime(this.timeService.getCurrentDate());
+            }
+
             if (!source.getOptions().disableAutoZoom) {
-                this.centerOnMap();
+                this.centerOnMap(true);
             }
         }
 
@@ -237,29 +240,39 @@ export class ProcessorLayer {
         ctx.restore();
     }
 
-    private centerOnMap() {
+    private centerOnMap(force?: boolean) {
 
         if (!this.layer) {
             return;
         }
 
-        let wmsSource = this.layer.getSource()
-        let url = wmsSource.getUrls()[0].replace('wms', 'gwc/service/wmts');
-        let params = wmsSource.getParams();
+        if (this.state.value.dataSource.hasTimeDimension()) {
 
-        this.wmtsDomainDiscoveryService.describeDomains({
-            url: url,
-            layer: params['LAYERS'],
-            tileMatrix: 'EPSG:4326',
-            restrictions: [{
-                dimension: 'time',
-                range: params['TIME']
-            }]
-        }).then((domains) => {
-            if (domains && domains.bbox) {
-                this.mapService.fitExtent([Math.max(domains.bbox.minx, -180), Math.max(domains.bbox.miny, -90), Math.min(domains.bbox.maxx, 180), Math.min(domains.bbox.maxy, 90)])
+            let wmsSource = this.layer.getSource()
+            let url = wmsSource.getUrls()[0].replace('wms', 'gwc/service/wmts');
+            let params = wmsSource.getParams();
+
+            this.wmtsDomainDiscoveryService.describeDomains({
+                url: url,
+                layer: params['LAYERS'],
+                tileMatrix: 'EPSG:4326',
+                restrictions: [{
+                    dimension: 'time',
+                    range: params['TIME']
+                }]
+            }).then((domains) => {
+                if (domains && domains.bbox) {
+                    this.mapService.fitExtent([Math.max(domains.bbox.minx, -180), Math.max(domains.bbox.miny, -90), Math.min(domains.bbox.maxx, 180), Math.min(domains.bbox.maxy, 90)], {
+                        force: force
+                    });
+                }
+            });
+        } else {
+            let extent = this.state.value.dataSource.getExtent();
+            if (extent) {
+                this.mapService.fitExtent([Math.max(extent[0], -180), Math.max(extent[1], -90), Math.min(extent[2], 180), Math.min(extent[3], 90)])
             }
-        });
+        }
     }
 
 
