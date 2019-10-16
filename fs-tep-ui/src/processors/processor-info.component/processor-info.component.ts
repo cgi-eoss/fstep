@@ -32,11 +32,12 @@ export class ProcessorInfoComponent implements AfterViewInit, OnDestroy {
         private processorService: ProcessorsService,
         private timeService: TimeService
     ) {
-        processorService.getTimeSeriesState().subscribe((value)=>{
+
+        this.processorService.getTimeSeriesState().subscribe((value)=>{
             this.position = value.coordinates;
-            this.showTimeseriesButton = !value.enabled && this.processorService.getActiveProcessor().hasTimeDimension();
+            let activeProcessor = this.processorService.getActiveProcessor();
+            this.showTimeseriesButton = !value.enabled && activeProcessor && activeProcessor.hasTimeDimension();
         });
-        
 
     }
 
