@@ -176,6 +176,10 @@ public class GeoserverMosaicManager extends GeoServerRESTAbstractManager {
         try {
         	String escapedUrl = new URI(getUrl, false).toString();
     		String getResult = HTTPUtils.get(escapedUrl, gsuser, gspass);
+    		if(getResult == null) {
+				LOG.warn("Granule not found in mosaic");
+				return;
+			}
             FeatureCollection fc = OBJECT_MAPPER.readValue(getResult, FeatureCollection.class);
 			if(fc.getFeatures().isEmpty()) {
 				LOG.warn("Granule not found in mosaic");
