@@ -60,7 +60,7 @@ define(['../../fstepmodules'], function (fstepmodules) {
                 QuotaService.getUserQuotas($scope.userParams.selectedUser._links.self.href).then(function(quotas) {
                     $scope.userParams.quotas = {};
                     quotas.forEach(function(quota) {
-                        $scope.userParams.quotas[quota.usageType] = quota;
+                        $scope.userParams.quotas[quota.usageType.name] = quota;
                     })
                 });
 
