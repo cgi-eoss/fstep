@@ -19,13 +19,21 @@ CI or locally.
 
 To set up the build container and run the build scripts:
 
+1) Make sure that the git submodules have been cloned:
+     
+    git submodule init 
+    git submodule update
+   
+2) Build the docker container
+ 
     docker build -t fstep-build ./build/
+    
+3) Run the build
+
     docker run -v $PWD:$PWD -w $PWD fstep-build gradle build buildDist --parallel
 
-Note that some additional paths or environment variables may be required for
-each build task.
 
-The standalone-dist.sh script produces a portable [Puppet][Puppet] environment,
+The build produces a portable [Puppet][Puppet] environment,
 using the [cgieoss-fstep][cgieoss-fstep] Puppet module (which is locally imported
 to the `third-party/puppet` directory).
 
