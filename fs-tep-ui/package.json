@@ -58,7 +58,7 @@
     "to-string-loader": "^1.1.5",
     "typescript": "^2.4.2",
     "webpack": "^3.4.1",
-    "webpack-dev-server": "^2.6.1",
+    "webpack-dev-server": "^3.1.11",
     "webpack-merge": "^4.1.0",
     "zone.js": "^0.8.16"
   }
