@@ -2,9 +2,10 @@ FROM centos:7
 
 RUN sed -i 's/enabled=.*$/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 
-RUN yum install -y\
+RUN yum update -y && yum install -y\
  epel-release\
  && yum clean all
+
 
 # Update and install core dependencies and tools
 RUN yum update -y && yum install -y\
